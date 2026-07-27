@@ -1,0 +1,1 @@
+export { Educacao } from './Educacao'

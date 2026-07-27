@@ -1,0 +1,1 @@
+export { RotinaCuidado } from './RotinaCuidado'

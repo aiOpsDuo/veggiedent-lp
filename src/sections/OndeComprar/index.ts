@@ -1,0 +1,1 @@
+export { OndeComprar } from './OndeComprar'

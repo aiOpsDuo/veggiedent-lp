@@ -1,0 +1,1 @@
+export { ProvaAutoridade } from './ProvaAutoridade'

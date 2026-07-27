@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      Titulo e meta description derivados da headline/subheadline aprovadas
+      (Copy Deck v2.0, secao 2). Texto final de SEO a validar com o time de
+      conteudo antes do go-live (Especificacao Funcional, secao 11).
+    -->
+    <title>Veggiedent — Rotina de cuidado bucal para cachorros | Virbac</title>
+    <meta
+      name="description"
+      content="Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario."
+    />
+    <link rel="canonical" href="https://p.virbac.com.br/" />
+
+    <meta property="og:title" content="Veggiedent — Rotina de cuidado bucal para cachorros | Virbac" />
+    <meta
+      property="og:description"
+      content="Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <!--
+      og:image PENDENTE — nao publicar URL ficticia (auditoria v1.0, item 16).
+      Assim que a Virbac aprovar uma imagem oficial (Checklist de Assets
+      Pendentes v1.2), adicionar aqui:
+      <meta property="og:image" content="https://<dominio-final>/og-image.jpg" />
+      Ver README.md, secao "Pendencias", item correspondente.
+    -->
+
+    <!--
+      JSON-LD minimo — usa apenas dados institucionais ja confirmados no
+      projeto: nome da empresa (Virbac) e a URL oficial ja aprovada como
+      fonte do claim IPSOS (Copy Deck v2.0, secao 8.1). Nenhum CNPJ, telefone
+      ou endereco foi incluido por nao estarem confirmados ainda (Notas
+      Tecnicas v2.0, secao 2) — ver Especificacao Funcional, secao 11.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Virbac",
+        "url": "https://br.virbac.com/home/veggie.html"
+      }
+    </script>
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!--
+      Fonte: Manjari (Brand Guideline Everyday Care / Virbac).
+      Carregada via Google Fonts com display=swap para não bloquear
+      a renderização do texto.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manjari:wght@100;400;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-surface-canvas text-ink-700">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
