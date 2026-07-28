@@ -56,12 +56,12 @@ export function Hero() {
         src={heroBg}
         alt={heroContent.imageAlt}
         fetchPriority="high"
-        className="bg-image-el absolute inset-0 -z-10 h-full w-full object-cover object-[65%_center]"
+        className="bg-image-el absolute inset-0 -z-10 h-full w-full object-cover object-[65%_center] 3xl:object-[65%_15%]"
       />
       {/* Overlay em gradiente — garante contraste AA do texto sobre a foto oficial */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 -z-10 bg-gradient-to-t from-black/80 via-black/35 to-black/5"
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-black/65 via-black/20 to-transparent"
       />
 
       <div className="mx-auto w-full max-w-content px-4 pb-10 pt-24 sm:px-8 sm:pb-14 md:pb-20">

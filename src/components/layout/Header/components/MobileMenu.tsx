@@ -67,7 +67,7 @@ export function MobileMenu({ isOpen, onClose, navLinks, ctaLabel, triggerRef }: 
       <a
         href="#formulario"
         onClick={onClose}
-        className="mt-2 min-h-[44px] rounded-md bg-brand-primary px-4 py-3 text-center font-semibold text-ink-900 hover:bg-brand-primary-hover"
+        className="mt-2 inline-flex h-11 items-center justify-center rounded-md bg-brand-primary px-4 font-semibold text-ink-900 hover:bg-brand-primary-hover"
       >
         {ctaLabel}
       </a>

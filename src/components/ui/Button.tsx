@@ -24,11 +24,11 @@ const variantClasses: Record<Variant, string> = {
     'bg-brand-primary text-ink-900 hover:bg-brand-primary-hover active:scale-[0.98] disabled:opacity-40',
   secondary:
     'border border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary/5 active:scale-[0.98] disabled:opacity-40',
-  link: 'text-brand-primary underline-offset-2 hover:underline focus-visible:underline bg-transparent p-0 min-h-0',
+  link: 'text-brand-primary underline-offset-2 hover:underline focus-visible:underline bg-transparent p-0 h-auto min-h-0 leading-normal',
 }
 
 const baseClasses =
-  'inline-flex min-h-[44px] items-center justify-center leading-none rounded-md px-6 py-3 text-base font-semibold transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-feedback-focus disabled:cursor-not-allowed'
+  'inline-flex h-11 items-center justify-center leading-none rounded-md px-6 text-base font-semibold transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-feedback-focus disabled:cursor-not-allowed'
 
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   function Button({ variant = 'primary', children, className = '', ...rest }, ref) {

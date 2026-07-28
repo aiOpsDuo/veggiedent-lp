@@ -1,9 +1,9 @@
-import { Card } from '../../../components/ui/Card'
-import type { RoutineStepData } from '../RotinaCuidado.types'
+import { Card } from "../../../components/ui/Card";
+import type { RoutineStepData } from "../RotinaCuidado.types";
 
 interface RoutineStepProps {
-  data: RoutineStepData
-  index: number
+  data: RoutineStepData;
+  index: number;
 }
 
 // Block/Routine — Design System v1.2, secao 9.5.
@@ -20,7 +20,7 @@ export function RoutineStep({ data, index }: RoutineStepProps) {
         src={data.image.src}
         alt={data.image.alt}
         loading="lazy"
-        className="aspect-[4/3] w-full object-cover"
+        className="aspect-[6/6] w-full object-fill"
       />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-sm font-bold text-ink-900">
@@ -30,5 +30,5 @@ export function RoutineStep({ data, index }: RoutineStepProps) {
         <p className="text-base text-ink-700">{data.body}</p>
       </div>
     </Card>
-  )
+  );
 }

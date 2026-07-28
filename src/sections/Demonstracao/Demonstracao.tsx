@@ -45,9 +45,9 @@ export function Demonstracao() {
     <div ref={containerRef}>
       <SectionShell id="demonstracao" aria-labelledby="demonstracao-heading">
         <div className="demo-header-el">
-          <SectionHeading id="demonstracao-heading">{demonstracaoContent.heading}</SectionHeading>
+          <SectionHeading id="demonstracao-heading" className="text-center mx-auto">{demonstracaoContent.heading}</SectionHeading>
         </div>
-        <p className="demo-header-el mt-4 max-w-[70ch] text-lg text-ink-700">{demonstracaoContent.intro}</p>
+        <p className="demo-header-el mt-4 mx-auto max-w-[70ch] text-center text-lg text-ink-700">{demonstracaoContent.intro}</p>
 
         <div className="demo-content-el mt-8">
           <VideoHeroBanner

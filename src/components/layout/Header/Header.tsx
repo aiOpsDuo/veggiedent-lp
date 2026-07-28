@@ -91,7 +91,7 @@ export function Header() {
           <a
             href="#formulario"
             onClick={() => handleCtaClick("header_mobile")}
-            className="min-h-[44px] rounded-md bg-brand-primary px-3 py-2 text-sm font-semibold text-ink-900"
+            className="inline-flex h-11 items-center justify-center rounded-md bg-brand-primary px-3 text-sm font-semibold text-ink-900"
           >
             {headerContent.ctaMobileLabel}
           </a>

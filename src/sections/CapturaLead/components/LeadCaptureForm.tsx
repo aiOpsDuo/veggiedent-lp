@@ -130,7 +130,7 @@ export function LeadCaptureForm() {
           ref={submitButtonRef}
           type="submit"
           disabled={isSubmitting}
-          className="mt-2 inline-flex min-h-[44px] w-full items-center justify-center rounded-md bg-brand-primary px-6 py-3 text-base font-semibold text-ink-900 transition-colors hover:bg-brand-primary-hover disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
+          className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-primary px-6 text-base font-semibold text-ink-900 transition-colors hover:bg-brand-primary-hover disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
         >
           {status === 'submitting' ? formContent.submitLoadingLabel : formContent.submitLabel}
         </button>

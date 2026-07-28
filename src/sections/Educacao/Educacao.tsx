@@ -59,7 +59,7 @@ export function Educacao() {
               src={card.image.src}
               alt={card.image.alt}
               loading="lazy"
-              className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ease-in-out ${
+              className={`absolute inset-0 h-full w-full object-cover object-[center_22%] transition-opacity duration-500 ease-in-out ${
                 activeIndex === index ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             />
@@ -115,7 +115,7 @@ export function Educacao() {
                     src={card.image.src}
                     alt={card.image.alt}
                     loading="lazy"
-                    className="aspect-[4/3] w-full rounded-xl object-cover shadow-sm ring-1 ring-black/5"
+                    className="aspect-[4/3] w-full rounded-xl object-cover object-[center_22%] shadow-sm ring-1 ring-black/5"
                   />
                 </div>
               </div>
