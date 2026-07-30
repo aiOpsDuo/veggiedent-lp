@@ -43,7 +43,7 @@ export function Produto() {
   }, { scope: containerRef })
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} style={{ background: 'linear-gradient(to bottom, #27B6AD 0%, #27B6AD 70%, #239e96 100%)' }}>
       <SectionShell id="produto" aria-labelledby="produto-heading">
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <img
@@ -59,15 +59,15 @@ export function Produto() {
             </div>
 
             {produtoContent.body.map((paragraph) => (
-              <p key={paragraph} className="prod-content-el mt-4 max-w-[60ch] text-base text-ink-700">
+              <p key={paragraph} className="prod-content-el mt-4 max-w-[60ch] text-base text-ink-900/90">
                 {paragraph}
               </p>
             ))}
 
             <ul className="prod-content-el mt-4 flex flex-col gap-2">
               {produtoContent.benefits.map((benefit) => (
-                <li key={benefit} className="flex items-start gap-2 text-base text-ink-700">
-                  <span aria-hidden="true" className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-brand-primary" />
+                <li key={benefit} className="flex items-start gap-2 text-base text-ink-900/90">
+                  <span aria-hidden="true" className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-ink-900/60" />
                   {benefit}
                 </li>
               ))}
@@ -76,7 +76,8 @@ export function Produto() {
             <div className="prod-content-el mt-6">
               <Button
                 href="#onde-comprar"
-                variant="secondary"
+                variant="primary"
+                className="bg-ink-900 text-surface-canvas hover:bg-ink-700 border-0"
                 onClick={() => track('cta_click', { cta_label: produtoContent.ctaLabel, cta_location: 'produto' })}
               >
                 {produtoContent.ctaLabel}

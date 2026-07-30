@@ -42,7 +42,7 @@ export function Educacao() {
   }, { scope: containerRef })
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} style={{ background: 'linear-gradient(to bottom, #FBF8F3 0%, #FBF8F3 60%, #e8f7f6 100%)' }}>
       <SectionShell id="educacao" aria-labelledby="educacao-heading">
         <div className="edu-header-el">
           <SectionHeading id="educacao-heading">{educacaoContent.heading}</SectionHeading>

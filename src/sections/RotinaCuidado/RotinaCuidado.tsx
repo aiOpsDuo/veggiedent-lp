@@ -41,12 +41,12 @@ export function RotinaCuidado() {
   }, { scope: containerRef })
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} style={{ background: 'linear-gradient(to bottom, #e8f7f6 0%, #27B6AD 28%, #27B6AD 100%)' }}>
       <SectionShell id="rotina" aria-labelledby="rotina-heading">
         <div className="rotina-header-el">
           <SectionHeading id="rotina-heading">{rotinaCuidadoContent.heading}</SectionHeading>
         </div>
-        <p className="rotina-header-el mt-4 max-w-[70ch] text-lg text-ink-700">{rotinaCuidadoContent.intro}</p>
+        <p className="rotina-header-el mt-4 max-w-[70ch] text-lg text-ink-900/90">{rotinaCuidadoContent.intro}</p>
 
         <ol className="mt-8 grid grid-cols-1 auto-rows-fr items-stretch gap-4 lg:grid-cols-4">
           {rotinaCuidadoContent.steps.map((step, index) => (
