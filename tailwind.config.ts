@@ -44,6 +44,9 @@ export default {
       },
       fontFamily: {
         sans: ['Manjari', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        // Inter: exclusivo para elementos de ação (botões, labels de formulário).
+        // Métricas mais previsíveis que Manjari em tamanhos pequenos/médios.
+        ui: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       maxWidth: {
         content: '1200px',

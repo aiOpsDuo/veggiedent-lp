@@ -3,6 +3,8 @@ import type { ButtonHTMLAttributes, AnchorHTMLAttributes, ReactNode } from 'reac
 
 // Button/Primary, Button/Secondary — Design System v1.2, secao 9.3.
 // Altura minima de toque 44px em qualquer variante (acessibilidade).
+// Tipografia: Inter SemiBold (600) via font-ui — metricas mais estaveis
+// que Manjari em tamanhos de CTA, garantindo centralizacao vertical precisa.
 
 type Variant = 'primary' | 'secondary' | 'link'
 
@@ -28,7 +30,7 @@ const variantClasses: Record<Variant, string> = {
 }
 
 const baseClasses =
-  'inline-flex h-11 items-center justify-center leading-none rounded-md px-6 text-base font-semibold transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-feedback-focus disabled:cursor-not-allowed'
+  'inline-flex h-11 items-center justify-center font-ui font-semibold leading-none rounded-md px-6 text-base transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-feedback-focus disabled:cursor-not-allowed'
 
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   function Button({ variant = 'primary', children, className = '', ...rest }, ref) {
