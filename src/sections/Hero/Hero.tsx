@@ -93,6 +93,10 @@ export function Hero() {
           />
         </div>
 
+        <p className="subtitle-el mt-4 max-w-[60ch] text-lg text-white/90">
+          {heroContent.subheadline}
+        </p>
+
         {/* Referências */}
         <div className="references-el mt-3 max-w-[120ch] text-[10px] leading-[1.4] text-white/80 sm:text-[11px]">
           <p>
@@ -120,10 +124,6 @@ export function Hero() {
             Maio de 2025).
           </p>
         </div>
-
-        <p className="subtitle-el mt-4 max-w-[60ch] text-lg text-white/90">
-          {heroContent.subheadline}
-        </p>
 
         <div className="cta-el mt-6 flex flex-wrap items-center gap-4">
           <Button
