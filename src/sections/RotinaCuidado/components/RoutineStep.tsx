@@ -23,11 +23,15 @@ export function RoutineStep({ data, index }: RoutineStepProps) {
         className="aspect-[6/6] w-full object-fill"
       />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-primary text-sm font-bold text-ink-900">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-primary font-[Arial] text-sm font-bold leading-none text-ink-900">
           {index + 1}
-        </span>
-        <h3 className="text-lg font-semibold text-ink-900">{data.title}</h3>
-        <p className="text-base text-ink-700">{data.body}</p>
+        </div>
+        <h3 className="mt-4 text-lg font-semibold text-ink-900">
+          {data.title}
+        </h3>
+        <p className="whitespace-pre-line text-base text-ink-700">
+          {data.body}
+        </p>
       </div>
     </Card>
   );

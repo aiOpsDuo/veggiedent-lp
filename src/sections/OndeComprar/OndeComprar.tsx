@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { ondeComprarContent } from './OndeComprar.content'
-import { PartnerCard } from './components/PartnerCard'
+import { PartnerLogoMarquee } from './components/PartnerLogoMarquee'
 import { PartnerPlaceholderMarquee } from './components/PartnerPlaceholderMarquee'
 import { SectionShell } from '../../components/ui/SectionShell'
 import { SectionHeading } from '../../components/ui/SectionHeading'
@@ -27,11 +27,9 @@ export function OndeComprar() {
       }
     })
 
-    gsap.from('.partner-card-el', {
+    gsap.from('.partner-logo-marquee', {
       opacity: 0,
-      y: 20,
-      duration: 0.5,
-      stagger: 0.08,
+      duration: 0.6,
       ease: 'power2.out',
       scrollTrigger: {
         trigger: containerRef.current,
@@ -54,12 +52,8 @@ export function OndeComprar() {
         </p>
 
         {ondeComprarContent.partners.length > 0 ? (
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {ondeComprarContent.partners.map((partner) => (
-              <div key={partner.nome} className="partner-card-el">
-                <PartnerCard partner={partner} />
-              </div>
-            ))}
+          <div className="partner-logo-marquee">
+            <PartnerLogoMarquee partners={ondeComprarContent.partners} />
           </div>
         ) : (
           <>

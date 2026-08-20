@@ -33,3 +33,12 @@
     transform: translateX(-50%);
   }
 }
+
+/* Marquee de logos reais — move exatamente 1/6 da largura total por ciclo.
+   O container tem 6 copias identicas (COPIES = 6 em PartnerLogoMarquee.tsx).
+   Cada copia tem min-w-[220px] × 4 logos = min 880px.
+   (6 - 1) × 880 = 4400px > 3840px (4K): cobre qualquer viewport sem espaco vazio. */
+@keyframes marquee-loop {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(-100% / 6)); }
+}
