@@ -15,22 +15,22 @@ export const ondeComprarContent: OndeComprarContent = {
     {
       nome: "Lupi",
       logoUrl: lupiLogo,
-      link: "#",
+      link: "https://www.lupipet.com.br/tiras-mastigaveis-virbac-veggie-dent-fresh-para-caes-de-5-a-10kg",
     },
-    {
-      nome: "Tudo de Bicho",
-      logoUrl: tudoBichoLogo,
-      link: "#",
-    },
+    // {
+    //   nome: "Tudo de Bicho",
+    //   logoUrl: tudoBichoLogo,
+    //   link: "#",
+    // },
     {
       nome: "Tudo de Bicho",
       logoUrl: tudoBichoNegLogo,
-      link: "#",
+      link: " https://www.tudodebicho.com.br/busca?busca=veggiedent",
     },
     {
       nome: "Manada",
       logoUrl: manadaLogo,
-      link: "#",
+      link: "https://www.lojamanadaanimal.com.br/search/?q=Veggiedent",
     },
   ],
 };
