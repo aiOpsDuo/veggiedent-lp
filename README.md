@@ -59,7 +59,9 @@ apps/api/src/
         └── infrastructure/ # adaptadores: Supabase, Storage, RD Station
 ```
 
-Os cinco módulos de domínio nascem vazios na T4: eles ganham conteúdo nas T5–T8.
+Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media` e `leads` chegam nas T7 e T8.
+
+**Como a API consome `packages/content-schema`:** o pacote é a fonte única de validação (SDD § D-02), mas a API compila para CommonJS e o pacote é lido como TypeScript pelo Vite. Para servir aos dois, ele passou a ter um build próprio (`npm run build -w packages/content-schema`, saída em `packages/content-schema/dist/`): a API resolve o pacote pelo build CommonJS, e Vite e Vitest continuam lendo `src/`. Os scripts `build`, `typecheck` e `test` de `apps/api` reconstroem o pacote antes de rodar, então não existe passo manual a lembrar nem risco de compilar contra uma versão velha do esquema.
 
 **Serviços externos:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) e RD Station Marketing (destino de marketing dos leads).
 
@@ -143,7 +145,79 @@ curl -s localhost:3000/api/health        # -> {"status":"ok"}
 
 A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam sob o prefixo `/api`. Ela é um processo separado da LP: subir uma não sobe a outra, e a LP não depende dela para renderizar (SDD § D-08).
 
-**[PENDENTE]** — aplicar as migrações no projeto Supabase **hospedado** (T3 bloqueada: exige a senha do banco ou um token de acesso pessoal, que `SUPABASE_SECRET_KEY` não substitui) e rodar a migração inicial de conteúdo (T9).
+As migrações **já foram aplicadas no projeto hospedado** (ver "Estado verificado"). O que ainda falta para a API servir conteúdo de verdade é a migração inicial do conteúdo atual para o CMS, que é a T9: até lá as tabelas estão vazias, e `GET /api/content` responde `200` com `{"sections":{},"metadata":null}` — vazio é o estado correto, não erro.
+
+### Endpoints da API
+
+Prefixo `/api` em todas as rotas. A guarda de autenticação é **global e nega por padrão** (SDD § D-03): as rotas públicas da primeira tabela são as únicas marcadas com `@Public()` no código, e qualquer rota nova nasce exigindo token.
+
+**Públicos — nenhum token, consumidos pela LP e pelo injetor de SEO:**
+
+| Método e rota | O que faz |
+|---|---|
+| `GET /api/health` | Sonda de operação. Responde `{"status":"ok"}`. |
+| `GET /api/content` | Todo o conteúdo publicado em **uma** resposta: `{ sections, metadata }`. Seções não publicadas e itens de lista não publicados são **omitidos**; os itens vêm na ordem definida no painel. |
+| `GET /api/seo` | Só os metadados da página, para o injetor de borda: `{ title, description, ogImageUrl, canonicalUrl }`. Campos ausentes vêm `null`, para que o injetor use a reserva do HTML estático em vez de falhar. |
+
+**Exigem token** — cabeçalho `Authorization: Bearer <token do Supabase Auth>`. Sem token, ou com token inválido ou expirado, respondem `401 {"statusCode":401,"error":"Autenticação necessária."}`:
+
+| Método e rota | O que faz |
+|---|---|
+| `GET /api/admin/sections` | Lista as **12** seções na ordem da página, com `isPublished` e `updatedAt`. Aparecem todas mesmo antes de existir documento salvo (`updatedAt: null`). |
+| `GET /api/admin/sections/:key` | Documento completo da seção, publicado ou não. |
+| `PUT /api/admin/sections/:key` | Substitui o documento. Valida contra `packages/content-schema`; **salvar publica**. |
+| `PATCH /api/admin/sections/:key/visibility` | Corpo `{ "isPublished": true \| false }`. Liga ou desliga a seção sem apagar o conteúdo. |
+| `GET /api/admin/metadata` | Metadados da página na forma que o painel edita. |
+| `PUT /api/admin/metadata` | Grava os metadados. Mesma validação por esquema das seções. |
+
+Ainda **não implementados**: `/api/leads` (público) e as rotas de mídia e de leads sob `/api/admin/*`, que chegam nas T7 e T8. O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_context/SDD.md).
+
+Comportamentos que valem para todas as rotas administrativas de conteúdo:
+
+- **Chave de seção fora das 12 conhecidas responde `404` e nunca cria registro.** O conjunto é fechado: o CMS edita seções existentes, nunca cria tipos novos. Uma chave inválida não chega sequer a tocar o banco.
+- **Nenhuma gravação escapa da validação de esquema** (risco R-03 do SDD). Documento inválido responde `422` com erro por campo, no caminho do campo:
+  ```json
+  { "statusCode": 422, "error": "Dados inválidos.",
+    "fields": { "faq.heading": "Campo obrigatório.",
+                "faq.items.0.question": "Campo obrigatório." } }
+  ```
+  Campo que não existe no esquema também é recusado, em vez de gravado em silêncio.
+- **`PATCH .../visibility` em uma seção que nunca foi salva responde `404`.** Publicá-la significaria criar um documento vazio, que é exatamente a forma inválida que a validação existe para impedir — grave a seção primeiro.
+- **Mensagens de validação em português**, inclusive as que o `class-validator` produz sozinho. Coberto por teste de guarda que varre os DTOs (`apps/api/test/mensagens-em-portugues.spec.ts`).
+- **`GET /api/content` faz uma consulta às seções, não uma por seção** (risco R-05). No máximo três no total — uma por tabela envolvida: `content_sections`, `site_metadata` e `media_assets`. O número não cresce com a quantidade de seções, de itens nem de imagens, e está preso por teste.
+
+#### Como as referências de mídia aparecem na resposta
+
+Um campo de imagem, vídeo ou legenda guarda no banco o **identificador** da mídia, nunca um endereço digitado (SDD § "Contrato do esquema de seção"). As duas saídas da API entregam formas diferentes desse mesmo campo, e a diferença é proposital:
+
+| Saída | O que o campo de mídia traz | Por quê |
+|---|---|---|
+| `GET /api/content` e `GET /api/seo` (públicas) | A **URL pública** do arquivo | Quem consome é a LP e o injetor de SEO, que precisam de um endereço para `<img src>`, `<video src>` e `og:image`. Um identificador não é renderizável, e a LP nunca fala com o Supabase para resolvê-lo (SDD § C-06, C-07 e C-10). |
+| `GET /api/admin/sections/:key` e `GET /api/admin/metadata` (com token) | O **identificador** guardado | Quem consome é o painel, que edita a referência e a devolve no `PUT`. Trocar o identificador pela URL na tela de edição faria o painel gravar um endereço digitado, exatamente o que o esquema proíbe. |
+
+A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de topo (`hero.image`, `header.logo`) quanto para campo de item de lista (vídeos, cards, passos, parceiros).
+
+```jsonc
+// GET /api/content — recorte
+{ "sections": {
+    "hero": { "image": "https://…/storage/v1/object/public/imagens/hero.png",
+              "imageAlt": "Cão recebendo o petisco" },
+    "demonstracao": { "videos": [ { "video": "https://…/videos/demo.mp4",
+                                    "poster": "https://…/imagens/demo.png" } ] } },
+  "metadata": { "ogImage": "https://…/imagens/compartilhamento.png" } }
+```
+
+**Mídia ausente ou apagada não quebra a resposta:** o campo simplesmente **não aparece** no documento publicado — a API nunca entrega um identificador cru a quem espera um endereço, e a LP já trata campo ausente como vazio (risco R-03). Vale a regra: *na saída pública, um campo de mídia ou é uma URL, ou não existe*. O texto alternativo, que é texto e não mídia, continua vindo intacto ao lado.
+
+Uma consulta resolve **todas** as mídias da página de uma vez, e nenhuma consulta é feita quando o conteúdo publicado não referencia mídia; mídia de seção ou de item despublicado não é sequer buscada (risco R-05).
+
+Exemplo de chamada autenticada:
+
+```bash
+curl -s -X PUT http://localhost:3000/api/admin/sections/faq \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"heading":"Perguntas frequentes","items":[{"visivel":true,"ordem":0,"question":"Pergunta?","answer":"Resposta."}]}'
+```
 
 ### Banco de dados e armazenamento
 
@@ -165,12 +239,19 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 Em um projeto Supabase hospedado, a partir da raiz do repositório:
 
 ```bash
-npx supabase login                                 # ou exporte SUPABASE_ACCESS_TOKEN
-npx supabase link --project-ref <ref-do-projeto>   # uma vez por máquina; pede a senha do banco
-npx supabase db push                               # aplica as migrações pendentes
+npx supabase db push --db-url \
+  "postgresql://postgres.<ref-do-projeto>:<senha-do-banco>@aws-0-<regiao>.pooler.supabase.com:5432/postgres"
 ```
 
-Os dois primeiros passos precisam de credenciais que **não** estão em `apps/api/.env`: um token de acesso pessoal e a senha do banco. `SUPABASE_SECRET_KEY` não substitui nenhuma das duas — ela fala com a Data API e com o Storage, não executa DDL.
+Este é o caminho verificado em 2026-09-02, e ele dispensa `supabase login` e `supabase link`. Três detalhes que custam tempo se você não souber:
+
+- **Use o pooler, não o host direto.** `db.<ref>.supabase.co` resolve apenas para IPv6; em rede sem rota IPv6 (WSL, muitos CI) a conexão é recusada com `ECONNREFUSED`. O pooler responde em IPv4.
+- **Porta 5432, não 6543.** A 5432 é o modo sessão, que suporta DDL. A 6543 é modo transação e não serve para migração.
+- **O usuário é `postgres.<ref>`**, não `postgres`, quando se conecta pelo pooler.
+
+A `<regiao>` deste projeto é `sa-east-1`. Se não souber a de outro projeto, teste as candidatas com `--dry-run`, que conecta e lista o que seria aplicado sem alterar nada.
+
+A senha do banco **não** está em `apps/api/.env` e não deve estar: a API nunca executa DDL, e guardar ali uma credencial com esse poder violaria o menor privilégio. Ela é fornecida na hora da migração, por quem opera. `SUPABASE_SECRET_KEY` não a substitui — ela fala com a Data API e com o Storage, não executa DDL.
 
 Contra um Supabase local (exige Docker):
 
@@ -226,7 +307,11 @@ OK: tabelas negam a leitura pública e os buckets são públicos só para leitur
 
 O script foi conferido contra uma falha real, não só contra o caminho feliz: com uma policy permissiva criada de propósito em `leads`, ele acusou `FALHOU ... a chave publicável leu 1 linha(s)` e saiu com `1`; com escrita anônima liberada em `storage.objects`, acusou `a chave publicável conseguiu ESCREVER no bucket`. As duas exposições foram desfeitas e o banco terminou com RLS ligada nas quatro tabelas, **zero policies** no schema `public` e apenas a policy de leitura pública em `storage.objects`.
 
-**[PENDENTE]** — as migrações **ainda não foram aplicadas ao projeto Supabase hospedado**. Aplicá-las exige uma credencial que não está no repositório: a senha do banco (para `npx supabase link` + `npx supabase db push`) ou um token de acesso pessoal (`SUPABASE_ACCESS_TOKEN`). A chave secreta da API **não serve** para isso — ela fala com PostgREST e com o Storage, não executa DDL. Com uma das duas em mãos, rode `npx supabase db push` e em seguida o `verify-isolation.mjs` apontando para a URL hospedada, e registre aqui a saída.
+As **seis migrações foram aplicadas ao projeto hospedado** em 2026-09-02, pelo caminho do pooler descrito acima, e as quatro tabelas responderam `200` com a chave secreta. O `verify-isolation.mjs` rodado contra o projeto hospedado deu **8 checagens, exit 0**, com o portão da Data API aparecendo como `REFORCADO` — lá a chave publicável é recusada antes de chegar às tabelas, então a RLS em si continua provada apenas pela verificação local acima.
+
+Confirmado de novo na T6, com a API real falando com o projeto hospedado: uma seção gravada por `PUT /api/admin/sections/faq` voltou por `GET /api/content` com o item oculto ausente e os visíveis na ordem do painel; os registros de verificação foram apagados em seguida, e as quatro tabelas terminaram vazias, como a T9 espera encontrá-las.
+
+A resolução de mídia foi verificada do mesmo jeito, também contra o projeto hospedado: com uma linha em `media_assets` e as seções `hero` e `demonstracao` gravadas referenciando-a, `GET /api/content` sem token devolveu a **URL pública** no campo de topo, em cada item de lista e em `metadata.ogImage`, sem nenhum identificador na resposta, enquanto `GET /api/admin/sections/hero` continuou devolvendo o identificador; apagada a mídia com o conteúdo ainda apontando para ela, os campos sumiram e o restante do documento veio intacto. Os registros e o operador de verificação foram removidos: as quatro tabelas terminaram vazias e o projeto com **0 usuários**.
 
 ### Como criar um operador do painel
 
