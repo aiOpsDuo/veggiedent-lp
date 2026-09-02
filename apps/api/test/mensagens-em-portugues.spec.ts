@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { HttpStatus } from '@nestjs/common'
-import { getMetadataStorage } from 'class-validator'
+import { ValidationTypes, getMetadataStorage } from 'class-validator'
 import request from 'supertest'
 import { startContentHarness, type ContentHarness } from './content-harness'
 
@@ -63,6 +63,12 @@ describe('mensagens de validação em português', () => {
       expect(restricoes.length).toBeGreaterThan(0)
 
       for (const restricao of restricoes) {
+        // `@IsOptional()` não valida nada: só diz que o campo pode faltar. Não
+        // tem mensagem porque não tem o que recusar — exigir uma dela seria
+        // exigir texto para um erro que nunca acontece.
+        if (restricao.type === ValidationTypes.CONDITIONAL_VALIDATION) {
+          continue
+        }
         expect(typeof restricao.message).toBe('string')
         const mensagem = String(restricao.message).toLowerCase()
         expect(mensagem.length).toBeGreaterThan(0)

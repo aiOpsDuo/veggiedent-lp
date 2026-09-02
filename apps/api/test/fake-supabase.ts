@@ -1,4 +1,5 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
+import { FakeStorage } from './fake-storage'
 
 /**
  * Banco em memória com a forma de resposta do PostgREST.
@@ -36,7 +37,7 @@ const EMBEDDED_SELECT = /(\w+):(\w+)\(([^)]*)\)/g
 
 export interface RecordedCall {
   readonly table: string
-  readonly operation: 'select' | 'upsert' | 'update'
+  readonly operation: 'select' | 'insert' | 'upsert' | 'update' | 'delete'
 }
 
 type Cardinality = 'many' | 'single' | 'maybe'
@@ -78,6 +79,17 @@ class FakeQueryBuilder implements PromiseLike<Result> {
   /** `in` do PostgREST: a coluna precisa estar entre os valores pedidos. */
   in(column: string, values: readonly unknown[]): this {
     this.filters.push((row) => values.includes(row[column]))
+    return this
+  }
+
+  insert(values: Row): this {
+    this.operation = 'insert'
+    this.values = values
+    return this
+  }
+
+  delete(): this {
+    this.operation = 'delete'
     return this
   }
 
@@ -133,6 +145,10 @@ class FakeQueryBuilder implements PromiseLike<Result> {
     switch (this.operation) {
       case 'select':
         return this.matching()
+      case 'insert':
+        return [this.database.insert(this.table, this.values)]
+      case 'delete':
+        return this.database.delete(this.table, this.matching())
       case 'upsert':
         return [this.database.upsert(this.table, this.values)]
       case 'update':
@@ -184,6 +200,8 @@ class FakeQueryBuilder implements PromiseLike<Result> {
  */
 export class FakeSupabaseDatabase {
   readonly calls: RecordedCall[] = []
+  /** O armazenamento de arquivos do mesmo cliente (`supabase.storage`). */
+  readonly storage = new FakeStorage()
   private readonly tables = new Map<string, Row[]>()
   private readonly failures = new Map<string, PostgrestError>()
 
@@ -214,6 +232,28 @@ export class FakeSupabaseDatabase {
 
   failureFor(table: string): PostgrestError | undefined {
     return this.failures.get(table)
+  }
+
+  /** `insert` do PostgREST: linha nova sempre, com a unicidade da chave. */
+  insert(table: string, values: Row): Row {
+    const key = PRIMARY_KEYS[table] as string
+    const rows = this.tables.get(table) ?? []
+    if (rows.some((row) => row[key] === values[key])) {
+      throw new Error(`Chave duplicada no dublê: ${table}.${key} = ${String(values[key])}`)
+    }
+    const inserted = { ...values }
+    rows.push(inserted)
+    this.tables.set(table, rows)
+    return inserted
+  }
+
+  delete(table: string, matching: readonly Row[]): Row[] {
+    const rows = this.tables.get(table) ?? []
+    this.tables.set(
+      table,
+      rows.filter((row) => !matching.includes(row)),
+    )
+    return [...matching]
   }
 
   upsert(table: string, values: Row): Row {
