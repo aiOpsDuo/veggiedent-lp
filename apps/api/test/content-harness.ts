@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common'
 import { SUPABASE_CLIENT } from '../src/shared/infrastructure/supabase-client'
 import { issuerFor } from '../src/modules/auth/infrastructure/jwks-token-verifier'
-import { createTestApp } from './create-test-app'
+import { createTestApp, type ProviderOverride } from './create-test-app'
 import { FakeSupabaseDatabase } from './fake-supabase'
 import { createSigningKey, signToken, startJwksServer, type JwksServer } from './signing-keys'
 
@@ -19,7 +19,15 @@ export interface ContentHarness {
   close(): Promise<void>
 }
 
-export async function startContentHarness(): Promise<ContentHarness> {
+/**
+ * `providerOverrides` acrescenta dublês aos que o harness já instala. A T8 o usa
+ * para pôr um RD Station de mentira no lugar do verdadeiro; sem isso, provar que
+ * uma recusa do repasse não perde o lead exigiria chamar o RD Station de
+ * verdade, e a suíte não fala com a rede.
+ */
+export async function startContentHarness(
+  providerOverrides: readonly ProviderOverride[] = [],
+): Promise<ContentHarness> {
   const database = new FakeSupabaseDatabase()
   const key = await createSigningKey('chave-de-teste')
   const jwks: JwksServer = await startJwksServer([key])
@@ -27,7 +35,10 @@ export async function startContentHarness(): Promise<ContentHarness> {
   const app = await createTestApp(
     {},
     { SUPABASE_JWKS_URL: jwks.url },
-    [{ provide: SUPABASE_CLIENT, useValue: database.asSupabaseClient() }],
+    [
+      { provide: SUPABASE_CLIENT, useValue: database.asSupabaseClient() },
+      ...providerOverrides,
+    ],
   )
 
   const token = await signToken(key, {

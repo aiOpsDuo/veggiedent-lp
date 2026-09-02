@@ -22,6 +22,18 @@ const PRIMARY_KEYS: Readonly<Record<string, string>> = {
   content_sections: 'key',
   site_metadata: 'id',
   media_assets: 'id',
+  leads: 'id',
+}
+
+/**
+ * Valores que a migração declara como `default` e que o PostgREST preenche
+ * sozinho no `insert`. O dublê os imita para que uma linha recém-gravada tenha
+ * a mesma forma que teria no banco — sem isso, um lead gravado pelo teste
+ * voltaria sem `created_at`, e a listagem ordenada por data não teria o que
+ * ordenar.
+ */
+const COLUMN_DEFAULTS: Readonly<Record<string, Readonly<Record<string, () => unknown>>>> = {
+  leads: { created_at: () => new Date().toISOString() },
 }
 
 /**
@@ -48,10 +60,41 @@ type RowFilter = (row: Row) => boolean
 interface Result {
   data: unknown
   error: PostgrestError | null
+  /** Preenchido só quando o `select` pediu `count`, como no PostgREST. */
+  count?: number | null
 }
 
 function postgrestError(message: string, code: string): PostgrestError {
   return { message, code, details: '', hint: '' } as PostgrestError
+}
+
+/** Comparação de valores como o Postgres ordena e filtra texto e número. */
+function compare(left: unknown, right: unknown): number {
+  if (left === right) {
+    return 0
+  }
+  if (left === undefined || left === null) {
+    return -1
+  }
+  if (right === undefined || right === null) {
+    return 1
+  }
+  return left < right ? -1 : 1
+}
+
+/** Preenche as colunas com `default` na migração que o `insert` não trouxe. */
+function withDefaults(table: string, values: Row): Row {
+  const defaults = COLUMN_DEFAULTS[table]
+  if (!defaults) {
+    return values
+  }
+  const completed: Row = { ...values }
+  for (const [column, produce] of Object.entries(defaults)) {
+    if (completed[column] === undefined) {
+      completed[column] = produce()
+    }
+  }
+  return completed
 }
 
 class FakeQueryBuilder implements PromiseLike<Result> {
@@ -59,6 +102,9 @@ class FakeQueryBuilder implements PromiseLike<Result> {
   private columns = '*'
   private values: Row = {}
   private cardinality: Cardinality = 'many'
+  private counting = false
+  private ordering: { column: string; ascending: boolean } | null = null
+  private slice: { from: number; to: number } | null = null
   private readonly filters: RowFilter[] = []
 
   constructor(
@@ -66,8 +112,30 @@ class FakeQueryBuilder implements PromiseLike<Result> {
     private readonly table: string,
   ) {}
 
-  select(columns = '*'): this {
+  select(columns = '*', options: { count?: 'exact' } = {}): this {
     this.columns = columns
+    this.counting = options.count === 'exact'
+    return this
+  }
+
+  order(column: string, options: { ascending?: boolean } = {}): this {
+    this.ordering = { column, ascending: options.ascending !== false }
+    return this
+  }
+
+  /** `range` do PostgREST: dois extremos inclusivos, como no `Content-Range`. */
+  range(from: number, to: number): this {
+    this.slice = { from, to }
+    return this
+  }
+
+  gte(column: string, value: unknown): this {
+    this.filters.push((row) => compare(row[column], value) >= 0)
+    return this
+  }
+
+  lte(column: string, value: unknown): this {
+    this.filters.push((row) => compare(row[column], value) <= 0)
     return this
   }
 
@@ -138,7 +206,9 @@ class FakeQueryBuilder implements PromiseLike<Result> {
     }
 
     const rows = this.apply()
-    return this.shape(rows.map((row) => this.project(row)))
+    const total = rows.length
+    const page = this.paginate(this.sort(rows))
+    return { ...this.shape(page.map((row) => this.project(row))), count: this.counting ? total : null }
   }
 
   private apply(): Row[] {
@@ -155,6 +225,19 @@ class FakeQueryBuilder implements PromiseLike<Result> {
         return this.database.update(this.table, this.matching(), this.values)
       /* c8 ignore next */
     }
+  }
+
+  private sort(rows: Row[]): Row[] {
+    const ordering = this.ordering
+    if (ordering === null) {
+      return rows
+    }
+    const direction = ordering.ascending ? 1 : -1
+    return [...rows].sort((a, b) => direction * compare(a[ordering.column], b[ordering.column]))
+  }
+
+  private paginate(rows: Row[]): Row[] {
+    return this.slice === null ? rows : rows.slice(this.slice.from, this.slice.to + 1)
   }
 
   private matching(): Row[] {
@@ -241,7 +324,7 @@ export class FakeSupabaseDatabase {
     if (rows.some((row) => row[key] === values[key])) {
       throw new Error(`Chave duplicada no dublê: ${table}.${key} = ${String(values[key])}`)
     }
-    const inserted = { ...values }
+    const inserted = { ...withDefaults(table, values) }
     rows.push(inserted)
     this.tables.set(table, rows)
     return inserted
