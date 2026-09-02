@@ -4,6 +4,20 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "test": "vitest run --passWithNoTests"
-  }
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "typescript": "^5.4.5",
+    "vitest": "^2.1.9"
+  },
+  "description": "Esquemas declarativos das secoes de conteudo da LP Veggiedent: fonte unica de validacao, formulario do painel e tipos.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts"
 }
