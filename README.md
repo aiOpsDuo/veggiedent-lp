@@ -64,7 +64,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 |---|---|
 | `VITE_API_BASE_URL` | Base dos endpoints da API |
 | `VITE_SUPABASE_URL` | URL do projeto Supabase (usada só pelo painel, no login) |
-| `VITE_SUPABASE_ANON_KEY` | Chave anônima do Supabase (usada só pelo painel, no login) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável do Supabase (`sb_publishable_…`), usada só pelo painel, só no login. Verificado neste projeto: ela **não** alcança a Data API — o Supabase responde `Only secret API keys can be used for this endpoint` —, então não há como ler o banco com ela mesmo que vaze |
 | `VITE_EBOOK_URL` | URL de download do e-book. Vazia enquanto a Virbac não entregar |
 | `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso |
 
@@ -122,7 +122,17 @@ Para conferir o build de produção da LP: `npm run build && npm run preview` (h
 
 ## Manutenção
 
-- **Adicionar um campo a uma seção:** **[PENDENTE]** — procedimento documentado na T2. Previsto: editar o esquema da seção em `packages/content-schema`; formulário do painel e validação da API acompanham sem alteração de código.
+- **Adicionar um campo a uma seção:** edite um arquivo só — o esquema da seção em `packages/content-schema/src/sections/<secao>.ts`.
+
+  1. Acrescente o campo ao array `fields` da seção, ou ao `itemFields` da lista quando o campo pertencer a um item (um card, um passo, um parceiro, uma pergunta). Um campo é `{ name, type, label, help, required }`: `label` e `help` são o que o operador lê no painel, em português — `help` diz onde o campo aparece na página, e é opcional só na forma, não na prática. Tipos disponíveis: `texto-curto`, `texto-longo`, `lista-de-textos`, `imagem`, `video`, `legenda`, `link`, `booleano`.
+  2. Se o campo for uma imagem, não o declare à mão: use `requiredImage({ ... })` ou `optionalImage({ ... })` de `src/fields.ts`. Os dois emitem a imagem **e** o texto alternativo obrigatório adjacente de uma vez, de modo que a invariante de acessibilidade não dependa de alguém lembrar dela.
+  3. Preencha o campo novo no documento de exemplo da seção, em `packages/content-schema/tests/fixtures.ts`. Este é o único passo manual obrigatório: os documentos de exemplo são tipados pelos tipos derivados do esquema, então um campo obrigatório sem valor ali reprova `npm run typecheck`.
+  4. Rode `npm run test -w packages/content-schema` e `npm run typecheck`.
+
+  Acompanham sozinhos, sem nenhuma outra alteração de código: o tipo TypeScript do documento (`SectionDocumentOf<'secao'>` é calculado a partir do mesmo array de campos), a validação aplicada pela API (o validador Zod é construído do esquema em `src/zod.ts`) e o formulário do painel, gerado a partir do esquema (T11).
+
+  Fora do pacote, duas coisas continuam sendo trabalho manual: a LP só exibe o campo quando o componente da seção passar a renderizá-lo; e um campo **obrigatório** acrescentado depois da migração inicial (T9) invalida os documentos já gravados até que alguém preencha o valor pelo painel — para evitar isso, crie-o com `required: false`, preencha o conteúdo e só então torne-o obrigatório.
+
 - **Excluir um lead a pedido do titular (LGPD):** **[PENDENTE]** — procedimento documentado na T13.
 - **Limpeza de arquivos órfãos no armazenamento:** **[PENDENTE]** — documentar na T7. Uploads interrompidos podem deixar arquivos sem registro; são inertes, mas ocupam espaço.
 

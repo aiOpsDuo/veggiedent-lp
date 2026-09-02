@@ -17,3 +17,11 @@ Documento afetado: PRD.md
 Motivo: durante a exploração da Fase 2 constatou-se que `src/sections/CapturaLead/services/submitLeadToRDStation.ts` coleta `conheceVirbac`, `usaProdutoVirbac` e `qualProdutoVirbac` no formulário mas não os inclui no payload enviado, e que `serverless/rdstation-lead/types.ts` sequer prevê esses campos. Os três dados são perdidos a cada envio, hoje, em produção.
 
 Impacto: a feature "Registro dos leads do formulário" passa a incluir explicitamente esses três campos, gravados e repassados. Registrado como risco R-01 no SDD e verificado pelo critério C-11. É correção de um defeito preexistente, não ampliação de escopo — mas fica registrado para não parecer requisito inventado.
+
+## 2026-09-02 — Data API do projeto Supabase ja restrita a chaves secretas
+
+Documento afetado: SDD.md
+
+Motivo: ao validar as credenciais recebidas do usuario, constatou-se que a Data API deste projeto Supabase recusa a chave publicavel com `"Only secret API keys can be used for this endpoint"`. Verificado por requisicao direta: `/rest/v1/` responde 200 com a chave secreta e 401 com a publicavel, enquanto `/auth/v1/settings` responde 200 com a publicavel.
+
+Impacto: reforca — nao substitui — a decisao de RLS habilitada sem policy permissiva (SDD § "Modelo de dados"). Passam a existir duas barreiras independentes: a chave que o navegador carrega nao alcanca a Data API, e as tabelas negam por padrao. A T3 mantem o escopo original; o script de verificacao dela ganha uma checagem a mais, confirmando que a chave publicavel e recusada. O nome da variavel no README foi corrigido de `VITE_SUPABASE_ANON_KEY` para `VITE_SUPABASE_PUBLISHABLE_KEY`, acompanhando o esquema de chaves vigente do Supabase.

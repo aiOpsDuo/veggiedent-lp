@@ -31,7 +31,8 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 - Dependências: nenhuma
 - Execução: sequencial — toca praticamente todos os arquivos do repositório; nenhuma outra tarefa pode começar antes.
 - Toca documentação: sim — README ganha a estrutura de pastas e os comandos novos da raiz.
-- Status: pendente
+- Status: **concluída** em 2026-09-02, branch `chore/T1-monorepo` (3 commits, sem merge). Verificado pelo orquestrador: `npm run typecheck`, `npm run build` e `npm run test` rodados diretamente, todos passando; `apps/lp/dist/` gerado com os mesmos hashes de antes da movimentação; `main` intocada.
+- Nota sobre o critério: o critério dizia "renderiza as 12 seções". Na prática são 11 blocos renderizados — `Ingredientes` retorna nulo por decisão do código atual (`isContentReady: false`), que é justamente a pendência da Virbac já registrada. Não é regressão; o critério é que estava impreciso.
 
 ### T2 — Pacote de esquemas de seção
 - Descrição: criar `packages/content-schema` declarando, para as 12 seções, os campos e listas conforme o contrato do SDD (nome, tipo, rótulo em português, ajuda, obrigatoriedade), mais o esquema dos metadados da página. Exportar os tipos TypeScript derivados e a função de validação de um documento de seção.
@@ -56,7 +57,7 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 - Rastreável a: SDD § "Visão de layers dentro da API" e § "Contratos de dados/API/interfaces"
 - Critério de "pronto": `npm run build -w apps/api` passa; `npm run test -w apps/api` passa; com a API rodando, `curl -s localhost:3000/api/health` responde `200`; um erro de validação forçado responde no formato `{ statusCode, error, fields }`.
 - Dependências: T1
-- Execução: paralelizável com T2 e T3
+- Execução: **sequencial após T2** — ambas instalam dependências npm e escrevem em `package-lock.json` (ver correção ao final do plano).
 - Toca documentação: sim — README ganha como rodar a API localmente e sua porta.
 - Status: pendente
 
@@ -194,4 +195,6 @@ T5 ─→ T10 ─→ T11 ─→ T12 ─→ T13 ───────────
               (painel, sequenciais entre si)
 ```
 
-Pares realmente paralelizáveis, por não compartilharem arquivo nem módulo: **T2 ‖ T3 ‖ T4** (após T1) e **T14 ‖ T15** (após T6 e T9). Todo o resto é sequencial. Os módulos da API (T6, T7, T8) têm dependência lógica apenas de T5, mas registram no mesmo módulo raiz da aplicação — por isso são executados em sequência, conforme o guardrail de arquivo compartilhado.
+Pares realmente paralelizáveis, por não compartilharem arquivo nem módulo: **T2 ‖ T3** (após T1) e **T14 ‖ T15** (após T6 e T9). Todo o resto é sequencial. Os módulos da API (T6, T7, T8) têm dependência lógica apenas de T5, mas registram no mesmo módulo raiz da aplicação — por isso são executados em sequência, conforme o guardrail de arquivo compartilhado.
+
+**Correção feita durante a execução (2026-09-02):** o plano original marcava **T2 ‖ T3 ‖ T4** como paralelizáveis. T2 e T4 instalam dependências npm e portanto ambas escrevem em `package-lock.json` na raiz — arquivo compartilhado. Pelo guardrail de arquivo compartilhado, **T4 passa a ser sequencial em relação a T2**, mesmo sem dependência lógica entre elas. T3 permanece paralelizável por ser SQL mais um script de verificação sem nenhuma dependência npm nova.
