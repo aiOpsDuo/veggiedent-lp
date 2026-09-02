@@ -35,6 +35,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 │   └── content-schema/     # esquemas de seção — esqueleto, preenchido na T2
 ├── serverless/             # relay antigo do RD Station, aposentado na T16
 ├── docs/
+├── supabase/               # migrações SQL do banco, buckets e script de verificação
 ├── agent_context/
 └── README.md
 ```
@@ -89,7 +90,7 @@ O modelo está em [`apps/api/.env.example`](apps/api/.env.example); copie para `
 |---|---|
 | `VITE_API_BASE_URL` | Base dos endpoints da API |
 | `VITE_SUPABASE_URL` | URL do projeto Supabase (usada só pelo painel, no login) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável do Supabase (`sb_publishable_…`), usada só pelo painel, só no login. Verificado neste projeto: ela **não** alcança a Data API — o Supabase responde `Only secret API keys can be used for this endpoint` —, então não há como ler o banco com ela mesmo que vaze |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável do Supabase (`sb_publishable_…`), usada só pelo painel, só no login. Nunca alcança o banco, por duas barreiras independentes: neste projeto o Supabase a recusa já no portão da Data API (`Only secret API keys can be used for this endpoint`) e, além disso, as quatro tabelas negam a leitura para ela (ver "Verificar o isolamento da superfície pública") |
 | `VITE_EBOOK_URL` | URL de download do e-book. Vazia enquanto a Virbac não entregar |
 | `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso |
 
@@ -142,7 +143,90 @@ curl -s localhost:3000/api/health        # -> {"status":"ok"}
 
 A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam sob o prefixo `/api`. Ela é um processo separado da LP: subir uma não sobe a outra, e a LP não depende dela para renderizar (SDD § D-08).
 
-**[PENDENTE]** — os passos de banco e conteúdo: aplicar as migrações no Supabase (T3) e rodar a migração inicial de conteúdo (T9).
+**[PENDENTE]** — aplicar as migrações no projeto Supabase **hospedado** (T3 bloqueada: exige a senha do banco ou um token de acesso pessoal, que `SUPABASE_SECRET_KEY` não substitui) e rodar a migração inicial de conteúdo (T9).
+
+### Banco de dados e armazenamento
+
+O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, aplicadas na ordem do nome do arquivo:
+
+| Migração | O que cria |
+|---|---|
+| `20260902120000_create_media_assets.sql` | Tabela `media_assets` |
+| `20260902120100_create_content_sections.sql` | Tabela `content_sections`, com as 12 chaves de seção fechadas |
+| `20260902120200_create_site_metadata.sql` | Tabela `site_metadata`, de registro único |
+| `20260902120300_create_leads.sql` | Tabela `leads` e o índice da listagem por data |
+| `20260902120400_enable_rls_deny_all.sql` | RLS nas quatro tabelas, **sem nenhuma policy** |
+| `20260902120500_create_storage_buckets.sql` | Buckets `veggiedent-images`, `veggiedent-videos`, `veggiedent-captions` e a policy de leitura pública |
+
+**Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
+
+#### Aplicar as migrações
+
+Em um projeto Supabase hospedado, a partir da raiz do repositório:
+
+```bash
+npx supabase login                                 # ou exporte SUPABASE_ACCESS_TOKEN
+npx supabase link --project-ref <ref-do-projeto>   # uma vez por máquina; pede a senha do banco
+npx supabase db push                               # aplica as migrações pendentes
+```
+
+Os dois primeiros passos precisam de credenciais que **não** estão em `apps/api/.env`: um token de acesso pessoal e a senha do banco. `SUPABASE_SECRET_KEY` não substitui nenhuma das duas — ela fala com a Data API e com o Storage, não executa DDL.
+
+Contra um Supabase local (exige Docker):
+
+```bash
+npx supabase start      # sobe o stack local
+npx supabase db reset   # recria o banco e reaplica todas as migrações
+```
+
+#### Verificar o isolamento da superfície pública
+
+`supabase/scripts/verify-isolation.mjs` prova, contra um Supabase real, três coisas: que a chave publicável não lê nenhuma das quatro tabelas, que os três buckets existem com leitura pública e escrita fechada, e se o portão da Data API recusa a chave publicável. Não tem dependências além do Node:
+
+```bash
+SUPABASE_URL=<url> \
+SUPABASE_PUBLISHABLE_KEY=<chave-publicavel> \
+SUPABASE_SECRET_KEY=<chave-secreta> \
+  node supabase/scripts/verify-isolation.mjs
+```
+
+Saída `0` quando tudo que precisava ser provado foi provado, `1` quando algo está alcançável da superfície pública, `2` quando nada está exposto mas alguma checagem ficou sem prova.
+
+A chave secreta é obrigatória por dois motivos: é ela que lista os buckets e é ela que conta as linhas que a chave publicável deveria estar sem enxergar — em uma tabela vazia, uma resposta vazia não prova nada, e o script recusa tratar isso como aprovação. A checagem dos buckets envia um arquivo de sonda com a chave secreta, lê esse arquivo sem credencial nenhuma, tenta escrever com a chave publicável e **apaga a sonda ao final, inclusive em caso de erro** — é a única parte do script que escreve.
+
+O portão da Data API é reportado como camada informativa e não decide o resultado: no projeto hospedado ele recusa a chave publicável (`Only secret API keys can be used for this endpoint`), e essa recusa **reforça, mas não substitui**, a negação por tabela, que é a exigência dura.
+
+#### Estado verificado
+
+Executado contra um stack Supabase local completo (Postgres 17 + PostgREST + Storage), com o banco recriado do zero por `npx supabase db reset`:
+
+```
+$ npx supabase db reset
+Applying migration 20260902120000_create_media_assets.sql...
+Applying migration 20260902120100_create_content_sections.sql...
+Applying migration 20260902120200_create_site_metadata.sql...
+Applying migration 20260902120300_create_leads.sql...
+Applying migration 20260902120400_enable_rls_deny_all.sql...
+Applying migration 20260902120500_create_storage_buckets.sql...
+
+$ SUPABASE_URL=http://127.0.0.1:54321 \
+  SUPABASE_PUBLISHABLE_KEY=<publicável do stack local> \
+  SUPABASE_SECRET_KEY=<secreta do stack local> \
+    node supabase/scripts/verify-isolation.mjs
+  AUSENTE   Portão da Data API recusa a chave publicável        (stack local aceita; o projeto hospedado recusa)
+  OK        Tabela content_sections nega leitura pública        HTTP 401 — permissão negada na tabela (GRANT revogado)
+  OK        Tabela site_metadata nega leitura pública           HTTP 401 — permissão negada na tabela (GRANT revogado)
+  OK        Tabela media_assets nega leitura pública            HTTP 401 — permissão negada na tabela (GRANT revogado)
+  OK        Tabela leads nega leitura pública                   HTTP 401 — permissão negada na tabela (GRANT revogado)
+  OK        Bucket veggiedent-images ...                        leitura pública 200; escrita recusada
+  OK        Bucket veggiedent-videos ...                        leitura pública 200; escrita recusada
+  OK        Bucket veggiedent-captions ...                      leitura pública 200; escrita recusada
+OK: tabelas negam a leitura pública e os buckets são públicos só para leitura.   [exit 0]
+```
+
+O script foi conferido contra uma falha real, não só contra o caminho feliz: com uma policy permissiva criada de propósito em `leads`, ele acusou `FALHOU ... a chave publicável leu 1 linha(s)` e saiu com `1`; com escrita anônima liberada em `storage.objects`, acusou `a chave publicável conseguiu ESCREVER no bucket`. As duas exposições foram desfeitas e o banco terminou com RLS ligada nas quatro tabelas, **zero policies** no schema `public` e apenas a policy de leitura pública em `storage.objects`.
+
+**[PENDENTE]** — as migrações **ainda não foram aplicadas ao projeto Supabase hospedado**. Aplicá-las exige uma credencial que não está no repositório: a senha do banco (para `npx supabase link` + `npx supabase db push`) ou um token de acesso pessoal (`SUPABASE_ACCESS_TOKEN`). A chave secreta da API **não serve** para isso — ela fala com PostgREST e com o Storage, não executa DDL. Com uma das duas em mãos, rode `npx supabase db push` e em seguida o `verify-isolation.mjs` apontando para a URL hospedada, e registre aqui a saída.
 
 ### Como criar um operador do painel
 
@@ -177,6 +261,7 @@ fora de escopo por decisão do PRD.
 
 - **Estratégia de branch:** GitHub Flow. Branch por tarefa (`feat/T{n}-slug`), PR obrigatório para `main`, **revisão obrigatória antes do merge**. Commits em Conventional Commits. Sem `git push --force` em branch compartilhada. Política completa em [`agent_context/PLAN.md`](agent_context/PLAN.md).
 - **Testes automatizados:** `npm run test` (todos os workspaces) ou `npm run test -w <workspace>`. O runner é o **Vitest** na LP, no painel e em `packages/`, e o **Jest** em `apps/api` — o padrão do NestJS, adotado na T4 porque o Vitest depende do esbuild, que não emite os metadados de decorador dos quais a injeção de dependência do Nest precisa. Os workspaces ainda sem teste passam com `--passWithNoTests`.
+- **Verificação de segurança do banco:** `node supabase/scripts/verify-isolation.mjs` (ver "Verificar o isolamento da superfície pública"). Não entra no `npm run test` porque precisa de um Supabase alcançável e de credenciais — é um passo de verificação de ambiente, não um teste unitário.
 - **Qualidade de código:** `npm run typecheck` (TypeScript em modo `strict`). O repositório não tem linter configurado — a T1 não introduziu um, e a checagem de tipos mais a revisão de código são hoje as únicas barreiras automáticas.
 - **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
 - **Formato de erro:** toda rota que falha responde `{ statusCode, error, fields? }`, e nada além disso — `fields` mapeia o caminho do campo (`hero.headline`) para a mensagem em português. A mensagem é escolhida a partir do status, nunca copiada da exceção, para que caminho de arquivo, nome de variável de ambiente ou detalhe do Supabase fiquem no log do servidor e não na resposta. Erro de validação responde `422`, como o SDD determina, e não o `400` padrão do NestJS.
