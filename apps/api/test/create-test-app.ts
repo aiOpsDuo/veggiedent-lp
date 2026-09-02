@@ -15,10 +15,21 @@ import { configureApp } from '../src/shared/presentation/configure-app'
  * foi lido: o `ConfigModule` congela o ambiente no momento em que o módulo é
  * importado, cedo demais para um `beforeAll` alcançar. É o que permite apontar a
  * verificação de token a um JWKS local sem tocar em nenhum arquivo de `src/`.
+ *
+ * `providerOverrides` troca um provider por um dublê — na prática, o cliente
+ * Supabase. Só a fronteira externa é substituída: controllers, guarda, casos de
+ * uso e repositórios continuam sendo os de produção, e é isso que permite à
+ * suíte rodar sem rede sem virar um teste de dublês conversando entre si.
  */
+export interface ProviderOverride {
+  readonly provide: unknown
+  readonly useValue: unknown
+}
+
 export async function createTestApp(
   extraMetadata: ModuleMetadata = {},
   environmentOverrides: Partial<Environment> = {},
+  providerOverrides: readonly ProviderOverride[] = [],
 ): Promise<INestApplication> {
   const builder = Test.createTestingModule({
     imports: [AppModule, ...(extraMetadata.imports ?? [])],
@@ -30,6 +41,10 @@ export async function createTestApp(
     builder
       .overrideProvider(ENVIRONMENT)
       .useValue(parseEnvironment({ ...process.env, ...environmentOverrides }))
+  }
+
+  for (const override of providerOverrides) {
+    builder.overrideProvider(override.provide).useValue(override.useValue)
   }
 
   const moduleRef = await builder.compile()

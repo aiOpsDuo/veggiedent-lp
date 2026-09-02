@@ -1,5 +1,6 @@
 import { HttpException, HttpStatus } from '@nestjs/common'
 import { FieldValidationError } from '../domain/field-validation.error'
+import { ResourceNotFoundError } from '../domain/resource-not-found.error'
 import type { ErrorResponse } from './error-response'
 import { INTERNAL_ERROR_MESSAGE, messageForStatus } from './error-messages'
 
@@ -14,6 +15,11 @@ export function toErrorResponse(exception: unknown): ErrorResponse {
       error: messageForStatus(HttpStatus.UNPROCESSABLE_ENTITY),
       fields: { ...exception.fields },
     }
+  }
+
+  if (exception instanceof ResourceNotFoundError) {
+    const status = HttpStatus.NOT_FOUND
+    return { statusCode: status, error: messageForStatus(status) }
   }
 
   if (exception instanceof HttpException) {
