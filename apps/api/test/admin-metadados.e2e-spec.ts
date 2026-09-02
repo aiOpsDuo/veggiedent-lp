@@ -98,27 +98,23 @@ describe('rotas administrativas de metadados', () => {
   })
 
   /**
-   * LACUNA DECLARADA, não comportamento desejado.
-   *
-   * `site_metadata` não tem coluna para o texto alternativo da imagem de
-   * compartilhamento: o SDD § "Modelo de dados" não a previu e a T3 seguiu o
-   * SDD. Guardá-lo exige uma migração, e migração exige a senha do banco, que
-   * não estava disponível para a T6. Este teste existe para que a lacuna fique
-   * visível na suíte e falhe no dia em que a coluna aparecer — momento de
-   * apagar o teste e passar a persistir o campo.
+   * A lacuna que a T6 declarou: `ogImageAlt` era validado e descartado, por
+   * falta de coluna. A migração `20260902130000_add_og_image_alt_to_site_metadata`
+   * a criou, e este teste guarda a ida e a volta do campo — inclusive a coluna
+   * que a gravação usa, para que a persistência não passe a depender de um
+   * caminho que só existe no dublê.
    */
-  it('LACUNA: ogImageAlt é validado mas ainda não persiste', async () => {
-    await comToken(
-      agente()
-        .put('/api/admin/metadata')
-        .send({ ...exampleMetadata(), ogImage: MEDIA_ID, ogImageAlt: 'Cão sorrindo' }),
-    )
+  it('guarda e devolve o texto alternativo da imagem de compartilhamento', async () => {
+    const comImagem = { ...exampleMetadata(), ogImage: MEDIA_ID, ogImageAlt: 'Cão sorrindo' }
 
-    const linha = harness.database.rows('site_metadata')[0] ?? {}
-    expect(Object.keys(linha)).not.toContain('og_image_alt')
-
+    const gravado = await comToken(agente().put('/api/admin/metadata').send(comImagem))
     const lido = await comToken(agente().get('/api/admin/metadata'))
-    expect(lido.body.metadata.ogImage).toBe(MEDIA_ID)
-    expect(lido.body.metadata.ogImageAlt).toBeUndefined()
+
+    expect(gravado.status).toBe(HttpStatus.OK)
+    expect(harness.database.rows('site_metadata')[0]).toMatchObject({
+      og_image_media_id: MEDIA_ID,
+      og_image_alt: 'Cão sorrindo',
+    })
+    expect(lido.body.metadata).toEqual(comImagem)
   })
 })
