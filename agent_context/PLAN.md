@@ -41,7 +41,8 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 - Dependências: T1
 - Execução: paralelizável com T3
 - Toca documentação: sim — README explica como adicionar um campo novo a uma seção.
-- Status: pendente
+- Status: **concluída** em 2026-09-02, branch `feat/T2-content-schema` (3 commits, sem merge). Verificado pelo orquestrador: `npm run typecheck`, `npm run test` e `npm run build` rodados diretamente — 134 testes passando (129 do pacote, 5 da LP), typecheck sem erro, build em 3.11s.
+- Nota de revisão (porte Médio exige revisão antes do merge): o teste de cobertura depende de uma **tabela de tradução** entre os nomes de hoje e os do esquema, porque o esquema renomeia e achata de propósito. Ela é necessária, mas é o ponto onde um campo esquecido poderia ser silenciado no futuro. Mitigações já presentes: dois testes de guarda (entrada obsoleta e renomeação órfã) e a categorização de cada diferença por motivo. Auditei as quatro categorias e conferi manualmente os sete textos do formulário mais fáceis de perder (`lgpdLabel`, `optInLabel`, `submitLabel`, `submitLoadingLabel`, `errorToastMessage`, `porteOptions`, `simNaoOptions`): todos presentes no esquema e no conteúdo atual. **Limitação conhecida:** o teste verifica conteúdo ⊆ esquema, não o inverso — campos que existem só no esquema (`hero.image`, `header.logo`, `footer.logo`, `partners.logoAlt`) são intencionais, pois hoje essas imagens são importadas nos componentes e passam a ser editáveis.
 
 ### T3 — Esquema do banco e armazenamento no Supabase
 - Descrição: escrever as migrações SQL das quatro tabelas (`content_sections`, `site_metadata`, `media_assets`, `leads`), habilitar RLS sem policy permissiva em todas elas, e criar os buckets de mídia.
@@ -50,7 +51,11 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 - Dependências: T1
 - Execução: paralelizável com T2
 - Toca documentação: sim — README ganha as variáveis de ambiente do Supabase e o passo de aplicar migrações.
-- Status: pendente
+- Status: **bloqueada** em 2026-09-02, branch `feat/T3-supabase-schema` no worktree isolado (4 commits). Os artefatos estão prontos e verificados; falta credencial para cumprir o critério no projeto hospedado.
+- O que está pronto e verificado pelo orquestrador: seis migrações (quatro tabelas conforme o SDD coluna a coluna, RLS sem policy, três buckets) e `supabase/scripts/verify-isolation.mjs`. Rodei o script eu mesmo contra um stack Supabase local: **8 checagens, exit 0**. Confirmei também que `.temp/` e `.branches/` não foram commitados e que o projeto hospedado segue intacto (as quatro tabelas dão 404, nenhum bucket).
+- **Motivo do bloqueio:** `SUPABASE_SECRET_KEY` fala com PostgREST e Storage, mas **não executa DDL**. Aplicar migrações no projeto hospedado exige a senha do banco (para `supabase link` + `db push`) ou um `SUPABASE_ACCESS_TOKEN` — nenhum dos dois foi fornecido. A verificação foi feita contra um stack local (Postgres 17.6 + PostgREST 16.1 + Storage 1.70), que exercita a mesma maquinaria mas **não é o projeto de destino**.
+- **Diferença conhecida entre os ambientes:** o projeto hospedado recusa a chave publicável já no portão da Data API; o stack local a aceita no portão, e ali a negação vem do GRANT revogado. O script reporta qual barreira negou, em vez de tratar qualquer 401 como aprovação. Consequência: no hospedado a RLS fica impossível de exercitar por HTTP, e está provada apenas pela verificação local.
+- **Próximo passo:** obter a senha do banco ou um token de acesso do usuário, rodar `supabase db push` no projeto hospedado e reexecutar o script contra ele.
 
 ### T4 — Esqueleto da API NestJS
 - Descrição: criar `apps/api` com NestJS 11, configuração tipada de ambiente, pipe global de validação, tratamento de erro no formato único do SDD, endpoint de saúde e a divisão em módulos por domínio ainda vazios.
@@ -59,7 +64,11 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 - Dependências: T1
 - Execução: **sequencial após T2** — ambas instalam dependências npm e escrevem em `package-lock.json` (ver correção ao final do plano).
 - Toca documentação: sim — README ganha como rodar a API localmente e sua porta.
-- Status: pendente
+- Status: **concluída** em 2026-09-02, branch `feat/T4-api-skeleton` (3 commits, sem merge). Verificado pelo orquestrador rodando os comandos diretamente: typecheck limpo nos 3 workspaces, **161 testes** (27 API + 5 LP + 129 content-schema), build da raiz em 3.02s. Runtime conferido com a API no ar: `/api/health` → 200; rota inexistente → `{"statusCode":404,"error":"Recurso não encontrado."}`; `/health` sem prefixo → 404; `/api/docs` → 200; e busca por credencial, stack ou caminho interno nas respostas de erro não retornou nada.
+- Decisão registrada: Swagger em `/api/docs`, **desligado quando `NODE_ENV=production`** — justificado pelos dois consumidores construídos em tarefas separadas (LP na T14, painel nas T11–T13), onde divergência de contrato é o defeito mais provável. Em produção seria catálogo público de `/api/admin/*` sem valor para o visitante.
+- Desvio de camada declarado e aceito: `shared/presentation/validation.pipe.ts` importa `FieldValidationError` de `shared/domain/`, pulando a aplicação. Traduzir erro de domínio para HTTP exige que a apresentação conheça o erro; é o que permitirá à T6 lançar o mesmo erro a partir da validação do `content-schema` sem que a aplicação conheça HTTP.
+- Achado de segurança sem relação com a tarefa, verificado pelo orquestrador: `npm audit` acusa 7 vulnerabilidades (1 crítica, 2 altas). **Todas em ferramenta de desenvolvimento** (vitest, vite, esbuild, postcss, nanoid), nenhuma originada em `apps/api`, nenhuma em dependência de produção. Corrigir exige subir o Vite para 8, mudança quebrante na LP — decisão do usuário, registrada e não executada.
+- Pendências deixadas para tarefas seguintes: CORS validado mas não ligado (T5 ou T16); `RDSTATION_*` opcional até a T8; mensagens do `class-validator` em inglês por padrão, a T6 precisa de teste de guarda para forçar português.
 
 ### T5 — Autenticação e guarda global
 - Descrição: implementar a verificação do token do Supabase Auth por JWKS, com guarda global do NestJS que nega por padrão e decorador explícito para liberar endpoints públicos.
