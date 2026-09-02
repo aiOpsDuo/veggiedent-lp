@@ -1,8 +1,26 @@
 import { ValidationPipe, type ValidationError } from '@nestjs/common'
 import { FieldValidationError } from '../domain/field-validation.error'
+import { INVALID_DATA_MESSAGE } from './error-messages'
+
+/**
+ * Mensagens que o class-validator produz sozinho, sem passar por decorador —
+ * e portanto em inglês, por mais que todo decorador do projeto declare a sua.
+ * `whitelistValidation` é a de `forbidNonWhitelisted`. Traduzi-las aqui é o que
+ * garante que **nenhuma** mensagem em inglês chegue ao operador; o teste de
+ * guarda em `test/mensagens-em-portugues.spec.ts` impede a regressão.
+ */
+const BUILT_IN_CONSTRAINT_MESSAGES: Readonly<Record<string, string>> = {
+  whitelistValidation: 'Campo desconhecido nesta requisição.',
+  unknownValue: 'Não foi possível ler o corpo da requisição.',
+  nestedValidation: INVALID_DATA_MESSAGE,
+}
 
 function firstConstraintMessage(error: ValidationError): string | undefined {
-  return error.constraints ? Object.values(error.constraints)[0] : undefined
+  if (!error.constraints) {
+    return undefined
+  }
+  const [name, message] = Object.entries(error.constraints)[0] as [string, string]
+  return BUILT_IN_CONSTRAINT_MESSAGES[name] ?? message
 }
 
 /**
