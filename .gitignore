@@ -4,3 +4,8 @@ dist
 .env.local
 *.log
 .vercel
+
+# Arquivos de ferramental do agente, deixados na raiz do repositorio.
+# Nao pertencem ao produto e nao devem ser versionados.
+orquestrador-projeto.skill
+orquestrador-projeto.skill:Zone.Identifier
