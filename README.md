@@ -146,7 +146,32 @@ A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam 
 
 ### Como criar um operador do painel
 
-**[PENDENTE]** — confirmado na T5. Previsto: criar o usuário pelo painel do Supabase Auth; o CMS não tem tela de gestão de usuários, por decisão registrada no SDD § D-03.
+O CMS **não tem tela de gestão de usuários** — os operadores são criados no painel do
+Supabase, por decisão registrada no [SDD § D-03](agent_context/SDD.md). A API não guarda
+senhas nem tabela de usuários: ela apenas verifica o token que o Supabase Auth emitiu.
+
+No painel do Supabase, no projeto do Veggiedent:
+
+1. **Authentication → Users → Add user → Create new user**.
+2. Preencha **Email** e **Password**. A senha é definida aqui e entregue à pessoa por um
+   canal seguro — ela pode trocá-la depois pelo próprio fluxo do Supabase.
+3. Marque **Auto Confirm User**. Sem isso o usuário fica pendente de confirmação por
+   e-mail e o login falha, porque este projeto não tem envio de e-mail configurado.
+4. Confirme em **Add user**. O operador já entra pelo painel do CMS na hora — não há nenhum
+   passo adicional na API, nem reinício, nem lista de permissões a atualizar.
+
+Para **revogar o acesso**, remova (ou banha) o usuário na mesma tela. O token que ele já
+tiver em mãos continua válido até expirar; o Supabase emite tokens de vida curta, e a
+sessão do painel deixa de ser renovável assim que o usuário some.
+
+Não há papéis nem permissões: quem entra tem acesso a todo o painel. Gestão de papéis está
+fora de escopo por decisão do PRD.
+
+> **Verificado na T5**, contra o projeto real, com um usuário de teste criado e removido em
+> seguida: o token emitido pelo Supabase Auth é assinado em **ES256** e verificado pela API
+> contra o JWKS do projeto (`SUPABASE_JWKS_URL`), sem que a API guarde nenhum segredo de
+> assinatura. Requisição sem token a um endpoint administrativo responde `401`; com o token
+> do operador, `200`.
 
 ## Alterações, testes e validações
 
@@ -155,6 +180,7 @@ A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam 
 - **Qualidade de código:** `npm run typecheck` (TypeScript em modo `strict`). O repositório não tem linter configurado — a T1 não introduziu um, e a checagem de tipos mais a revisão de código são hoje as únicas barreiras automáticas.
 - **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
 - **Formato de erro:** toda rota que falha responde `{ statusCode, error, fields? }`, e nada além disso — `fields` mapeia o caminho do campo (`hero.headline`) para a mensagem em português. A mensagem é escolhida a partir do status, nunca copiada da exceção, para que caminho de arquivo, nome de variável de ambiente ou detalhe do Supabase fiquem no log do servidor e não na resposta. Erro de validação responde `422`, como o SDD determina, e não o `400` padrão do NestJS.
+- **Autenticação da API:** o painel autentica no Supabase Auth e manda o token em `Authorization: Bearer <token>`; a API o verifica contra o JWKS do projeto (SDD § D-03). A guarda é **global e nega por padrão**: um endpoint novo, criado sem nenhuma marcação, nasce protegido, e só fica público se alguém escrever `@Public()` nele de propósito — esquecer leva a "bloqueado", nunca a "exposto". Toda recusa sai como `401` no formato único de erro, sem distinguir token ausente de expirado ou de assinatura inválida, para não virar oráculo de tokens válidos; o motivo fica no log do servidor, em texto fixo que nunca inclui o token. Os testes de autenticação não tocam a rede: geram um par ES256 próprio, assinam os tokens localmente e apontam a verificação a um JWKS servido em `127.0.0.1`.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
 ## Atualização e monitoramento
