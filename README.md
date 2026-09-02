@@ -30,7 +30,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 ├── apps/
 │   ├── lp/                 # landing page (React + Vite + Tailwind)
 │   ├── admin/              # painel — esqueleto, preenchido na T10
-│   └── api/                # API NestJS — esqueleto, preenchido na T4
+│   └── api/                # API NestJS — módulos por domínio, quatro camadas em cada
 ├── packages/
 │   └── content-schema/     # esquemas de seção — esqueleto, preenchido na T2
 ├── serverless/             # relay antigo do RD Station, aposentado na T16
@@ -38,6 +38,27 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 ├── agent_context/
 └── README.md
 ```
+
+Dentro de `apps/api`, a pasta é a regra de dependência do SDD § "Camadas e padrão arquitetural" tornada física — cada domínio tem as quatro camadas, e não existe lugar certo para pôr regra de negócio num controller:
+
+```
+apps/api/src/
+├── main.ts                 # sobe o processo e escuta a porta
+├── app.module.ts           # registra os módulos, o pipe e o filtro globais
+├── config/                 # ambiente tipado, validado na inicialização
+├── shared/
+│   ├── domain/             # erros de domínio, sem import de framework
+│   └── presentation/       # formato único de erro, pipe, prefixo, Swagger
+├── health/                 # sonda de operação (GET /api/health)
+└── modules/                # um módulo por domínio (SDD § D-03 e seguintes)
+    └── <content|metadata|media|leads|auth>/
+        ├── presentation/   # controllers, DTOs, guardas — traduzem HTTP
+        ├── application/    # casos de uso — orquestram domínio e portas
+        ├── domain/         # regras e portas — não conhecem ninguém
+        └── infrastructure/ # adaptadores: Supabase, Storage, RD Station
+```
+
+Os cinco módulos de domínio nascem vazios na T4: eles ganham conteúdo nas T5–T8.
 
 **Serviços externos:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) e RD Station Marketing (destino de marketing dos leads).
 
@@ -49,14 +70,18 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 
 **`apps/api` (servidor — nunca expostas ao navegador):**
 
-| Variável | Descrição |
-|---|---|
-| `SUPABASE_URL` | URL do projeto Supabase |
-| `SUPABASE_SECRET_KEY` | Chave secreta do Supabase. Ignora RLS — jamais no cliente |
-| `SUPABASE_JWKS_URL` | Endpoint JWKS usado para verificar o token dos operadores |
-| `RDSTATION_API_TOKEN` | Token da API de Conversões do RD Station |
-| `RDSTATION_CONVERSION_IDENTIFIER` | Identificador da conversão no RD Station |
-| `ALLOWED_ORIGINS` | Origens autorizadas a chamar a API, separadas por vírgula |
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SUPABASE_URL` | sim | URL do projeto Supabase |
+| `SUPABASE_SECRET_KEY` | sim | Chave secreta do Supabase. Ignora RLS — jamais no cliente |
+| `SUPABASE_JWKS_URL` | sim | Endpoint JWKS usado para verificar o token dos operadores |
+| `ALLOWED_ORIGINS` | sim | Origens autorizadas a chamar a API, separadas por vírgula |
+| `RDSTATION_API_TOKEN` | a partir da T8 | Token da API de Conversões do RD Station |
+| `RDSTATION_CONVERSION_IDENTIFIER` | a partir da T8 | Identificador da conversão no RD Station |
+| `NODE_ENV` | não | `development` (padrão), `test` ou `production` |
+| `PORT` | não | Porta HTTP da API. Padrão `3000` |
+
+O modelo está em [`apps/api/.env.example`](apps/api/.env.example); copie para `apps/api/.env` e preencha. A API **valida o ambiente na inicialização**: faltando uma variável obrigatória ela recusa subir e nomeia a variável no log (nunca o valor), em vez de falhar depois em tempo de requisição. As duas do RD Station só passam a ser obrigatórias quando o repasse do lead migrar para a API (T8, SDD § D-07).
 
 **`apps/lp` e `apps/admin` (públicas, embarcadas no build):**
 
@@ -77,15 +102,22 @@ npm install          # instala as dependências de todos os workspaces
 npm run dev          # sobe o servidor de desenvolvimento — hoje só a LP (http://localhost:5173)
 npm run build        # build de todos os workspaces; gera apps/lp/dist/
 npm run typecheck    # checagem de tipos de todos os workspaces
-npm run test         # testes de todos os workspaces (Vitest na LP, no painel e em packages/)
+npm run test         # testes de todos os workspaces (Vitest na LP e em packages/, Jest na API)
 npm run preview      # serve o build da LP em http://localhost:4173
 ```
 
 Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w packages/content-schema`.
 
+A API tem dois comandos próprios, que não entram no `npm run dev` da raiz:
+
+```bash
+npm run start:dev -w apps/api   # API com recarga automática em http://localhost:3000/api
+npm run start -w apps/api       # roda o build já gerado (exige npm run build -w apps/api antes)
+```
+
 Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0).
 
-`npm run dev` percorre os workspaces em sequência: enquanto só a LP tem servidor de desenvolvimento isso equivale a subir a LP. Quando a API (T4) e o painel (T10) ganharem seu próprio `dev`, o script da raiz precisará de execução em paralelo — hoje ele ainda não tem.
+`npm run dev` percorre os workspaces em sequência, então um servidor que não termina bloquearia os seguintes. Por isso a API expõe `start:dev` e não `dev`: `npm run dev` na raiz continua equivalendo a subir a LP. Quando o painel (T10) chegar, o script da raiz precisará de execução em paralelo para servir os três de uma vez — hoje ele ainda não tem.
 
 ### Como rodar localmente
 
@@ -100,7 +132,17 @@ npm run dev                              # LP em http://localhost:5173
 
 Para conferir o build de produção da LP: `npm run build && npm run preview` (http://localhost:4173).
 
-**[PENDENTE]** — os passos de banco e API: aplicar as migrações no Supabase (T3), preencher o `.env` de `apps/api` (T4) e rodar a migração inicial de conteúdo (T9).
+Confirmado para a API (T4):
+
+```bash
+cp apps/api/.env.example apps/api/.env   # e preencha as variáveis obrigatórias
+npm run start:dev -w apps/api            # API em http://localhost:3000/api
+curl -s localhost:3000/api/health        # -> {"status":"ok"}
+```
+
+A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam sob o prefixo `/api`. Ela é um processo separado da LP: subir uma não sobe a outra, e a LP não depende dela para renderizar (SDD § D-08).
+
+**[PENDENTE]** — os passos de banco e conteúdo: aplicar as migrações no Supabase (T3) e rodar a migração inicial de conteúdo (T9).
 
 ### Como criar um operador do painel
 
@@ -109,9 +151,10 @@ Para conferir o build de produção da LP: `npm run build && npm run preview` (h
 ## Alterações, testes e validações
 
 - **Estratégia de branch:** GitHub Flow. Branch por tarefa (`feat/T{n}-slug`), PR obrigatório para `main`, **revisão obrigatória antes do merge**. Commits em Conventional Commits. Sem `git push --force` em branch compartilhada. Política completa em [`agent_context/PLAN.md`](agent_context/PLAN.md).
-- **Testes automatizados:** `npm run test` (todos os workspaces) ou `npm run test -w <workspace>`. O runner é o **Vitest** na LP, no painel e em `packages/`; a API usará o runner padrão do NestJS (T4). Os workspaces ainda sem teste passam com `--passWithNoTests`.
+- **Testes automatizados:** `npm run test` (todos os workspaces) ou `npm run test -w <workspace>`. O runner é o **Vitest** na LP, no painel e em `packages/`, e o **Jest** em `apps/api` — o padrão do NestJS, adotado na T4 porque o Vitest depende do esbuild, que não emite os metadados de decorador dos quais a injeção de dependência do Nest precisa. Os workspaces ainda sem teste passam com `--passWithNoTests`.
 - **Qualidade de código:** `npm run typecheck` (TypeScript em modo `strict`). O repositório não tem linter configurado — a T1 não introduziu um, e a checagem de tipos mais a revisão de código são hoje as únicas barreiras automáticas.
-- **Visualização da API:** **[PENDENTE]** — decidir na T4 se a API expõe Swagger.
+- **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
+- **Formato de erro:** toda rota que falha responde `{ statusCode, error, fields? }`, e nada além disso — `fields` mapeia o caminho do campo (`hero.headline`) para a mensagem em português. A mensagem é escolhida a partir do status, nunca copiada da exceção, para que caminho de arquivo, nome de variável de ambiente ou detalhe do Supabase fiquem no log do servidor e não na resposta. Erro de validação responde `422`, como o SDD determina, e não o `400` padrão do NestJS.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
 ## Atualização e monitoramento
