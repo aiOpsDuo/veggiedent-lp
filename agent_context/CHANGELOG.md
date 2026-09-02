@@ -25,3 +25,13 @@ Documento afetado: SDD.md
 Motivo: ao validar as credenciais recebidas do usuario, constatou-se que a Data API deste projeto Supabase recusa a chave publicavel com `"Only secret API keys can be used for this endpoint"`. Verificado por requisicao direta: `/rest/v1/` responde 200 com a chave secreta e 401 com a publicavel, enquanto `/auth/v1/settings` responde 200 com a publicavel.
 
 Impacto: reforca — nao substitui — a decisao de RLS habilitada sem policy permissiva (SDD § "Modelo de dados"). Passam a existir duas barreiras independentes: a chave que o navegador carrega nao alcanca a Data API, e as tabelas negam por padrao. A T3 mantem o escopo original; o script de verificacao dela ganha uma checagem a mais, confirmando que a chave publicavel e recusada. O nome da variavel no README foi corrigido de `VITE_SUPABASE_ANON_KEY` para `VITE_SUPABASE_PUBLISHABLE_KEY`, acompanhando o esquema de chaves vigente do Supabase.
+
+## 2026-09-02 — Premissa do PRD sobre o tamanho dos videos estava errada, e existe um teto real de 50 MB
+
+Documento afetado: PRD.md
+
+Motivo: o PRD afirma, em "Premissas", que "os arquivos de video ja existentes no projeto sao grandes (na ordem de dezenas a centenas de MB)". Essa premissa foi escrita a partir de um comentario do proprio codigo (`Demonstracao.content.ts`: "arquivos de ~130MB nao devem passar pelo pipeline de bundling do Vite"). O orquestrador mediu os arquivos reais na T7: **23,6 MB e 4,2 MB**. O comentario do repositorio esta desatualizado — provavelmente os videos foram comprimidos depois que ele foi escrito.
+
+Alem disso, a T7 descobriu e o orquestrador confirmou de forma independente que o projeto Supabase tem um **teto global de 50 MB por arquivo** que prevalece sobre o limite de 500 MB declarado na migracao do bucket de video. Verificado: criacao de upload TUS de 60 MB responde `HTTP 413 Maximum size exceeded`; 50 MB responde `201`.
+
+Impacto: nenhum bloqueio hoje — os dois videos reais cabem com folga, e o criterio C-07 do SDD ("um video de porte equivalente aos existentes no projeto") foi cumprido com um upload real de 23,6 MB. Mas a promessa de "centenas de MB" do PRD **nao e atendivel** no plano atual do Supabase. Duas saidas, e a escolha e do usuario: elevar o limite em Project Settings > Storage (exige plano pago) ou corrigir a premissa do PRD para o tamanho real dos arquivos. Ate a decisao, o limite efetivo de video e 50 MB e esta documentado no README. A T12 (campos de midia no painel) precisa exibir esse limite ao operador.
