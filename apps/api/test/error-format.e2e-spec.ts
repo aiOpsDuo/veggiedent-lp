@@ -3,6 +3,7 @@ import type { INestApplication } from '@nestjs/common'
 import { Type } from 'class-transformer'
 import { IsNotEmpty, IsObject, ValidateNested } from 'class-validator'
 import request from 'supertest'
+import { Public } from '../src/modules/auth/presentation/public.decorator'
 import { createTestApp } from './create-test-app'
 
 const INTERNAL_DETAIL = 'falha ao ler SUPABASE_SECRET_KEY do adaptador do Supabase'
@@ -22,7 +23,12 @@ class SectionProbeDto {
 /**
  * Controller-sonda: existe só neste teste. Ele força os dois caminhos de erro
  * sem que a aplicação publicada precise expor uma rota de mentira.
+ *
+ * `@Public()` porque o alvo aqui é o formato do erro, não a autenticação: sem a
+ * marcação, a guarda global (T5) recusaria antes com 401 e o teste deixaria de
+ * exercitar o 422 e o 500. A guarda tem a sua própria suíte.
  */
+@Public()
 @Controller('probe')
 class ErrorProbeController {
   @Post('validation')
