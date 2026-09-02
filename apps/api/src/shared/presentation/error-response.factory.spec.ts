@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { FieldValidationError } from '../domain/field-validation.error'
+import { ResourceInUseError } from '../domain/resource-in-use.error'
 import { toErrorResponse } from './error-response.factory'
 import { INTERNAL_ERROR_MESSAGE, INVALID_DATA_MESSAGE } from './error-messages'
 
@@ -30,6 +31,18 @@ describe('toErrorResponse', () => {
       statusCode: HttpStatus.NOT_FOUND,
       error: 'Recurso não encontrado.',
     })
+  })
+
+  it('traduz recurso em uso para 409 sem contar quem o usa', () => {
+    const response = toErrorResponse(
+      new ResourceInUseError('mídia 0f2f5b1e', ['Herói', 'Metadados da página']),
+    )
+
+    expect(response).toEqual({
+      statusCode: HttpStatus.CONFLICT,
+      error: 'Recurso em uso por outro registro.',
+    })
+    expect(JSON.stringify(response)).not.toContain('Herói')
   })
 
   it('não expõe detalhe de exceção desconhecida', () => {
