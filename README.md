@@ -59,7 +59,7 @@ apps/api/src/
         └── infrastructure/ # adaptadores: Supabase, Storage, RD Station
 ```
 
-Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media` e `leads` chegam nas T7 e T8.
+Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads` chega na T8.
 
 **Como a API consome `packages/content-schema`:** o pacote é a fonte única de validação (SDD § D-02), mas a API compila para CommonJS e o pacote é lido como TypeScript pelo Vite. Para servir aos dois, ele passou a ter um build próprio (`npm run build -w packages/content-schema`, saída em `packages/content-schema/dist/`): a API resolve o pacote pelo build CommonJS, e Vite e Vitest continuam lendo `src/`. Os scripts `build`, `typecheck` e `test` de `apps/api` reconstroem o pacote antes de rodar, então não existe passo manual a lembrar nem risco de compilar contra uma versão velha do esquema.
 
@@ -169,8 +169,12 @@ Prefixo `/api` em todas as rotas. A guarda de autenticação é **global e nega 
 | `PATCH /api/admin/sections/:key/visibility` | Corpo `{ "isPublished": true \| false }`. Liga ou desliga a seção sem apagar o conteúdo. |
 | `GET /api/admin/metadata` | Metadados da página na forma que o painel edita. |
 | `PUT /api/admin/metadata` | Grava os metadados. Mesma validação por esquema das seções. |
+| `POST /api/admin/media/upload-url` | Recebe `{ originalFilename, contentType, sizeBytes }` e devolve a credencial temporária e o caminho de destino. **Não** recebe o arquivo. |
+| `POST /api/admin/media` | Confirma o upload e registra a mídia. Devolve o registro com a URL pública. |
+| `GET /api/admin/media/:id` | Registro de uma mídia. |
+| `DELETE /api/admin/media/:id` | Remove registro e arquivo. Responde `409` quando a mídia está em uso. |
 
-Ainda **não implementados**: `/api/leads` (público) e as rotas de mídia e de leads sob `/api/admin/*`, que chegam nas T7 e T8. O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_context/SDD.md).
+Ainda **não implementados**: `/api/leads` (público) e as rotas de leads sob `/api/admin/*`, que chegam na T8. O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_context/SDD.md).
 
 Comportamentos que valem para todas as rotas administrativas de conteúdo:
 
@@ -211,6 +215,61 @@ A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de
 
 Uma consulta resolve **todas** as mídias da página de uma vez, e nenhuma consulta é feita quando o conteúdo publicado não referencia mídia; mídia de seção ou de item despublicado não é sequer buscada (risco R-05).
 
+#### Envio de mídia em três passos
+
+Os bytes de um arquivo **nunca passam pela API** (SDD § D-05). Vídeos chegam a dezenas de MB, e fazê-los atravessar a API significaria requisição longa, memória consumida e o limite de corpo de requisição da plataforma. O painel faz três chamadas:
+
+**1. Pedir a credencial.** A API recusa aqui o que não pode ser guardado — tipo não suportado ou arquivo acima do limite do bucket — antes de qualquer byte sair da máquina do operador:
+
+```bash
+curl -s -X POST http://localhost:3000/api/admin/media/upload-url \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"originalFilename":"Demonstração.mp4","contentType":"video/mp4","sizeBytes":24741168}'
+```
+
+```jsonc
+{ "kind": "video", "bucket": "veggiedent-videos",
+  "path": "676edef9-…/demonstracao.mp4",
+  "signedUrl": "https://…/storage/v1/object/upload/sign/veggiedent-videos/…?token=…",
+  "token": "…",                       // o mesmo direito de escrita, para o upload retomável
+  "resumableEndpoint": "https://…/storage/v1/upload/resumable/sign",
+  "expiresInSeconds": 7200, "maxBytes": 524288000 }
+```
+
+**2. Enviar os bytes, do navegador direto ao armazenamento.** Dois caminhos, ambos com a credencial acima e **sem** passar pela API:
+
+- *Arquivo pequeno* (imagem, legenda): `PUT` no `signedUrl`, com o `content-type` do arquivo — é o que o `uploadToSignedUrl(path, token, file)` do `@supabase/supabase-js` faz.
+- *Vídeo*: protocolo retomável (TUS) apontado para `resumableEndpoint`, com o token no cabeçalho **`x-signature`**, blocos de **6 MB** e os metadados `bucketName`, `objectName` e `contentType`. Retomável é o que permite continuar de onde parou depois de uma queda de conexão, e é o que dá o progresso visível que o painel mostra (T12).
+
+**3. Confirmar.** Só agora nasce o registro em `media_assets` (risco R-04):
+
+```bash
+curl -s -X POST http://localhost:3000/api/admin/media \
+  -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
+  -d '{"kind":"video","path":"676edef9-…/demonstracao.mp4",
+       "originalFilename":"Demonstração.mp4","width":1080,"height":1920,"durationSeconds":12.4}'
+```
+
+A API pergunta ao armazenamento se o arquivo está lá; se não estiver, responde `422` e **não grava nada**. Tamanho e tipo do registro são lidos do arquivo que chegou, não do corpo da requisição — quem confirma não consegue registrar uma mídia que não existe nem descrevê-la de forma diferente do que ela é. Confirmar duas vezes o mesmo caminho devolve o registro que já existe, sem duplicar.
+
+A chave secreta do Supabase **não sai do servidor** em nenhum dos três passos: o navegador recebe apenas uma credencial válida para um caminho, em um bucket, por duas horas.
+
+**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste compara os dois):
+
+| Natureza | Bucket | Limite | Tipos aceitos |
+|---|---|---|---|
+| `image` | `veggiedent-images` | 10 MB | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif` |
+| `video` | `veggiedent-videos` | 500 MB | `video/mp4`, `video/webm` |
+| `caption` | `veggiedent-captions` | 1 MB | `text/vtt` |
+
+`image/svg+xml` está fora da lista de propósito: SVG é documento executável, e servi-lo de um bucket público no domínio do produto seria um vetor de script injetado por quem consegue enviar arquivo.
+
+A natureza é **deduzida do tipo do arquivo**, não escolhida por quem envia: cada tipo pertence a um único bucket. Tipo fora da lista é recusado com `422` e a mensagem `Tipo de arquivo não suportado. Tipos aceitos: …` no campo `contentType`.
+
+> **Limite do projeto, acima do limite do bucket.** O projeto Supabase tem um teto global de upload — hoje **50 MB** neste projeto, verificado em 2026-09-02 — que **prevalece sobre os 500 MB do bucket de vídeo**: um arquivo maior é recusado pelo próprio armazenamento com `413 Maximum size exceeded`, antes de qualquer byte ser aceito. Os vídeos que a LP usa hoje têm 23,6 MB e 4,2 MB, então nada está bloqueado — mas se um vídeo maior que 50 MB precisar entrar, o teto tem de ser elevado em *Project Settings → Storage → Upload file size limit* (o plano Free trava em 50 MB; os pagos vão até 50 GB). O código não contorna isso, e não deve: quem manda no armazenamento é o armazenamento.
+
+**Remoção.** `DELETE /api/admin/media/:id` responde `409` se a mídia estiver referenciada por qualquer seção — **publicada ou não**, porque uma seção desligada precisa voltar idêntica — ou pelos metadados da página; nesse caso nada é apagado. Sem referências, o registro sai primeiro e o arquivo depois: na ordem inversa, uma falha no meio deixaria um registro apontando para arquivo inexistente, e a LP com imagem quebrada.
+
 Exemplo de chamada autenticada:
 
 ```bash
@@ -231,6 +290,7 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 | `20260902120300_create_leads.sql` | Tabela `leads` e o índice da listagem por data |
 | `20260902120400_enable_rls_deny_all.sql` | RLS nas quatro tabelas, **sem nenhuma policy** |
 | `20260902120500_create_storage_buckets.sql` | Buckets `veggiedent-images`, `veggiedent-videos`, `veggiedent-captions` e a policy de leitura pública |
+| `20260902130000_add_og_image_alt_to_site_metadata.sql` | Coluna `og_image_alt` em `site_metadata` (T7) |
 
 **Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
 
@@ -313,6 +373,8 @@ Confirmado de novo na T6, com a API real falando com o projeto hospedado: uma se
 
 A resolução de mídia foi verificada do mesmo jeito, também contra o projeto hospedado: com uma linha em `media_assets` e as seções `hero` e `demonstracao` gravadas referenciando-a, `GET /api/content` sem token devolveu a **URL pública** no campo de topo, em cada item de lista e em `metadata.ogImage`, sem nenhum identificador na resposta, enquanto `GET /api/admin/sections/hero` continuou devolvendo o identificador; apagada a mídia com o conteúdo ainda apontando para ela, os campos sumiram e o restante do documento veio intacto. Os registros e o operador de verificação foram removidos: as quatro tabelas terminaram vazias e o projeto com **0 usuários**.
 
+Na **T7** a sétima migração (`og_image_alt`) foi aplicada ao projeto hospedado pelo mesmo caminho do pooler, e o `verify-isolation.mjs` rodado depois dela deu de novo **8 checagens, exit 0**. O fluxo de mídia foi exercitado inteiro contra o Supabase real, com a API rodando: credencial recusada sem token; `image/svg+xml` recusado com `422` e mensagem em português; o vídeo `TutorabrindoPetiscoEcachorroComendo.mp4` (**23,6 MB**) enviado pelo protocolo retomável em 4 blocos de 6 MB, direto do cliente ao armazenamento, com a API vendo apenas nome, tipo e tamanho; registro criado só na confirmação, com o tamanho lido do arquivo; URL pública servindo os 24.741.168 bytes sem credencial nenhuma; `409` ao tentar remover a mídia usada por `demonstracao` e a usada em `metadata.ogImage`; `204` depois de soltar as referências, com o arquivo saindo também do armazenamento. Um segundo arquivo, de **45 MB**, subiu em 8 blocos pelo mesmo caminho. As quatro tabelas, os três buckets e a lista de operadores terminaram vazios.
+
 ### Como criar um operador do painel
 
 O CMS **não tem tela de gestão de usuários** — os operadores são criados no painel do
@@ -373,7 +435,28 @@ fora de escopo por decisão do PRD.
   Fora do pacote, duas coisas continuam sendo trabalho manual: a LP só exibe o campo quando o componente da seção passar a renderizá-lo; e um campo **obrigatório** acrescentado depois da migração inicial (T9) invalida os documentos já gravados até que alguém preencha o valor pelo painel — para evitar isso, crie-o com `required: false`, preencha o conteúdo e só então torne-o obrigatório.
 
 - **Excluir um lead a pedido do titular (LGPD):** **[PENDENTE]** — procedimento documentado na T13.
-- **Limpeza de arquivos órfãos no armazenamento:** **[PENDENTE]** — documentar na T7. Uploads interrompidos podem deixar arquivos sem registro; são inertes, mas ocupam espaço.
+- **Limpeza de arquivos órfãos no armazenamento:** um upload interrompido entre o passo 2 e o passo 3 do envio de mídia deixa um arquivo no bucket sem linha correspondente em `media_assets` (risco R-04 do SDD). O arquivo é **inerte** — nenhum documento de seção o referencia, porque referência é sempre por identificador de mídia, e identificador só existe depois da confirmação — mas ocupa espaço e é o único resíduo previsto do fluxo.
+
+  A conciliação é uma diferença entre duas listas, e a coluna `storage_path` foi guardada qualificada pelo bucket (`veggiedent-videos/<uuid>/<arquivo>`) justamente para que ela seja direta:
+
+  ```bash
+  # 1. o que está registrado (com a chave secreta, do lado do servidor)
+  curl -s "$SUPABASE_URL/rest/v1/media_assets?select=storage_path" \
+    -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY"
+
+  # 2. o que está em cada bucket
+  for b in veggiedent-images veggiedent-videos veggiedent-captions; do
+    curl -s -X POST "$SUPABASE_URL/storage/v1/object/list/$b" \
+      -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY" \
+      -H 'content-type: application/json' -d '{"prefix":"","limit":1000}'
+  done
+
+  # 3. apagar um arquivo que está no bucket e não está na lista de registrados
+  curl -s -X DELETE "$SUPABASE_URL/storage/v1/object/<bucket>/<caminho>" \
+    -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY"
+  ```
+
+  Cadência sugerida: mensal, ou depois de uma sessão de edição em que algum upload de vídeo tenha falhado. **Só apague o que estiver no bucket e não estiver na lista de registrados** — o caminho inverso (registro sem arquivo) não é órfão, é defeito, e apagar o registro esconderia o problema em vez de resolvê-lo. Um upload retomável abandonado antes do primeiro bloco não chega a virar arquivo; o Supabase descarta sozinho essas partes incompletas.
 
 ## Pendências herdadas do projeto atual
 
