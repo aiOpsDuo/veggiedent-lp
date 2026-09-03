@@ -115,7 +115,7 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `VITE_API_BASE_URL` | não | Base dos endpoints da API. Padrão `/api` — em desenvolvimento o servidor do painel encaminha `/api` para `http://localhost:3000`, do mesmo jeito que o domínio único fará em produção |
+| `VITE_API_BASE_URL` | não | Base dos endpoints da API. Padrão `/api` — em desenvolvimento a entrada única encaminha `/api` para a API local, do mesmo jeito que o domínio único fará em produção |
 | `VITE_SUPABASE_URL` | sim | URL do projeto Supabase. O painel a usa **somente** para autenticar (SDD § D-03) |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Chave publicável do Supabase (`sb_publishable_…`), usada só no login. Nunca alcança o banco, por duas barreiras independentes: neste projeto o Supabase a recusa já no portão da Data API (`Only secret API keys can be used for this endpoint`) e, além disso, as quatro tabelas negam a leitura para ela (ver "Verificar o isolamento da superfície pública") |
 
@@ -129,87 +129,91 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 
 ### Comandos
 
-Todos rodam a partir da raiz e delegam aos workspaces (`npm run <script> --workspaces --if-present`):
+Todos rodam a partir da raiz. `build`, `typecheck` e `test` delegam aos workspaces (`npm run <script> --workspaces --if-present`); `dev` sobe os três processos de uma vez, atrás da entrada única (`scripts/dev.mjs`).
 
 ```bash
 npm install          # instala as dependências de todos os workspaces
-npm run dev          # sobe o servidor de desenvolvimento — hoje só a LP (http://localhost:5173)
-npm run build        # build de todos os workspaces; gera apps/lp/dist/
+npm run dev          # sobe LP, painel e API — tudo em http://localhost:5173
+npm run build        # build de todos os workspaces; gera apps/lp/dist/ e apps/admin/dist/
 npm run typecheck    # checagem de tipos de todos os workspaces
-npm run test         # testes de todos os workspaces (Vitest na LP e em packages/, Jest na API)
+npm run test         # testes de todos os workspaces (Vitest na LP, no painel e em packages/, Jest na API)
 npm run preview      # serve o build da LP em http://localhost:4173
 ```
 
 Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w packages/content-schema`.
 
-A API tem três comandos próprios, que não entram no `npm run dev` da raiz:
+Cada aplicação também roda isolada. Isso serve para depurar uma delas, **não é a forma de acessar o projeto** — essa é sempre a entrada única:
 
 ```bash
-npm run start:dev -w apps/api      # API com recarga automática em http://localhost:3000/api
-npm run start -w apps/api          # roda o build já gerado (exige npm run build -w apps/api antes)
+npm run start:dev -w apps/api       # API sozinha, com recarga automática
+npm run start -w apps/api           # roda o build já gerado (exige npm run build -w apps/api antes)
 npm run migrate:content -w apps/api # carga inicial do conteúdo no CMS (ver "Migração inicial do conteúdo")
+npm run dev -w apps/admin           # painel sozinho
+npm run build -w apps/admin         # gera apps/admin/dist/, com os assets sob /admin/
+npm run preview -w apps/admin       # serve o build do painel em http://localhost:4174/admin/
+npm run test -w apps/admin          # testes do painel (Vitest + Testing Library, em jsdom)
 ```
 
-E o painel tem os seus:
-
-```bash
-npm run dev -w apps/admin        # painel em http://localhost:5174/admin/
-npm run build -w apps/admin      # gera apps/admin/dist/, com os assets sob /admin/
-npm run preview -w apps/admin    # serve o build do painel em http://localhost:4174/admin/
-npm run test -w apps/admin       # testes do painel (Vitest + Testing Library, em jsdom)
-```
-
-Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0; a T10 rodou em Node 24.18.0 e npm 11.16.0).
-
-**`npm run dev` na raiz sobe apenas a LP** (http://localhost:5173), e continuará assim. O script percorre os workspaces em sequência (`npm run dev --workspaces --if-present`), e o servidor da LP não termina — então nada depois dele chega a rodar. Por isso a API expõe `start:dev` em vez de `dev`. O painel tem `dev`, mas ele só é alcançado quando chamado direto com `-w apps/admin`. Para trabalhar nos três ao mesmo tempo, use um terminal para cada:
-
-```bash
-npm run dev -w apps/lp        # LP    → http://localhost:5173
-npm run dev -w apps/admin     # painel → http://localhost:5174/admin/
-npm run start:dev -w apps/api # API   → http://localhost:3000/api
-```
+Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0; a T10 rodou em Node 24.18.0 e npm 11.16.0, e a T20 em Node 24.18.0).
 
 ### Como rodar localmente
 
-Confirmado para a LP (T1):
+Um comando, **um endereço**:
 
 ```bash
 git clone <repositorio> && cd veggiedent-lp
 npm install
-cp apps/lp/.env.example apps/lp/.env    # opcional: todas as variáveis têm default
-npm run dev                              # LP em http://localhost:5173
-```
-
-Para conferir o build de produção da LP: `npm run build && npm run preview` (http://localhost:4173).
-
-Confirmado para a API (T4):
-
-```bash
-cp apps/api/.env.example apps/api/.env   # e preencha as variáveis obrigatórias
-npm run start:dev -w apps/api            # API em http://localhost:3000/api
-curl -s localhost:3000/api/health        # -> {"status":"ok"}
-```
-
-A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam sob o prefixo `/api`. Ela é um processo separado da LP: subir uma não sobe a outra, e a LP não depende dela para renderizar (SDD § D-08).
-
-Confirmado para o painel (T10):
-
-```bash
+cp apps/lp/.env.example apps/lp/.env        # opcional: todas as variáveis têm default
+cp apps/api/.env.example apps/api/.env      # e preencha as variáveis obrigatórias
 cp apps/admin/.env.example apps/admin/.env  # e preencha as duas variáveis do Supabase
-npm run dev -w apps/admin                   # painel em http://localhost:5174/admin/
+npm run dev
 ```
 
-O painel sobe na **porta 5174** e é servido sob o caminho `/admin/` — abrir `http://localhost:5174/` devolve a mensagem de base incorreta do Vite, não o painel. O caminho existe desde já porque em produção painel e LP dividem o mesmo domínio (SDD § D-04): a raiz serve a página pública e `/admin` serve este build. `/admin` sem a barra final é redirecionado para `/admin/`, tanto no servidor de desenvolvimento quanto no `preview`; em produção, a configuração de rotas do domínio único (T16) precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele.
+Tudo responde em **http://localhost:5173**, com o mesmo mapa de caminhos que o domínio único terá em produção (SDD § "Visão de tiers" e § D-04):
 
-**O painel precisa da API no ar** para fazer qualquer coisa além de autenticar: ele lê e grava conteúdo, mídia e leads sempre pela API, nunca direto no Supabase (SDD § "Camadas e padrão arquitetural"). Em desenvolvimento o servidor do painel encaminha `/api` para `http://localhost:3000`, então não há requisição entre origens a liberar — é o mesmo desenho do domínio único de produção. Com a API fora do ar, o painel entra normalmente e avisa na tela que não conseguiu falar com ela.
+| Caminho | O que responde |
+|---|---|
+| `/` | a LP |
+| `/admin`, `/admin/` e qualquer caminho abaixo | o painel |
+| `/api/*` | a API |
 
-Para conferir o build de produção do painel: `npm run build -w apps/admin && npm run preview -w apps/admin` (http://localhost:4174/admin/).
+A recarga automática continua valendo nos dois front-ends: uma alteração em `apps/lp/src` ou em `apps/admin/src` chega ao navegador sem recarregar a página e sem reiniciar nada.
+
+**Por que um endereço só:** em produção as três aplicações dividem o mesmo domínio. Servir cada uma numa porta em desenvolvimento adiaria toda a costura de caminhos para a última tarefa antes de publicar — e é justamente o modelo de URL que o usuário enxerga e que mais facilmente quebra. Com a entrada única, `/admin` sem barra final, os caminhos dos assets e o encaminhamento de `/api` são exercitados todo dia, e publicar passa a ser repetir um desenho já rodado, não desenhá-lo.
+
+**As portas individuais são detalhe interno.** Servem para depurar um processo isolado, não para o dia a dia:
+
+| Processo | Porta interna | Observação |
+|---|---|---|
+| LP (servidor de desenvolvimento) | 5173 | é a própria entrada única; encaminha `/admin` e `/api` |
+| Painel | 5174 | escuta só em `localhost`; abrir `http://localhost:5174/` devolve a mensagem de base incorreta do Vite, e o painel está em `/admin/` |
+| API | 3000 | mude com `PORT` no `.env`; todas as rotas ficam sob o prefixo `/api` |
+
+Como o encaminhamento vive no servidor de desenvolvimento da LP, subir só a LP (`npm run dev -w apps/lp`) deixa `/admin` e `/api` respondendo `500` (erro de proxy) até que os outros dois processos existam. `npm run dev` na raiz sobe os três e derruba os três juntos.
+
+Verificações rápidas, todas a partir do endereço único:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5173/          # -> 200 (LP)
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://localhost:5173/admin   # -> 302 .../admin/
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5173/admin/    # -> 200 (painel)
+curl -s http://localhost:5173/api/health                                 # -> {"status":"ok"}
+```
+
+Para conferir os builds de produção, que não passam pela entrada única: `npm run build && npm run preview` serve a LP em http://localhost:4173, e `npm run build -w apps/admin && npm run preview -w apps/admin` serve o painel em http://localhost:4174/admin/.
+
+`/admin` sem a barra final é redirecionado para `/admin/` — no servidor de desenvolvimento, no `preview` e, através da entrada única, no endereço que se digita. Em produção, a configuração de rotas do domínio único (T16) precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele.
+
+**O painel precisa da API no ar** para fazer qualquer coisa além de autenticar: ele lê e grava conteúdo, mídia e leads sempre pela API, nunca direto no Supabase (SDD § "Camadas e padrão arquitetural"). Como painel e API respondem no mesmo endereço, o painel chama caminhos relativos e não existe requisição entre origens a liberar — é o mesmo desenho do domínio único de produção. Com a API fora do ar, o painel entra normalmente e avisa na tela que não conseguiu falar com ela.
+
+A LP não depende da API para renderizar (SDD § D-08): com a API fora do ar, `/` continua servindo a página.
 
 As migrações **já foram aplicadas no projeto hospedado** (ver "Estado verificado"). O que ainda falta para a API servir conteúdo de verdade é a migração inicial do conteúdo atual para o CMS, que é a T9: até lá as tabelas estão vazias, e `GET /api/content` responde `200` com `{"sections":{},"metadata":null}` — vazio é o estado correto, não erro.
 
 ### Endpoints da API
 
-Prefixo `/api` em todas as rotas. A guarda de autenticação é **global e nega por padrão** (SDD § D-03): as rotas públicas da primeira tabela são as únicas marcadas com `@Public()` no código, e qualquer rota nova nasce exigindo token.
+Prefixo `/api` em todas as rotas. Os exemplos de `curl` desta seção falam direto com a API, na porta 3000; pela entrada única de
+desenvolvimento as mesmas rotas respondem em `http://localhost:5173/api/…`. A guarda de autenticação é **global e nega por padrão** (SDD § D-03): as rotas públicas da primeira tabela são as únicas marcadas com `@Public()` no código, e qualquer rota nova nasce exigindo token.
 
 **Públicos — nenhum token, consumidos pela LP e pelo injetor de SEO:**
 
