@@ -176,6 +176,49 @@ describe('captura de lead', () => {
     })
   })
 
+  /**
+   * O consentimento com a Política de Privacidade não é mais gravado — a coluna
+   * `aceite_lgpd` saiu da tabela na T18 —, mas continua sendo **condição de
+   * envio**. Estes dois casos são a guarda de que remover a persistência não
+   * afrouxou a regra: sem o consentimento nenhum lead nasce e nada é repassado
+   * (SDD § "Modelo de dados"; PLAN.md § T18).
+   */
+  describe('o consentimento continua sendo condição de envio', () => {
+    const semOConsentimento = (): Record<string, unknown> => {
+      const envio: Record<string, unknown> = { ...ENVIO_COMPLETO }
+      delete envio.aceite_lgpd
+      return envio
+    }
+
+    it('ausente, responde 422 mesmo com todo o resto preenchido', async () => {
+      const resposta = await enviar(semOConsentimento())
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.fields).toHaveProperty('aceite_lgpd')
+    })
+
+    it('ausente, não grava lead nenhum nem chama o RD Station', async () => {
+      await enviar(semOConsentimento())
+
+      expect(leadsGravados()).toHaveLength(0)
+      expect(relay.forwarded).toHaveLength(0)
+    })
+
+    it('recusado explicitamente, responde 422', async () => {
+      const resposta = await enviar({ ...ENVIO_COMPLETO, aceite_lgpd: false })
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.fields).toHaveProperty('aceite_lgpd')
+    })
+
+    it('marcado, o lead é gravado sem nenhuma coluna de consentimento', async () => {
+      const resposta = await enviar(ENVIO_COMPLETO)
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+      expect(Object.keys(unicoLead())).not.toContain('aceite_lgpd')
+    })
+  })
+
   describe('validação, a mesma do relay que esta tarefa aposenta', () => {
     it('sem nome, e-mail e consentimento responde 422 com os erros por campo', async () => {
       const resposta = await enviar({ nome: '  ', email: 'ana', aceite_lgpd: false })

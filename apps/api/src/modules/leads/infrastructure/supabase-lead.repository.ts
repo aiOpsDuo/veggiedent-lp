@@ -18,7 +18,7 @@ const TABLE = 'leads'
 const COLUMNS =
   'id,nome,email,telefone,nome_cachorro,porte_cachorro,cidade_estado,' +
   'conhece_virbac,usa_produto_virbac,qual_produto_virbac,' +
-  'aceite_lgpd,aceite_comunicacoes,origem,rdstation_status,rdstation_error,created_at'
+  'aceite_comunicacoes,origem,rdstation_status,rdstation_error,created_at'
 
 const CREATED_AT = 'created_at'
 
@@ -33,7 +33,6 @@ interface LeadRow {
   conhece_virbac: string | null
   usa_produto_virbac: string | null
   qual_produto_virbac: string | null
-  aceite_lgpd: boolean
   aceite_comunicacoes: boolean
   origem: string | null
   rdstation_status: string
@@ -59,7 +58,6 @@ function toLead(row: LeadRow): Lead {
     conheceVirbac: row.conhece_virbac,
     usaProdutoVirbac: row.usa_produto_virbac,
     qualProdutoVirbac: row.qual_produto_virbac,
-    aceiteLgpd: row.aceite_lgpd,
     aceiteComunicacoes: row.aceite_comunicacoes,
     origem: row.origem,
     rdstationStatus: toRdStationStatus(row.rdstation_status),
@@ -102,7 +100,6 @@ export class SupabaseLeadRepository implements LeadIntake, LeadRepository {
         conhece_virbac: lead.conheceVirbac,
         usa_produto_virbac: lead.usaProdutoVirbac,
         qual_produto_virbac: lead.qualProdutoVirbac,
-        aceite_lgpd: lead.aceiteLgpd,
         aceite_comunicacoes: lead.aceiteComunicacoes,
         origem: lead.origem,
         rdstation_status: 'nao_enviado',

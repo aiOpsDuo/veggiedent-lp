@@ -4,6 +4,9 @@ import type { RdStationStatus } from '../domain/rdstation-outcome'
 /**
  * O que as rotas de lead devolvem. Formas de saída, sem regra de negócio: a
  * apresentação não monta resposta e o domínio não conhece a forma do JSON.
+ *
+ * `LeadView` não tem aceite da Política de Privacidade porque o lead não o tem:
+ * o consentimento é condição de envio e não é gravado (SDD § "Modelo de dados").
  */
 
 /** Resposta de `POST /api/leads` — a mesma que o relay antigo devolvia. */
@@ -22,7 +25,6 @@ export interface LeadView {
   readonly conheceVirbac: string | null
   readonly usaProdutoVirbac: string | null
   readonly qualProdutoVirbac: string | null
-  readonly aceiteLgpd: boolean
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
   readonly rdstationStatus: RdStationStatus

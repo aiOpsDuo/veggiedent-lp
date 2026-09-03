@@ -17,6 +17,12 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator'
  * global responderia `422` a um robô que preencheu o campo invisível e errou o
  * e-mail — e um `422` ensina ao robô que o campo existe, que é exatamente o que
  * o honeypot evita.
+ *
+ * `aceite_lgpd` continua declarado aqui mesmo não sendo gravado em lugar nenhum:
+ * ele é **entrada** da requisição, não campo do registro. O pipe global roda com
+ * `forbidNonWhitelisted`, então um campo ausente deste DTO é recusado antes de
+ * chegar ao domínio — tirá-lo daqui faria o envio **com** consentimento ser
+ * rejeitado, exatamente o contrário da regra que a T18 preserva.
  */
 export class SubmitLeadDto {
   @ApiPropertyOptional({ description: 'Nome do visitante.', example: 'Ana Souza' })
@@ -76,7 +82,11 @@ export class SubmitLeadDto {
   @IsString({ message: 'Informe qual produto Virbac como texto.' })
   qual_produto_virbac?: string
 
-  @ApiProperty({ description: 'Consentimento LGPD. Obrigatório.', example: true })
+  @ApiProperty({
+    description:
+      'Consentimento com a Política de Privacidade. Obrigatório: sem ele o envio é recusado com 422. Não é gravado — é condição de envio, não dado do lead.',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean({ message: 'Informe o consentimento LGPD como sim ou não.' })
   aceite_lgpd?: boolean

@@ -13,6 +13,12 @@ import { FieldValidationError } from '../../../shared/domain/field-validation.er
  * `usaProdutoVirbac` e `qualProdutoVirbac`. O formulário já os coleta hoje e o
  * relay os descarta — é o risco R-01 do SDD, o defeito de produção que esta
  * tarefa conserta.
+ *
+ * **O consentimento LGPD é condição de envio, não campo do lead.** Ele chega em
+ * `RawLeadSubmission`, é exigido aqui e some: `LeadSubmission` não o carrega e o
+ * banco não o guarda. Persisti-lo significaria gravar a constante `true` em toda
+ * linha, porque sem ele nenhuma linha nasce — informação zero (SDD § "Modelo de
+ * dados"; `agent_context/CHANGELOG.md`, 2026-09-02).
  */
 
 export const PORTES_DE_CACHORRO = ['pequeno', 'medio', 'grande'] as const
@@ -29,7 +35,6 @@ export interface LeadSubmission {
   readonly conheceVirbac: string | null
   readonly usaProdutoVirbac: string | null
   readonly qualProdutoVirbac: string | null
-  readonly aceiteLgpd: boolean
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
 }
@@ -123,7 +128,6 @@ export function toLeadSubmission(raw: RawLeadSubmission): LeadSubmission {
     conheceVirbac: opcional(raw.conhece_virbac),
     usaProdutoVirbac: opcional(raw.usa_produto_virbac),
     qualProdutoVirbac: opcional(raw.qual_produto_virbac),
-    aceiteLgpd: true,
     aceiteComunicacoes: raw.aceite_comunicacoes === true,
     origem: opcional(raw.origem),
   }

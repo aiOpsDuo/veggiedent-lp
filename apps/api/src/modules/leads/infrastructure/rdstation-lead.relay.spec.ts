@@ -32,7 +32,6 @@ const LEAD: LeadSubmission = {
   conheceVirbac: 'sim',
   usaProdutoVirbac: 'sim',
   qualProdutoVirbac: 'Veggiedent Fresh',
-  aceiteLgpd: true,
   aceiteComunicacoes: true,
   origem: 'lp-veggiedent',
 }

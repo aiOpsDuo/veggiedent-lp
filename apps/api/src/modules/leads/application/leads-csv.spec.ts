@@ -21,7 +21,6 @@ const LEAD: Lead = {
   conheceVirbac: 'sim',
   usaProdutoVirbac: 'não',
   qualProdutoVirbac: null,
-  aceiteLgpd: true,
   aceiteComunicacoes: false,
   origem: 'lp-veggiedent',
   rdstationStatus: 'nao_enviado',
@@ -44,7 +43,7 @@ function colunas(): string[] {
 describe('Colunas do CSV (regra de negócio RN-01)', () => {
   it('traz uma coluna por campo do formulário, com cabeçalho em português', () => {
     expect(colunas()).toEqual([
-      'Data de envio (UTC)',
+      'Data de envio (Brasília)',
       'Nome',
       'E-mail',
       'Telefone',
@@ -97,8 +96,24 @@ describe('CSV de leads', () => {
     expect(cabecalho).toContain('Qual produto Virbac')
   })
 
-  it('escreve a data no formato de quem lê, em UTC', () => {
-    expect(toCsv([LEAD]).content).toContain('02/09/2026 13:45:07')
+  it('escreve a data no fuso de quem lê, Brasília e não UTC', () => {
+    expect(toCsv([LEAD]).content).toContain('02/09/2026 10:45:07')
+  })
+
+  /**
+   * A borda que fazia o mesmo lead ter duas datas: às 23h de 2 de setembro em
+   * Brasília o banco já registrou 3 de setembro em UTC. A planilha precisa
+   * dizer o que a tela do painel diz.
+   */
+  it('o lead das 23h de 2 de setembro sai como dia 2, não como dia 3', () => {
+    const conteudo = toCsv([{ ...LEAD, createdAt: '2026-09-03T02:00:00.000Z' }]).content
+
+    expect(conteudo).toContain('02/09/2026 23:00:00')
+    expect(conteudo).not.toContain('03/09/2026')
+  })
+
+  it('instante ilegível vai para a planilha como veio, sem derrubar a linha', () => {
+    expect(toCsv([{ ...LEAD, createdAt: 'sem data' }]).content).toContain('"sem data"')
   })
 
   it('diz sim e não em vez de true e false', () => {

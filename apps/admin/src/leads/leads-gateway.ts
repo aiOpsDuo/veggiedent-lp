@@ -7,11 +7,11 @@
 /**
  * Um lead como o painel o exibe.
  *
- * **Não existe `aceiteLgpd` aqui, de propósito.** A coluna só pode conter
- * `true` — sem consentimento nenhum registro nasce —, então ela não distingue
- * um lead de outro e nada na tela pode depender dela (ver
- * `agent_context/CHANGELOG.md`, 2026-09-02). A API ainda a devolve até a T18
- * remover a persistência; este tipo simplesmente a ignora.
+ * **Não existe `aceiteLgpd` aqui, e nem no lead que a API devolve.** O
+ * consentimento com a Política de Privacidade é condição de envio, não dado do
+ * registro: sem ele nenhum lead nasce, então a coluna só poderia dizer "sim" e
+ * não distinguiria um lead de outro (ver `agent_context/CHANGELOG.md`,
+ * 2026-09-02).
  */
 export interface LeadView {
   readonly id: string

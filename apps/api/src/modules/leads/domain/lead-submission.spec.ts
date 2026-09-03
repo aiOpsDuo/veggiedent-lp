@@ -60,6 +60,16 @@ describe('validação do envio de lead', () => {
     expect(camposRecusados({ ...VALIDO, aceite_lgpd: undefined })).toHaveProperty('aceite_lgpd')
   })
 
+  /**
+   * O consentimento é condição de envio, não campo do lead: ele é exigido e
+   * depois desaparece. Se voltasse a ser carregado, voltaria a ser gravado — a
+   * constante `true` em toda linha que a T18 removeu do banco
+   * (SDD § "Modelo de dados").
+   */
+  it('não carrega o consentimento para dentro do lead', () => {
+    expect(toLeadSubmission(VALIDO)).not.toHaveProperty('aceiteLgpd')
+  })
+
   it('recusa porte fora da lista', () => {
     expect(camposRecusados({ ...VALIDO, porte_cachorro: 'gigante' })).toHaveProperty(
       'porte_cachorro',
