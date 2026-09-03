@@ -22,6 +22,26 @@ Comandos rodados a partir da raiz do repositório, após a reestruturação da T
 | `npm run test` | Testes de todos os workspaces |
 | `npm run test -w <workspace>` | Testes de um workspace específico |
 
+## Política de serviços em execução (definida pelo usuário em 2026-09-02)
+
+O usuário mantém a LP e a API no ar para testar enquanto o desenvolvimento acontece. Regra que ele estabeleceu:
+
+- **Não é obrigatório manter os serviços de pé durante uma alteração.** Se uma tarefa precisa instalar dependências, recompilar ou migrar, pode derrubar o que for necessário.
+- **É obrigatório subir tudo de volta depois que os ajustes forem aplicados.** Vale para todos os serviços do projeto, não apenas a LP.
+- Responsabilidade do orquestrador: ao aceitar qualquer tarefa, verificar que os serviços voltaram e responder — conferindo o **conteúdo** servido, não só o código HTTP.
+
+Comandos de referência (monorepo com workspaces: binário da raiz, diretório de trabalho do workspace-alvo):
+
+```bash
+# LP — de dentro de apps/lp, com o binário da raiz
+../../node_modules/.bin/vite --host 0.0.0.0 --port 5173 --strictPort
+
+# API — de dentro de apps/api, após npm run build -w apps/api
+node dist/main.js            # com as variáveis de apps/api/.env carregadas, PORT=3000
+```
+
+Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a própria linha de comando contenha (ver CHANGELOG, erros operacionais).
+
 ## Tarefas
 
 ### T1 — Reestruturar o repositório em monorepo
@@ -190,7 +210,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: pendente
 
 ### T14 — LP consumindo a API, com instantâneo de reserva
-- Descrição: substituir a leitura dos `*.content.ts` pelo consumo de `GET /api/content` nas 12 seções, e embutir no build um instantâneo do conteúdo publicado usado quando a busca falha. Remover os arquivos de conteúdo após a substituição.
+- Descrição: substituir a leitura dos `*.content.ts` pelo consumo de `GET /api/content` nas 12 seções, **incluindo os três componentes que hoje importam imagem direto**: `ProvaAutoridade.tsx` (Kit de imagens), `LeadFormMosaic.tsx` (as 6 fotos, agora uma lista) e `VideoHeroBanner.tsx` (que passa a usar a miniatura do primeiro vídeo em vez do arquivo estático). `grupo-bandeiras.png` e os três infográficos SVG **continuam importados no código, de propósito** — ver "Decisões registradas de escopo", e embutir no build um instantâneo do conteúdo publicado usado quando a busca falha. Remover os arquivos de conteúdo após a substituição.
 - Rastreável a: SDD § D-08, § C-10
 - Critério de "pronto": `npm run typecheck` e `npm run build` passam; `grep -r "content" apps/lp/src --include="*.content.ts"` não retorna nenhum arquivo; teste confirma que, com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia; comparação visual da página contra o estado atual não acusa diferença perceptível.
 - Dependências: T9
@@ -233,6 +253,25 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Execução: sequencial — mesmo módulo que a T9.
 - Toca documentação: sim — README, na descrição das colunas do CSV exportado.
 - Status: pendente
+
+### T19 — Levar ao esquema as imagens que hoje vivem nos componentes
+- Descrição: acrescentar ao esquema e à carga inicial os ativos que a decisão do usuário de 2026-09-03 tornou gerenciáveis, e retirar do código o pôster do banner de vídeo.
+  1. `prova_autoridade`: campo de imagem para o **Kit de imagens**, com texto alternativo obrigatório ao lado (invariante do esquema).
+  2. `captura_lead`: **lista** `mosaico`, cada item com imagem e texto alternativo, reordenável — mesma mecânica das demais listas. O layout pressupõe 6 fotos; documentar isso como orientação ao operador, sem travar a quantidade.
+  3. `demonstracao`: **nenhum campo novo.** O pôster do banner passa a derivar da miniatura do **primeiro vídeo** da seção. O arquivo `video-banner-poster.jpg` sai do repositório.
+  4. Estender o script de migração da T9 para enviar `Kit-de-imagens.png` e as 6 fotos do mosaico, preenchendo os campos novos.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; SDD § "Contrato do esquema de seção" (invariante de texto alternativo), § C-06.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; o teste de invariante do esquema continua exigindo texto alternativo para todo campo de imagem, **agora cobrindo os campos novos**; rodar a migração de novo permanece **idempotente**, provado por contagem antes/depois (hoje: 17 mídias, 12 seções); `GET /api/content` devolve o Kit de imagens e as 6 fotos do mosaico como **URL pública**, não identificador.
+- Dependências: T9
+- Execução: sequencial — altera `packages/content-schema` e o script de migração, os mesmos artefatos que T2 e T9 produziram.
+- **Ordem:** precisa vir **antes da T11**, porque o painel gera o formulário a partir do esquema; um campo que não existe no esquema não aparece no painel.
+- Toca documentação: sim — README, na lista do que é editável, incluindo a nota de que o mosaico foi desenhado para 6 fotos.
+- Status: pendente
+
+### Decisões registradas de escopo — o que NÃO entra no CMS
+Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (decisão do usuário em 2026-09-03, detalhada no CHANGELOG):
+- **Faixa de bandeiras do Hero** (`grupo-bandeiras.png`) permanece em código.
+- **Os três infográficos da Prova de Autoridade** (`01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg`) permanecem em código, junto com o texto que os acompanha, hoje escrito dentro de `ProductDifferentials.tsx`. São claims de produto e seguem sob controle de quem edita o código.
 
 ## Ordem de execução
 

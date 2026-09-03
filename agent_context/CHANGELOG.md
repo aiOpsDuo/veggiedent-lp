@@ -154,3 +154,24 @@ Motivo: consolidacao dos erros cometidos pelos subagentes de implementacao, para
 Aspectos positivos que tambem valem registro, por serem o comportamento a reforcar: os subagentes das T5, T6, T7 e T8 provaram os requisitos criticos **por mutacao** (quebrar de proposito e ver o teste falhar) em vez de por leitura, e declararam explicitamente desvios de camada, decisoes fora de escopo e limitacoes que nao conseguiram resolver — inclusive quando isso os expunha, como o teto de 50 MB e o multipart orfao da T7.
 
 Regras derivadas: (a) toda delegacao deve dizer explicitamente que restricao de infraestrutura nao autoriza alterar um ativo do projeto — a resposta correta e parar e reportar; (b) exigir que o teste seja escrito a partir do requisito e provado por mutacao, nunca a partir do codigo pronto; (c) o criterio de "pronto" deve incluir que o repositorio compila em qualquer ponto de parada, nao apenas ao final.
+
+## 2026-09-03 — Decisao do usuario sobre as 12 imagens que estavam fora do esquema
+
+Documentos afetados: SDD.md, PLAN.md
+
+Motivo: a T9 revelou que 12 arquivos de imagem em 5 pontos da pagina nao foram migrados porque **nao existe campo no esquema para eles** — sao importados direto nos componentes, nao em arquivo `*.content.ts`. A T2 escopou os esquemas nos 12 arquivos de conteudo, e essas imagens ficaram fora. O orquestrador mapeou cada ponto, mostrou os arquivos ao usuario, e ele decidiu ponto a ponto.
+
+**Passam a ser gerenciaveis pelo CMS:**
+1. **Kit de imagens** (`Kit-de-imagens.png`, secao Prova de Autoridade) — campo de imagem com texto alternativo obrigatorio. Nota de peso: o arquivo atual tem **2 MB**; cabe no limite de 10 MB do bucket, mas e peso relevante numa pagina de campanha.
+2. **Mosaico do formulario** (6 fotos, secao Captura de Lead) — vira **lista** de itens com imagem e texto alternativo, com adicionar, remover e reordenar, como as demais listas do CMS. O layout desenhado pressupoe 6 fotos; a lista permite outra quantidade, e isso fica documentado para o operador.
+
+**Permanecem em codigo, por decisao explicita — nao e esquecimento:**
+3. **Faixa de bandeiras do Hero** (`grupo-bandeiras.png`).
+4. **Os tres infograficos da Prova de Autoridade** (`01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg`). Alem da imagem, o texto que os acompanha ("Formato em Z:" e afins) esta escrito dentro de `ProductDifferentials.tsx`, entao torna-los editaveis exigiria campos de imagem **e** de texto. Sao claims de produto, e seguem sob controle de quem edita o codigo.
+
+**Muda de natureza:**
+5. **Poster do banner de video** (`video-banner-poster.jpg`, secao Demonstracao) — deixa de ser imagem propria e passa a **derivar do primeiro video cadastrado na secao**, reaproveitando a miniatura que ja e um campo do esquema. Consequencia visual declarada e aceita: o banner passa a exibir a miniatura do video, que hoje e uma arte diferente. O arquivo estatico sai do codigo. Isto **remove** um ativo em vez de acrescentar um campo.
+
+Nota: a decisao anterior de permitir `image/svg+xml` no bucket **continua necessaria**, mesmo com os tres infograficos ficando fora do CMS — o logo do Veggiedent e SVG e esta no CMS desde a T9.
+
+Impacto: nova tarefa **T19** (esquema + migracao dos ativos novos) no PLAN.md, a ser executada **antes da T11**, porque o painel gera o formulario a partir do esquema. A fiacao dos componentes fica na **T14**, junto com o restante da troca de `*.content.ts` para a API — evitando alterar componentes duas vezes. O escopo da T14 foi ampliado para incluir os tres componentes envolvidos.
