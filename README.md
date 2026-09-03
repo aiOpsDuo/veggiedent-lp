@@ -116,8 +116,9 @@ Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w pa
 A API tem dois comandos próprios, que não entram no `npm run dev` da raiz:
 
 ```bash
-npm run start:dev -w apps/api   # API com recarga automática em http://localhost:3000/api
-npm run start -w apps/api       # roda o build já gerado (exige npm run build -w apps/api antes)
+npm run start:dev -w apps/api      # API com recarga automática em http://localhost:3000/api
+npm run start -w apps/api          # roda o build já gerado (exige npm run build -w apps/api antes)
+npm run migrate:content -w apps/api # carga inicial do conteúdo no CMS (ver "Migração inicial do conteúdo")
 ```
 
 Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0).
@@ -260,15 +261,15 @@ A API pergunta ao armazenamento se o arquivo está lá; se não estiver, respond
 
 A chave secreta do Supabase **não sai do servidor** em nenhum dos três passos: o navegador recebe apenas uma credencial válida para um caminho, em um bucket, por duas horas.
 
-**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste compara os dois):
+**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql` e alterados por `20260903120000_allow_svg_in_images_bucket.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste lê as migrações em ordem e compara os dois):
 
 | Natureza | Bucket | Limite | Tipos aceitos |
 |---|---|---|---|
-| `image` | `veggiedent-images` | 10 MB | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif` |
+| `image` | `veggiedent-images` | 10 MB | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`, `image/svg+xml` |
 | `video` | `veggiedent-videos` | 500 MB | `video/mp4`, `video/webm` |
 | `caption` | `veggiedent-captions` | 1 MB | `text/vtt` |
 
-`image/svg+xml` está fora da lista de propósito: SVG é documento executável, e servi-lo de um bucket público no domínio do produto seria um vetor de script injetado por quem consegue enviar arquivo.
+**Por que SVG é aceito.** Ele ficou de fora na criação dos buckets, com a justificativa de que nenhuma seção precisaria dele. A premissa estava errada: a LP usa quatro SVGs reais — o logo Veggiedent, no cabeçalho e no rodapé, e três infográficos da prova de autoridade. Rasterizar o logo custaria 8,7 KB → 35 KB e a escalabilidade de um ativo de marca. SVG continua sendo documento executável, mas aqui o risco é contido por dois fatos: **só operador autenticado envia arquivo** (não existe upload anônimo, e `storage.objects` não tem policy de escrita), e o arquivo é **servido do domínio do Supabase Storage**, não do domínio da LP — um script embutido não alcançaria o DOM da página, seus cookies ou sua sessão, e a LP carrega essas imagens por `<img src>`, contexto em que o navegador já não executa script do SVG.
 
 A natureza é **deduzida do tipo do arquivo**, não escolhida por quem envia: cada tipo pertence a um único bucket. Tipo fora da lista é recusado com `422` e a mensagem `Tipo de arquivo não suportado. Tipos aceitos: …` no campo `contentType`.
 
@@ -299,7 +300,9 @@ O envio do formulário passou a ser um endpoint da API (SDD § D-07). A função
 
 **O formato do payload do RD Station foi preservado**, tal como estava no relay: `POST https://api.rd.services/platform/conversions?api_key=…`, com `event_type: "CONVERSION"`, `event_family: "CDP"` e os campos personalizados prefixados por `cf_`. A forma confere com a documentação vigente da API de Conversões, mas **o método de autenticação e o `api_identifier` de cada campo `cf_*` continuam dependendo de como a conta da Virbac foi configurada** (risco R-08) — é pendência externa, não decisão deste projeto, e nada disso foi "melhorado" na migração.
 
-**Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`. *Limite conhecido:* os dois extremos são calculados em **UTC**, e o operador está em UTC−3 — um lead enviado depois das 21h de Brasília cai no dia seguinte para o filtro. Corrigir exige decidir o fuso do produto, que o SDD não fixa.
+**Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`.
+
+**O dia é o de Brasília (UTC−3), não o de UTC.** O recorte é feito no fuso de quem opera o painel: um lead enviado às 23h de 2 de setembro entra no filtro do dia 2, ainda que o banco o guarde como 3 de setembro às 02h em UTC. `from=2026-09-02&to=2026-09-02` vira, para o banco, o intervalo `2026-09-02T03:00:00.000Z` a `2026-09-03T02:59:59.999Z`. O deslocamento é fixo em −03:00 porque o Brasil não observa horário de verão desde 2019; se voltar a observar, a mudança é em um lugar só (`apps/api/src/modules/leads/domain/lead-period.ts`).
 
 **Paginação:** `page` a partir de 1 (padrão 1) e `pageSize` de 1 a 200 (padrão 50). Página além da última devolve lista vazia com o `total` correto, nunca erro.
 
@@ -318,6 +321,7 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 | `20260902120400_enable_rls_deny_all.sql` | RLS nas quatro tabelas, **sem nenhuma policy** |
 | `20260902120500_create_storage_buckets.sql` | Buckets `veggiedent-images`, `veggiedent-videos`, `veggiedent-captions` e a policy de leitura pública |
 | `20260902130000_add_og_image_alt_to_site_metadata.sql` | Coluna `og_image_alt` em `site_metadata` (T7) |
+| `20260903120000_allow_svg_in_images_bucket.sql` | Acrescenta `image/svg+xml` aos tipos aceitos do bucket de imagens (T9) |
 
 **Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
 
@@ -400,7 +404,9 @@ Confirmado de novo na T6, com a API real falando com o projeto hospedado: uma se
 
 A resolução de mídia foi verificada do mesmo jeito, também contra o projeto hospedado: com uma linha em `media_assets` e as seções `hero` e `demonstracao` gravadas referenciando-a, `GET /api/content` sem token devolveu a **URL pública** no campo de topo, em cada item de lista e em `metadata.ogImage`, sem nenhum identificador na resposta, enquanto `GET /api/admin/sections/hero` continuou devolvendo o identificador; apagada a mídia com o conteúdo ainda apontando para ela, os campos sumiram e o restante do documento veio intacto. Os registros e o operador de verificação foram removidos: as quatro tabelas terminaram vazias e o projeto com **0 usuários**.
 
-Na **T7** a sétima migração (`og_image_alt`) foi aplicada ao projeto hospedado pelo mesmo caminho do pooler, e o `verify-isolation.mjs` rodado depois dela deu de novo **8 checagens, exit 0**. O fluxo de mídia foi exercitado inteiro contra o Supabase real, com a API rodando: credencial recusada sem token; `image/svg+xml` recusado com `422` e mensagem em português; o vídeo `TutorabrindoPetiscoEcachorroComendo.mp4` (**23,6 MB**) enviado pelo protocolo retomável em 4 blocos de 6 MB, direto do cliente ao armazenamento, com a API vendo apenas nome, tipo e tamanho; registro criado só na confirmação, com o tamanho lido do arquivo; URL pública servindo os 24.741.168 bytes sem credencial nenhuma; `409` ao tentar remover a mídia usada por `demonstracao` e a usada em `metadata.ogImage`; `204` depois de soltar as referências, com o arquivo saindo também do armazenamento. Um segundo arquivo, de **45 MB**, subiu em 8 blocos pelo mesmo caminho. As quatro tabelas, os três buckets e a lista de operadores terminaram vazios.
+Na **T7** a sétima migração (`og_image_alt`) foi aplicada ao projeto hospedado pelo mesmo caminho do pooler, e o `verify-isolation.mjs` rodado depois dela deu de novo **8 checagens, exit 0**. O fluxo de mídia foi exercitado inteiro contra o Supabase real, com a API rodando: credencial recusada sem token; `image/svg+xml` recusado com `422` e mensagem em português (tipo que a T9 passou a aceitar, ver abaixo); o vídeo `TutorabrindoPetiscoEcachorroComendo.mp4` (**23,6 MB**) enviado pelo protocolo retomável em 4 blocos de 6 MB, direto do cliente ao armazenamento, com a API vendo apenas nome, tipo e tamanho; registro criado só na confirmação, com o tamanho lido do arquivo; URL pública servindo os 24.741.168 bytes sem credencial nenhuma; `409` ao tentar remover a mídia usada por `demonstracao` e a usada em `metadata.ogImage`; `204` depois de soltar as referências, com o arquivo saindo também do armazenamento. Um segundo arquivo, de **45 MB**, subiu em 8 blocos pelo mesmo caminho. As quatro tabelas, os três buckets e a lista de operadores terminaram vazios.
+
+Na **T9** a oitava migração (`allow_svg_in_images_bucket`) foi aplicada pelo mesmo caminho do pooler e o `verify-isolation.mjs` deu de novo **8 checagens, exit 0**, agora com o bucket de imagens reportando `tipos=6`. Em seguida a **carga inicial do conteúdo rodou contra o projeto hospedado**, com a API real: 17 mídias enviadas (15 imagens e 2 vídeos, incluindo o de 23,6 MB), 12 seções e os metadados gravados, `ingredientes` despublicada. O logo entrou como **SVG de 8.764 bytes** e é servido publicamente com `content-type: image/svg+xml`. `GET /api/content` devolveu 11 seções, sem nenhuma ocorrência de `PLACEHOLDER`, com as cinco perguntas prontas do FAQ nas posições 0, 2, 3, 4 e 6 — as posições 1 e 5 são as duas não publicadas, guardadas com o texto inteiro. **A migração foi rodada uma segunda vez e as contagens não se moveram:** 12 seções, 1 registro de metadados, 17 mídias, 15 + 2 + 0 objetos nos buckets, 40 itens de lista, e a resposta de `GET /api/content` com o mesmo hash antes e depois. O operador criado para a verificação foi removido (**0 usuários**), e o conteúdo **permanece no banco**: ele é a carga de que a T14 depende.
 
 ### Como criar um operador do painel
 
@@ -430,6 +436,72 @@ fora de escopo por decisão do PRD.
 > contra o JWKS do projeto (`SUPABASE_JWKS_URL`), sem que a API guarde nenhum segredo de
 > assinatura. Requisição sem token a um endpoint administrativo responde `401`; com o token
 > do operador, `200`.
+
+### Migração inicial do conteúdo
+
+O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais quatro imagens
+que os componentes importam direto e dois vídeos servidos de `apps/lp/public/videos/`.
+`npm run migrate:content -w apps/api` leva tudo isso para o CMS **uma vez**, e é a carga de
+que a LP passa a depender na T14.
+
+```bash
+# 1. o banco precisa estar migrado e a API no ar
+npm run start -w apps/api
+
+# 2. em outro terminal, com um operador já criado no Supabase Auth
+CMS_OPERATOR_EMAIL=<e-mail do operador> \
+CMS_OPERATOR_PASSWORD=<senha> \
+  npm run migrate:content -w apps/api
+```
+
+O script lê `apps/api/.env` (`SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`, para trocar e-mail
+e senha por um token) e aceita mais duas variáveis: `CMS_API_URL`, que aponta para outra
+API (padrão `http://localhost:3000/api`), e `CMS_ACCESS_TOKEN`, um token de operador pronto,
+no lugar do par e-mail/senha.
+
+**O que ele faz**, nesta ordem — que é a única possível, porque um campo de imagem guarda o
+identificador da mídia e o esquema recusa qualquer outra coisa:
+
+1. **Executa** os `*.content.ts` de verdade, em vez de repetir seus textos. Não há uma
+   segunda cópia do Copy Deck dentro da API que pudesse envelhecer em silêncio.
+2. **Envia as 17 mídias** (15 imagens e 2 vídeos) ao armazenamento e as registra em
+   `media_assets`, pelos mesmos três passos que o painel usa — os bytes vão do processo
+   direto ao Storage, sem passar pela API.
+3. **Grava os 12 documentos de seção e os metadados da página** por `PUT /api/admin/…`, os
+   mesmos endpoints do painel: um documento fora de forma é recusado com `422` aqui do
+   mesmo jeito que seria para um operador. Os metadados vêm de `apps/lp/index.html`
+   (título, descrição, endereço canônico).
+4. **Traduz os controles de publicação de hoje em visibilidade** e imprime um resumo do que
+   fez.
+
+**Ele é idempotente.** Rodar duas vezes não duplica mídia, arquivo, seção nem item de lista.
+As seções e os metadados são substituições — uma seção é uma linha só, pela chave. As mídias
+não são reenviadas: a segunda execução pergunta ao conteúdo já gravado qual mídia ocupa cada
+campo (`hero.image`, `demonstracao.videos[1].poster`) e reaproveita aquele identificador.
+Isso importa porque a API sorteia um caminho novo a cada credencial emitida, de propósito, e
+reenviar criaria cópias órfãs no armazenamento.
+
+**O que chega não publicado**, e por quê:
+
+| Item | Controle em código hoje | No CMS |
+|---|---|---|
+| Seção **Ingredientes** | `isContentReady: false` | Seção não publicada, com o título já aprovado guardado |
+| FAQ, *"A partir de que idade…"* | `isReadyForProduction: false` (resposta é `[PLACEHOLDER …]`) | Item não publicado, com o texto guardado para o operador substituir |
+| FAQ, *"Onde posso comprar Veggiedent?"* | Bloco comentado no arquivo | Item não publicado, na posição em que o autor o deixou |
+
+O parceiro comentado em `OndeComprar.content.ts` é o único bloco comentado que **não** entra:
+ele não é conteúdo retirado da página, é uma versão anterior de um parceiro que já está
+publicado ("Tudo de Bicho" aparece duas vezes, comentado com `link: "#"` e ativo com o
+endereço real). Migrar os dois criaria um parceiro repetido no painel.
+
+**Campo sem valor real é omitido, nunca preenchido.** `Footer.legalDataPlaceholder` e
+`CapturaLead.ebookTitlePlaceholder` são `null` porque a Virbac ainda não entregou o dado; os
+campos `legalData` e `ebookTitle` simplesmente não existem no documento gravado, e o esquema
+os declara opcionais por isso. `og:image` não é migrada porque **não existe** em
+`index.html` — é pendência declarada da Virbac, não uma URL a inventar.
+
+Três imagens ficam de fora por não terem campo no esquema: os infográficos SVG de
+`ProductDifferentials.tsx`. Ver "Pendências herdadas do projeto atual".
 
 ## Alterações, testes e validações
 
@@ -513,7 +585,9 @@ fora de escopo por decisão do PRD.
 
 Itens que já eram pendência antes do CMS e continuam abertos:
 
-- **Imagem de compartilhamento social (`og:image`)** ainda não aprovada pela Virbac. Passa a ser editável pelo painel quando chegar.
+- **Imagem de compartilhamento social (`og:image`)** ainda não aprovada pela Virbac. Passa a ser editável pelo painel quando chegar. A migração inicial **não** a inventa: `index.html` declara a pendência num comentário e o campo fica vazio no CMS.
+- **Legendas dos vídeos (`.vtt`)** são apontadas por `Demonstracao.content.ts` mas os arquivos não existem em `apps/lp/public/videos/captions/`. O campo é opcional no esquema e ficou vazio na migração, reproduzindo o que a página faz hoje: o navegador simplesmente não oferece legenda.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Conteúdo da seção Ingredientes** e a **faixa etária recomendada** no FAQ aguardam material técnico da Virbac; migrados como não publicados.
+- **Imagens fora do esquema, ainda em código.** A T2 escopou os esquemas nos 12 `*.content.ts`, então algumas imagens que os componentes importam direto não têm campo no CMS e continuam vindo do bundle: os três infográficos SVG de `ProductDifferentials.tsx`, o `Kit-de-imagens.png` e o `grupo-bandeiras.png`, o mosaico de seis fotos do formulário e o pôster do banner de vídeo. Nenhuma delas está em nenhum arquivo de conteúdo, e as que carregam texto (os infográficos) trazem junto um copy que também está escrito no componente — levá-las ao CMS é acrescentar campos ao esquema, não trabalho de migração. A decisão de fazê-lo, e quando, é do usuário.
 - **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD). A T8 migrou o payload para `apps/api/src/modules/leads/infrastructure/rdstation-lead.relay.ts` **sem alterá-lo**, e a pendência continua exatamente onde estava — com a diferença de que, enquanto ela não for resolvida, o lead já não se perde: fica gravado com `rdstation_status = "nao_enviado"`.
