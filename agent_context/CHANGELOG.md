@@ -205,3 +205,17 @@ Verificacao do orquestrador sobre a qualidade dessas descricoes (li as imagens):
 Onde o raciocinio falhou: transformei uma boa pratica ("imagem informativa precisa de descricao") em regra universal, sem prever a categoria legitima que a contradiz. O efeito foi obrigar um subagente a **produzir conteudo visivel ao usuario final** para satisfazer uma regra minha — exatamente o tipo de coisa que instruo os subagentes a nao fazerem sozinhos.
 
 Impacto: o contrato do esquema passa a admitir que uma imagem seja marcada como **decorativa**, caso em que o texto alternativo e vazio e a imagem e escondida de leitores de tela. A invariante continua existindo, mas na forma correta: quem cadastra uma imagem precisa **escolher conscientemente** entre descreve-la ou declara-la decorativa — nunca deixar o campo em branco por descuido. As seis fotos do mosaico entram como decorativas, preservando o comportamento de acessibilidade que a pagina ja tem hoje. As descricoes escritas pelo subagente sao descartadas, inclusive a que continha o detalhe nao sustentado.
+
+## 2026-09-03 — ERRO DO ORQUESTRADOR: confundi o DTO de entrada com o registro persistido
+
+Documento afetado: PLAN.md (T18)
+
+Motivo: ao delegar a T18, instrui "remover o campo do repositorio, do **DTO**, da view e de tudo que o carrega". O subagente cumpriu tudo menos o DTO, e explicou por que — corretamente.
+
+`SubmitLeadDto` e o contrato de **entrada da requisicao**, e o pipe global roda com `whitelist: true, forbidNonWhitelisted: true` (`apps/api/src/shared/presentation/validation.pipe.ts`). Campo ausente do DTO e **recusado antes de chegar ao dominio**. Remover `aceite_lgpd` de la faria o envio **com** consentimento ser rejeitado — o formulario da LP manda esse campo, e ele precisa ser aceito para que a validacao possa exigi-lo. O subagente provou por mutacao: removido do DTO, **17 dos 22 testes** de `POST /api/leads` caem, incluindo o caminho feliz.
+
+Onde o raciocinio falhou: escrevi "DTO" como se houvesse um so, quando ha dois papeis distintos — o que descreve o que **entra** pela requisicao e o que descreve o que **sai** para o consumidor (`LeadView`). O campo precisava sumir do segundo e do registro persistido, e **permanecer** no primeiro, porque continua sendo enviado e continua sendo condicao de envio. Eu tratei "nao persistir" como sinonimo de "nao existir em lugar nenhum".
+
+Verificacao do orquestrador apos a correcao: envio sem consentimento responde `422` com `{"aceite_lgpd":"Consentimento LGPD e obrigatorio."}`; com `aceite_lgpd:false` responde `422`; com consentimento responde `200` e grava. A coluna nao existe mais no banco hospedado (`42703 column leads.aceite_lgpd does not exist`) e `verify-isolation.mjs` segue com exit 0.
+
+Impacto: nenhum — o subagente parou e relatou em vez de executar a instrucao ao pe da letra, que era o comportamento certo. Regra derivada: ao mandar remover um campo, dizer **em qual fronteira** ele deve sumir (entrada da requisicao, saida para o consumidor, registro persistido), porque as tres sao independentes e uma instrucao generica sobre "o DTO" e ambigua.

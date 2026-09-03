@@ -272,7 +272,10 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Dependências: T8, T9 (a T9 já altera o módulo de leads para corrigir o fuso — executar T18 antes causaria conflito no mesmo módulo).
 - Execução: sequencial — mesmo módulo que a T9.
 - Toca documentação: sim — README, na descrição das colunas do CSV exportado.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-03, branch `feat/T18-remove-aceite-lgpd` (4 commits, sem merge). Verificação do orquestrador: typecheck 0 erros, **751 testes** (193 painel + 408 API + 145 content-schema + 5 LP), build limpo.
+- Verificado por mim contra o projeto hospedado: a coluna **não existe mais** (`42703 column leads.aceite_lgpd does not exist`), `verify-isolation.mjs` segue com **exit 0**, e a regra continua de pé — envio sem consentimento responde `422` com `{"aceite_lgpd":"Consentimento LGPD é obrigatório."}`, com `false` responde `422`, com consentimento responde `200` e grava. Banco devolvido a 0 leads e só o operador do usuário.
+- **Fuso do CSV corrigido, verificado por mim:** cabeçalho agora é `"Data de envio (Brasília)"` e a linha traz `03/09/2026 19:34:38` para um registro gravado às `22:34:38` UTC — deslocamento exato de 3 horas. A causa raiz era boa: só o filtro conhecia o fuso, e a exportação tinha a própria formatação em UTC. Agora os dois leem de um módulo único de horário de Brasília.
+- **Recusa fundamentada de uma instrução minha, e ela estava certa** (registrada no CHANGELOG): pedi remover o campo "do DTO", e o subagente manteve `SubmitLeadDto`. O pipe global roda com `forbidNonWhitelisted`, então campo ausente do DTO é recusado antes do domínio — removê-lo faria o envio **com** consentimento ser rejeitado. Provado por mutação: 17 dos 22 testes de `POST /api/leads` caem. O campo saiu do registro persistido e da view de saída, e permaneceu na entrada da requisição, que é onde precisa estar.
 
 ### T19 — Levar ao esquema as imagens que hoje vivem nos componentes
 - Descrição: acrescentar ao esquema e à carga inicial os ativos que a decisão do usuário de 2026-09-03 tornou gerenciáveis, e retirar do código o pôster do banner de vídeo.
