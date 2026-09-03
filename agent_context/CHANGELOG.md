@@ -191,3 +191,17 @@ Decisao do usuario sobre a forma:
 2. **Alvo declarado:** **orquestracao com Docker**, subindo tudo de uma vez atras de um proxy reverso, servindo tanto o desenvolvimento quanto um ambiente de homologacao e alimentando a decisao de publicacao. Tarefa **T21**, imediatamente antes da T16.
 
 Impacto: duas tarefas novas no PLAN.md. A T16 deixa de ser "descobrir como costurar tres aplicacoes" e passa a ser "publicar o modelo que ja esta rodando ha semanas".
+
+## 2026-09-03 — ERRO DO ORQUESTRADOR: a invariante de texto alternativo nao admite imagem decorativa
+
+Documento afetado: SDD.md ("Contrato do esquema de seção"), PLAN.md (T19)
+
+Motivo: escrevi no SDD a invariante "todo campo `imagem` tem obrigatoriamente um campo de texto alternativo adjacente e obrigatorio", tratando-a como regra de acessibilidade absoluta. Ela nao e. Em acessibilidade, imagem **decorativa** deve ter texto alternativo **vazio** e ser escondida de leitores de tela — descreve-la e pior do que nao descrever, porque injeta ruido sem informacao.
+
+A T19 esbarrou nisso ao migrar o mosaico do formulario. Essas seis fotos sao hoje explicitamente decorativas: `LeadFormMosaic.tsx` marca o bloco com `aria-hidden` e cada foto entra com `alt=""`. Como o esquema exige descricao, o subagente **escreveu seis descricoes novas** — declarando isso num comentario, o que foi correto da parte dele. Mas a consequencia e que um leitor de tela passaria a anunciar seis descricoes de fotos de cachorro no meio de um formulario de captacao, onde antes havia silencio proposital.
+
+Verificacao do orquestrador sobre a qualidade dessas descricoes (li as imagens): `mosaico-descanso` — "Corgi dormindo abracado a um bichinho de pelucia sobre a cama" — **exata**. `mosaico-retriever` — o subagente acertou em nao repetir o nome do arquivo (a foto e de um Malinois, nao de um retriever; ele descreveu a imagem, nao o filename), mas afirmou "petisco em formato de Z" e a foto mostra um petisco reto, sem Z visivel: **detalhe nao sustentado pela imagem**.
+
+Onde o raciocinio falhou: transformei uma boa pratica ("imagem informativa precisa de descricao") em regra universal, sem prever a categoria legitima que a contradiz. O efeito foi obrigar um subagente a **produzir conteudo visivel ao usuario final** para satisfazer uma regra minha — exatamente o tipo de coisa que instruo os subagentes a nao fazerem sozinhos.
+
+Impacto: o contrato do esquema passa a admitir que uma imagem seja marcada como **decorativa**, caso em que o texto alternativo e vazio e a imagem e escondida de leitores de tela. A invariante continua existindo, mas na forma correta: quem cadastra uma imagem precisa **escolher conscientemente** entre descreve-la ou declara-la decorativa — nunca deixar o campo em branco por descuido. As seis fotos do mosaico entram como decorativas, preservando o comportamento de acessibilidade que a pagina ja tem hoje. As descricoes escritas pelo subagente sao descartadas, inclusive a que continha o detalhe nao sustentado.

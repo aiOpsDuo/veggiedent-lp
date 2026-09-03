@@ -333,7 +333,11 @@ interface SectionSchema {
 
 Regras invariantes do esquema, verificáveis:
 
-- Todo campo `imagem` tem obrigatoriamente um campo de texto alternativo adjacente e obrigatório. O PRD trata isso como requisito de acessibilidade, não como detalhe.
+- Todo campo `imagem` obriga uma **escolha consciente** entre duas alternativas, nunca um campo em branco por descuido:
+  - **imagem informativa** — texto alternativo adjacente e obrigatório, descrevendo o que a imagem comunica; ou
+  - **imagem decorativa** — declarada como tal, com texto alternativo vazio e escondida de leitores de tela.
+
+  A segunda alternativa não é uma exceção à acessibilidade: é o tratamento **correto** para imagem que não carrega informação. Descrever uma imagem decorativa é pior do que não descrevê-la, porque injeta ruído no leitor de tela sem acrescentar significado. O caso real que revelou isso é o mosaico ao lado do formulário, hoje marcado com `aria-hidden` e `alt=""` no código. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre a invariante de texto alternativo.
 - Todo item de lista carrega um campo de visibilidade e uma posição de ordenação.
 - Referências de mídia guardam o identificador da mídia, nunca uma URL digitada.
 
