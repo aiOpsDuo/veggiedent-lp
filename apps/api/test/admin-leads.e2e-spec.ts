@@ -181,6 +181,50 @@ describe('rotas administrativas de leads', () => {
     })
   })
 
+  /**
+   * O dia do filtro é o dia que o operador viveu, em Brasília, e não o dia em
+   * UTC. Os dois leads abaixo estão a duas horas de distância um do outro e em
+   * dias diferentes nos dois fusos — é a borda em que um recorte feito em UTC
+   * jogaria o lead da noite para o dia seguinte.
+   */
+  describe('o dia do filtro é o dia de Brasília', () => {
+    const AS_23H_DO_DIA_2 = '2026-09-03T02:00:00.000Z'
+    const A_1H_DO_DIA_3 = '2026-09-03T04:00:00.000Z'
+
+    beforeEach(() => {
+      harness.database.seed('leads', [
+        lead(PRIMEIRO, AS_23H_DO_DIA_2),
+        lead(SEGUNDO, A_1H_DO_DIA_3),
+      ])
+    })
+
+    const idsDoDia = async (dia: string): Promise<string[]> => {
+      const resposta = await comToken(agente().get(ROTA).query({ from: dia, to: dia }))
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+      return resposta.body.leads.map((item: { id: string }) => item.id)
+    }
+
+    it('o lead das 23h de 2 de setembro é do dia 2', async () => {
+      expect(await idsDoDia('2026-09-02')).toEqual([PRIMEIRO])
+    })
+
+    it('o lead da 1h de 3 de setembro é do dia 3', async () => {
+      expect(await idsDoDia('2026-09-03')).toEqual([SEGUNDO])
+    })
+
+    it('a exportação recorta o dia do mesmo jeito que a listagem', async () => {
+      const resposta = await comToken(
+        agente().get(EXPORTACAO).query({ from: '2026-09-02', to: '2026-09-02' }),
+      )
+
+      const linhas = resposta.text.split('\r\n').filter((linha) => linha.length > 0)
+      expect(linhas).toHaveLength(2)
+      expect(resposta.text).toContain(PRIMEIRO)
+      expect(resposta.text).not.toContain(SEGUNDO)
+    })
+  })
+
   describe('exportação em CSV', () => {
     it('responde como CSV, com nome de arquivo para baixar', async () => {
       const resposta = await comToken(agente().get(EXPORTACAO))
