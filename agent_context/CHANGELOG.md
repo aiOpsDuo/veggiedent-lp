@@ -175,3 +175,19 @@ Motivo: a T9 revelou que 12 arquivos de imagem em 5 pontos da pagina nao foram m
 Nota: a decisao anterior de permitir `image/svg+xml` no bucket **continua necessaria**, mesmo com os tres infograficos ficando fora do CMS — o logo do Veggiedent e SVG e esta no CMS desde a T9.
 
 Impacto: nova tarefa **T19** (esquema + migracao dos ativos novos) no PLAN.md, a ser executada **antes da T11**, porque o painel gera o formulario a partir do esquema. A fiacao dos componentes fica na **T14**, junto com o restante da troca de `*.content.ts` para a API — evitando alterar componentes duas vezes. O escopo da T14 foi ampliado para incluir os tres componentes envolvidos.
+
+## 2026-09-03 — REGRA GERAL PARA A SKILL: projeto com multiplas aplicacoes precisa de entrada unica desde o primeiro dia
+
+Documentos afetados: PLAN.md, SDD.md — e, sobretudo, a propria skill `orquestrador-projeto` (registrado aqui a pedido do usuario, que vai analisar estes registros para melhora-la)
+
+Motivo: o usuario apontou uma lacuna real do processo. Este projeto tem tres aplicacoes (LP, painel, API) que em producao vivem **no mesmo dominio** — `/`, `/admin` e `/api/*` —, e isso esta no SDD desde a Fase 2. Mas durante todo o desenvolvimento eu servi as tres em **portas diferentes** (5173, 5174, 3000), obrigando o usuario a lidar com tres enderecos e adiando toda a costura de roteamento para a ultima tarefa antes de publicar (T16).
+
+Onde o raciocinio falhou: tratei "rodar para testar" e "publicar" como problemas separados, quando o segundo e apenas a versao final do primeiro. O resultado e que o modelo de URL — justamente a parte que o usuario enxerga e que mais facilmente quebra — so seria validado no fim, quando corrigir e mais caro. A T10 ja tinha dado a evidencia do custo disso ao descobrir, so na verificacao manual em navegador real, que `/admin` sem barra final devolvia 404: um problema de caminho que a suite inteira nao pegava e que so aparece quando se acessa pelo endereco de verdade.
+
+**Regra derivada, para a skill aplicar em qualquer projeto com mais de uma aplicacao:** se o SDD declara que duas ou mais aplicacoes compartilham dominio em producao, o ambiente de desenvolvimento precisa expor **uma unica entrada** desde a primeira tarefa que sobe um servidor — nunca uma porta por aplicacao. O roteamento de caminhos passa a ser exercitado a cada dia de trabalho, em vez de ser uma tarefa de integracao no fim. Isso vale como criterio de "pronto" da tarefa que estrutura o repositorio, nao como tarefa separada.
+
+Decisao do usuario sobre a forma:
+1. **Agora:** entrada unica em desenvolvimento por proxy do servidor de desenvolvimento — um endereco so, mantendo recarga automatica. Tarefa **T20**.
+2. **Alvo declarado:** **orquestracao com Docker**, subindo tudo de uma vez atras de um proxy reverso, servindo tanto o desenvolvimento quanto um ambiente de homologacao e alimentando a decisao de publicacao. Tarefa **T21**, imediatamente antes da T16.
+
+Impacto: duas tarefas novas no PLAN.md. A T16 deixa de ser "descobrir como costurar tres aplicacoes" e passa a ser "publicar o modelo que ja esta rodando ha semanas".

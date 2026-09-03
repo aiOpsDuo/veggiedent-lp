@@ -273,6 +273,24 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Faixa de bandeiras do Hero** (`grupo-bandeiras.png`) permanece em código.
 - **Os três infográficos da Prova de Autoridade** (`01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg`) permanecem em código, junto com o texto que os acompanha, hoje escrito dentro de `ProductDifferentials.tsx`. São claims de produto e seguem sob controle de quem edita o código.
 
+### T20 — Entrada única em desenvolvimento
+- Descrição: fazer o ambiente de desenvolvimento expor **um único endereço**, espelhando o modelo de produção do SDD: `/` serve a LP, `/admin` serve o painel, `/api/*` alcança a API. Os três processos continuam existindo por trás, mas quem usa não lida mais com portas separadas. A recarga automática da LP e do painel precisa continuar funcionando através do proxy.
+- Rastreável a: SDD § "Visão de tiers" e § D-04; `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre entrada única.
+- Critério de "pronto": a partir de **um só endereço**, `/` devolve a LP com o CSS aplicado (verificar o conteúdo servido, não só o código HTTP), `/admin` **e** `/admin/` devolvem o painel, `/api/health` responde `200`, e uma edição em arquivo da LP e outra em arquivo do painel chegam ao navegador sem reinício manual. `npm run test`, `npm run typecheck` e `npm run build` continuam passando a partir da raiz.
+- Dependências: T10
+- Execução: sequencial
+- Toca documentação: sim — README passa a documentar **um** endereço de desenvolvimento; as portas individuais viram detalhe interno.
+- Status: pendente
+
+### T21 — Orquestração com Docker e proxy reverso
+- Descrição: subir as três aplicações com um comando, atrás de um proxy reverso que expõe **uma porta única** com o mesmo mapa de caminhos de produção (`/`, `/admin`, `/api/*`). Serve para desenvolvimento e como ambiente de homologação, e é o que a T16 usa como base para publicar em vez de desenhar o roteamento do zero. Alvo declarado pelo usuário em 2026-09-03.
+- Rastreável a: SDD § "Visão de tiers", § D-04, § D-06; `agent_context/CHANGELOG.md`, entrada de 2026-09-03.
+- Critério de "pronto": um comando sobe tudo; a mesma bateria de verificação da T20 passa contra a porta única do proxy, incluindo `/admin` sem barra final; as credenciais continuam fora da imagem e fora do repositório, entrando por variáveis de ambiente; a chave secreta do Supabase **não** aparece em nenhum artefato de navegador; `verify-isolation.mjs` continua com exit 0.
+- Dependências: T13 (o painel precisa estar completo para valer a pena empacotar), T20
+- Execução: sequencial — **imediatamente antes da T16**.
+- Toca documentação: sim — README ganha a seção de como subir tudo e como configurar o ambiente.
+- Status: pendente
+
 ## Ordem de execução
 
 ```
