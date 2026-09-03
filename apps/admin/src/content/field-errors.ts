@@ -1,4 +1,4 @@
-import type { SectionSchema } from '@veggiedent/content-schema'
+import type { EditableSchema } from './editable-schema'
 import type { SectionDraft } from './section-draft'
 import type { FieldErrors } from './sections-gateway'
 
@@ -44,7 +44,7 @@ export function listPath(listName: string): string {
  * Todos os caminhos que o formulário desta seção é capaz de exibir, do jeito
  * que ele está montado agora — inclusive um caminho por item de cada lista.
  */
-export function formPathsOf(schema: SectionSchema, draft: SectionDraft): Set<string> {
+export function formPathsOf(schema: EditableSchema, draft: SectionDraft): Set<string> {
   const paths = new Set<string>(schema.fields.map((spec) => fieldPath(spec.name)))
 
   for (const list of schema.lists) {

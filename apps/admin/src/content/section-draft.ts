@@ -1,4 +1,5 @@
-import type { FieldSpec, ListSpec, SectionSchema } from '@veggiedent/content-schema'
+import type { FieldSpec, ListSpec } from '@veggiedent/content-schema'
+import type { EditableSchema } from './editable-schema'
 
 /**
  * O rascunho que o formulário edita, e a tradução dele para o documento que a
@@ -93,7 +94,7 @@ function readListItems(list: ListSpec, stored: unknown): DraftListItem[] {
 
 /** Monta o rascunho de uma seção a partir do documento guardado. */
 export function buildDraft(
-  schema: SectionSchema,
+  schema: EditableSchema,
   data: Readonly<Record<string, unknown>>,
 ): SectionDraft {
   return {
@@ -196,7 +197,7 @@ function collectValues(
  * (SDD § C-05), sem depender de nenhum número digitado pelo operador.
  */
 export function toDocument(
-  schema: SectionSchema,
+  schema: EditableSchema,
   draft: SectionDraft,
 ): Record<string, unknown> {
   const document = collectValues(schema.fields, draft.fields)

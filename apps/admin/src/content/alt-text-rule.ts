@@ -3,8 +3,8 @@ import {
   altTextFieldName,
   isDecorativeImage,
   type FieldSpec,
-  type SectionSchema,
 } from '@veggiedent/content-schema'
+import type { EditableSchema } from './editable-schema'
 import { fieldPath, listItemFieldPath } from './field-errors'
 import type { SectionDraft } from './section-draft'
 
@@ -56,7 +56,7 @@ function missingAltIn(
  * onde o caminho carrega a posição do item.
  */
 export function altTextErrors(
-  schema: SectionSchema,
+  schema: EditableSchema,
   draft: SectionDraft,
 ): Readonly<Record<string, string>> {
   const errors: Record<string, string> = {
