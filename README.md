@@ -252,11 +252,6 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 - **Paginação:** aparece só quando o período não cabe em uma página (50 leads).
 - **Exclusão:** em dois passos, para o pedido do titular — ver "Manutenção".
 
-> **Divergência conhecida, escopo da T18:** a data na tela está em horário de Brasília, mas a
-> coluna `Data de envio (UTC)` do CSV continua em UTC. O mesmo lead pode, portanto, aparecer
-> como 2 de setembro na tela e 3 de setembro na planilha. O alinhamento dos dois está previsto
-> na T18, junto com a remoção da coluna `aceite_lgpd` do banco.
-
 ## Acesso e execução do código
 
 ### Variáveis de ambiente
@@ -534,13 +529,32 @@ O envio do formulário passou a ser um endpoint da API (SDD § D-07). A função
 
 **Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`.
 
-**O dia é o de Brasília (UTC−3), não o de UTC.** O recorte é feito no fuso de quem opera o painel: um lead enviado às 23h de 2 de setembro entra no filtro do dia 2, ainda que o banco o guarde como 3 de setembro às 02h em UTC. `from=2026-09-02&to=2026-09-02` vira, para o banco, o intervalo `2026-09-02T03:00:00.000Z` a `2026-09-03T02:59:59.999Z`. O deslocamento é fixo em −03:00 porque o Brasil não observa horário de verão desde 2019; se voltar a observar, a mudança é em um lugar só (`apps/api/src/modules/leads/domain/lead-period.ts`).
+**O dia é o de Brasília (UTC−3), não o de UTC.** O recorte é feito no fuso de quem opera o painel: um lead enviado às 23h de 2 de setembro entra no filtro do dia 2, ainda que o banco o guarde como 3 de setembro às 02h em UTC. `from=2026-09-02&to=2026-09-02` vira, para o banco, o intervalo `2026-09-02T03:00:00.000Z` a `2026-09-03T02:59:59.999Z`. O deslocamento é fixo em −03:00 porque o Brasil não observa horário de verão desde 2019; se voltar a observar, a mudança é em um lugar só (`apps/api/src/modules/leads/domain/brasilia-time.ts`), que é o mesmo módulo de onde a data do CSV sai.
 
 **Paginação:** `page` a partir de 1 (padrão 1) e `pageSize` de 1 a 200 (padrão 50). Página além da última devolve lista vazia com o `total` correto, nunca erro.
 
-**O CSV abre no Excel em português.** Três decisões, cada uma resolvendo um jeito específico de o arquivo chegar errado: **BOM UTF-8** no início (sem ele, "Comunicações" vira "ComunicaÃ§Ãµes" no Windows), **ponto e vírgula** como separador (na configuração regional pt-BR a vírgula é separador decimal, e com ela a planilha inteira cai numa coluna só) e fim de linha **CRLF**. A data sai como `02/09/2026 13:45:07`, e a coluna diz explicitamente que está em UTC. Uma célula que começaria por `=`, `+`, `-` ou `@` recebe um apóstrofo à frente: o conteúdo do lead é texto que um desconhecido digitou num formulário público, e sem isso a planilha executaria a célula como fórmula ao abrir o arquivo. A exportação é limitada a 10.000 linhas por chamada, porque o arquivo é montado em memória antes de ser enviado.
+**O CSV abre no Excel em português.** Três decisões, cada uma resolvendo um jeito específico de o arquivo chegar errado: **BOM UTF-8** no início (sem ele, "Comunicações" vira "ComunicaÃ§Ãµes" no Windows), **ponto e vírgula** como separador (na configuração regional pt-BR a vírgula é separador decimal, e com ela a planilha inteira cai numa coluna só) e fim de linha **CRLF**. A data sai como `02/09/2026 23:00:00`, em **horário de Brasília** — o mesmo fuso do filtro de período e o mesmo que a tela do painel mostra. Em UTC esse lead apareceria como 3 de setembro na planilha e como 2 de setembro na tela: um lead, duas datas. Uma célula que começaria por `=`, `+`, `-` ou `@` recebe um apóstrofo à frente: o conteúdo do lead é texto que um desconhecido digitou num formulário público, e sem isso a planilha executaria a célula como fórmula ao abrir o arquivo. A exportação é limitada a 10.000 linhas por chamada, porque o arquivo é montado em memória antes de ser enviado.
 
-**As colunas do CSV são as da regra de negócio RN-01:** uma por campo que o visitante preenche (nome, e-mail, telefone, nome e porte do cachorro, cidade e estado, conhece a Virbac, usa produto Virbac, qual produto Virbac e o opt-in de comunicações), mais data de envio, origem e o resultado do repasse ao RD Station. **Não existe coluna de aceite da Política de Privacidade**: sem consentimento nenhum lead é gravado, então a coluna só poderia dizer "sim" e não prova nada que a existência da linha já não prove (ver `agent_context/CHANGELOG.md`, 2026-09-02). A validação que **exige** o consentimento continua onde estava; o que saiu foi só a coluna. Remover a coluna do banco é escopo da T18.
+**As colunas do CSV são as da regra de negócio RN-01**, nesta ordem — uma por campo que o visitante preenche, mais as operacionais que acompanham o registro:
+
+| # | Coluna | Conteúdo |
+|---|---|---|
+| 1 | `Data de envio (Brasília)` | Instante do envio, em horário de Brasília, como `02/09/2026 23:00:00` |
+| 2 | `Nome` | Obrigatório no formulário |
+| 3 | `E-mail` | Obrigatório no formulário |
+| 4 | `Telefone` | Vazio quando não preenchido |
+| 5 | `Nome do cachorro` | Vazio quando não preenchido |
+| 6 | `Porte do cachorro` | `pequeno`, `medio` ou `grande` |
+| 7 | `Cidade e estado` | Vazio quando não preenchido |
+| 8 | `Conhece a Virbac` | Um dos três campos que o relay antigo descartava (R-01) |
+| 9 | `Usa produto Virbac` | Idem |
+| 10 | `Qual produto Virbac` | Idem |
+| 11 | `Aceite de comunicações` | Opt-in de marketing: `sim` ou `não` |
+| 12 | `Origem` | Origem declarada do envio |
+| 13 | `Status RD Station` | `ok`, `falhou` ou `nao_enviado` |
+| 14 | `Erro RD Station` | Vazio quando o repasse deu certo |
+
+**Por que não existe coluna — nem registro — de aceite da Política de Privacidade.** O consentimento é **condição de envio**, não dado do lead: sem ele `POST /api/leads` recusa com `422` e nenhuma linha nasce. Guardá-lo significaria gravar a constante `true` em toda linha, e exportar uma coluna que só pode dizer "sim" — informação zero, que não prova nada que a existência da própria linha, somada à data de envio, já não prove. Por isso a tabela `leads` **não tem** a coluna `aceite_lgpd` (removida pela migração `20260903130000_drop_aceite_lgpd_from_leads.sql`) e o arquivo exportado não tem a coluna correspondente. A validação que **exige** o consentimento continua exatamente onde estava, coberta por teste de regressão: o que deixou de existir é apenas a gravação do resultado dela. Se um dia for preciso provar **a que texto** a pessoa consentiu — cenário real depois de a Política de Privacidade mudar —, o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro (ver `agent_context/CHANGELOG.md`, 2026-09-02).
 
 ### Banco de dados e armazenamento
 
@@ -556,6 +570,7 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 | `20260902120500_create_storage_buckets.sql` | Buckets `veggiedent-images`, `veggiedent-videos`, `veggiedent-captions` e a policy de leitura pública |
 | `20260902130000_add_og_image_alt_to_site_metadata.sql` | Coluna `og_image_alt` em `site_metadata` (T7) |
 | `20260903120000_allow_svg_in_images_bucket.sql` | Acrescenta `image/svg+xml` aos tipos aceitos do bucket de imagens (T9) |
+| `20260903130000_drop_aceite_lgpd_from_leads.sql` | Remove a coluna `aceite_lgpd` de `leads` — o consentimento é condição de envio, não dado do registro (T18) |
 
 **Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
 
