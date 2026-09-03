@@ -48,6 +48,7 @@ export type EditorAction =
   | { readonly type: 'gravando' }
   | { readonly type: 'gravado'; readonly section: SectionDetail }
   | { readonly type: 'recusado'; readonly fields: FieldErrors }
+  | { readonly type: 'recusado-no-painel'; readonly fields: FieldErrors }
   | { readonly type: 'falhou-ao-gravar'; readonly message: string }
   | { readonly type: 'visibilidade-alterada'; readonly section: SectionSummary }
 
@@ -143,6 +144,18 @@ export function createEditorReducer(
         return {
           ...state,
           errors: forSection(schema.key, action.fields, formPathsOf(schema, state.draft)),
+          save: { kind: 'falha', message: INVALID_MESSAGE },
+        }
+
+      /**
+       * A recusa que o painel decidiu sozinho já vem endereçada aos caminhos do
+       * formulário — ela nasceu do esquema e do rascunho, não da resposta da
+       * API, e por isso não passa pela tradução de prefixo de seção.
+       */
+      case 'recusado-no-painel':
+        return {
+          ...state,
+          errors: { porCampo: action.fields, semCampo: [] },
           save: { kind: 'falha', message: INVALID_MESSAGE },
         }
 

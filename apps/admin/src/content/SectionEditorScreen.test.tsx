@@ -1,6 +1,8 @@
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { getSectionSchema } from '@veggiedent/content-schema'
+import { arquivoDe } from '../../test/arquivo'
+import { FakeMediaService } from '../../test/fake-media-service'
 import { FakeSectionsGateway } from '../../test/fake-sections-gateway'
 import { montarTela } from '../../test/painel-autenticado'
 import { SAVED_MESSAGE, UNPUBLISHED_MESSAGE } from './editor-state'
@@ -263,18 +265,47 @@ describe('Visibilidade da seção (SDD § C-08)', () => {
   })
 })
 
-describe('Campos de mídia (espaço reservado até a tarefa de mídia)', () => {
-  it('mostra o campo de imagem sem deixar digitar o identificador', async () => {
-    abrir(new FakeSectionsGateway({ documents: { hero: DOCUMENTO_DA_ABERTURA } }), 'hero')
+describe('Campos de mídia (SDD § C-06, C-07)', () => {
+  const campoDeImagem = hero.fields.find((spec) => spec.name === 'image')
+  const campoDeTextoAlternativo = hero.fields.find((spec) => spec.name === 'imageAlt')
 
-    const campo = await screen.findByLabelText(hero.fields[5].label)
-    expect(campo).toHaveValue(IMAGEM_DA_ABERTURA)
-    expect(campo).toHaveAttribute('readonly')
+  /** A mídia que o documento da abertura já referencia, como o painel a lê. */
+  function servicoComAImagemGuardada(): FakeMediaService {
+    const service = new FakeMediaService()
+    service.guardar({
+      id: IMAGEM_DA_ABERTURA,
+      kind: 'image',
+      publicUrl: 'https://armazenamento.test/veggiedent/abertura.png',
+      mimeType: 'image/png',
+      sizeBytes: 4096,
+      originalFilename: 'abertura.png',
+    })
+    return service
+  }
+
+  function abrirAbertura(
+    documento: Record<string, unknown> = DOCUMENTO_DA_ABERTURA,
+    service = servicoComAImagemGuardada(),
+  ): { gateway: FakeSectionsGateway; service: FakeMediaService } {
+    const gateway = new FakeSectionsGateway({ documents: { hero: documento } })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/hero',
+      mediaService: service,
+    })
+    return { gateway, service }
+  }
+
+  it('mostra a prévia do arquivo já guardado, sem campo para digitar identificador', async () => {
+    abrirAbertura()
+
+    expect(await screen.findByAltText('Prévia de abertura.png')).toBeInTheDocument()
+    expect(screen.getByLabelText(campoDeImagem?.label ?? '')).toHaveAttribute('type', 'file')
+    expect(screen.queryByDisplayValue(IMAGEM_DA_ABERTURA)).not.toBeInTheDocument()
   })
 
   it('devolve a mídia intacta ao salvar apenas o texto', async () => {
-    const gateway = new FakeSectionsGateway({ documents: { hero: DOCUMENTO_DA_ABERTURA } })
-    abrir(gateway, 'hero')
+    const { gateway } = abrirAbertura()
     await screen.findByLabelText('Título principal')
 
     await userEvent.type(screen.getByLabelText('Título principal'), '!')
@@ -286,4 +317,138 @@ describe('Campos de mídia (espaço reservado até a tarefa de mídia)', () => {
       imageAlt: 'Cão feliz',
     })
   })
+
+  it('envia o arquivo escolhido e passa a referenciar a mídia registrada', async () => {
+    const { gateway, service } = abrirAbertura()
+    await screen.findByLabelText('Título principal')
+
+    await userEvent.upload(
+      screen.getByLabelText(campoDeImagem?.label ?? ''),
+      arquivoDe('abertura-nova.png', 'image/png', 4096),
+    )
+    await screen.findByAltText('Prévia de abertura-nova.png')
+    await salvar()
+
+    expect(service.transferidos).toEqual(['abertura-nova.png'])
+    const salvo = gateway.lastDocumentOf('hero') as Record<string, unknown>
+    expect(salvo.image).not.toBe(IMAGEM_DA_ABERTURA)
+    expect(salvo.image).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('recusa tipo não suportado no painel, sem chegar a gravar a seção', async () => {
+    const { gateway } = abrirAbertura()
+    await screen.findByLabelText('Título principal')
+
+    await userEvent.upload(
+      screen.getByLabelText(campoDeImagem?.label ?? ''),
+      arquivoDe('planilha.pdf', 'application/pdf', 1000),
+      { applyAccept: false },
+    )
+
+    expect(
+      await screen.findByText(
+        'Tipo de arquivo não suportado para imagem. Envie JPG, PNG, WebP, AVIF, GIF ou SVG.',
+      ),
+    ).toBeInTheDocument()
+    expect(gateway.savedDocuments).toEqual([])
+  })
+
+  it('recusa arquivo acima do limite com o tamanho e o teto na mensagem', async () => {
+    abrirAbertura()
+    await screen.findByLabelText('Título principal')
+
+    await userEvent.upload(
+      screen.getByLabelText(campoDeImagem?.label ?? ''),
+      arquivoDe('enorme.png', 'image/png', 11 * 1024 * 1024),
+      { applyAccept: false },
+    )
+
+    expect(
+      await screen.findByText('O arquivo tem 11 MB e o limite para imagem é 10 MB.'),
+    ).toBeInTheDocument()
+  })
 })
+
+describe('Texto alternativo: a escolha entre informativa e decorativa (SDD § C-06)', () => {
+  const semTextoAlternativo = { ...DOCUMENTO_DA_ABERTURA, imageAlt: '' }
+
+  it('recusa no próprio painel salvar imagem informativa sem descrição', async () => {
+    const gateway = new FakeSectionsGateway({ documents: { hero: semTextoAlternativo } })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/hero',
+    })
+    await screen.findByLabelText('Título principal')
+
+    await salvar()
+
+    expect(
+      screen.getByLabelText('Texto alternativo da imagem da abertura'),
+    ).toHaveAccessibleDescription(/O texto alternativo é obrigatório quando há imagem\./)
+    expect(gateway.savedDocuments).toEqual([])
+  })
+
+  it('salva assim que a descrição é preenchida', async () => {
+    const gateway = new FakeSectionsGateway({ documents: { hero: semTextoAlternativo } })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/hero',
+    })
+    await screen.findByLabelText('Título principal')
+
+    await userEvent.type(
+      screen.getByLabelText('Texto alternativo da imagem da abertura'),
+      'Cão correndo no gramado',
+    )
+    await salvar()
+
+    expect(gateway.lastDocumentOf('hero')).toMatchObject({
+      imageAlt: 'Cão correndo no gramado',
+    })
+  })
+
+  it('imagem decorativa não ganha campo de descrição, e não deve ganhar', async () => {
+    const gateway = new FakeSectionsGateway({
+      documents: {
+        captura_lead: { mosaico: [{ image: IMAGEM_DA_ABERTURA, ordem: 0, visivel: true }] },
+      },
+    })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/captura_lead',
+    })
+
+    const mosaico = await screen.findByRole('group', { name: 'Fotos do mosaico' })
+    expect(within(mosaico).getByLabelText('Foto do mosaico')).toBeInTheDocument()
+    expect(within(mosaico).queryByLabelText(/alternativ/i)).not.toBeInTheDocument()
+  })
+
+  it('salva o mosaico decorativo sem exigir descrição nenhuma', async () => {
+    const gateway = new FakeSectionsGateway({
+      documents: {
+        captura_lead: { mosaico: [{ image: IMAGEM_DA_ABERTURA, ordem: 0, visivel: true }] },
+      },
+    })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/captura_lead',
+    })
+    await screen.findByRole('group', { name: 'Fotos do mosaico' })
+
+    await salvar()
+
+    expect(gateway.lastDocumentOf('captura_lead')).toMatchObject({
+      mosaico: [{ image: IMAGEM_DA_ABERTURA, ordem: 0, visivel: true }],
+    })
+  })
+
+  it('o rótulo do campo de descrição vem do esquema, não do painel', () => {
+    expect(campoDeTextoAlternativoDaAbertura()?.label).toBe(
+      'Texto alternativo da imagem da abertura',
+    )
+  })
+})
+
+function campoDeTextoAlternativoDaAbertura() {
+  return hero.fields.find((spec) => spec.name === 'imageAlt')
+}

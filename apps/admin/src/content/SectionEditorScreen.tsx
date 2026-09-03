@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getSectionSchema, isSectionKey, type SectionKey } from '@veggiedent/content-schema'
 import { useAuth } from '../auth/auth-context'
 import { SECTIONS_PATH } from '../routing/paths'
+import { altTextErrors } from './alt-text-rule'
 import {
   INITIAL_EDITOR_STATE,
   createEditorReducer,
@@ -113,6 +114,12 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
     if (accessToken === null) {
       return
     }
+    const missingAltText = altTextErrors(schema, state.draft)
+    if (Object.keys(missingAltText).length > 0) {
+      dispatch({ type: 'recusado-no-painel', fields: missingAltText })
+      return
+    }
+
     dispatch({ type: 'gravando' })
     const result = await gateway.saveSection(
       accessToken,
