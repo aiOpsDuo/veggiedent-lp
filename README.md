@@ -471,6 +471,8 @@ Na **T9** a oitava migração (`allow_svg_in_images_bucket`) foi aplicada pelo m
 
 Na **T10** o painel foi exercitado num navegador de verdade contra o Supabase e a API reais, nas duas formas em que ele roda — servidor de desenvolvimento e build de produção servido pelo `preview` —, com **14 checagens em cada uma, todas OK**: rota interna sem sessão cai no login sem que a área administrativa chegue a existir no documento; e-mail inexistente e senha errada devolvem exatamente a mesma mensagem; o login válido abre o painel com o operador identificado no cabeçalho; `GET /api/admin/sections` com o token respondeu `200` com as 12 seções e, sem token, `401`; recarregar a página manteve a sessão; sair devolveu ao login, apagou a chave do armazenamento e a área administrativa não reapareceu. O operador de verificação foi criado pela Auth Admin API e removido ao final (**0 usuários**), e a carga da T9 ficou intacta: 12 seções, 17 mídias, 1 registro de metadados, 0 leads.
 
+Na **T19** os ativos que passaram a ter campo no esquema foram migrados contra o projeto hospedado, pela **entrada única** (`CMS_API_URL=http://localhost:5173/api`): `media_assets` saiu de **17 para 24** — o `Kit-de-imagens.png` e as seis fotos do mosaico —, com 22 objetos no bucket de imagens e 2 no de vídeos, e as demais contagens intactas (12 seções, 1 registro de metadados, 0 leads). `GET /api/content` passou a devolver o kit como **URL pública** acompanhado do texto alternativo que o componente já escrevia, e as seis fotos do mosaico como URL pública **sem nenhum campo de descrição** — elas são decorativas no esquema, e o corpo da resposta reflete isso. As URLs foram buscadas sem credencial nenhuma: `200`, `image/png` de 2.043.014 bytes no kit e `image/jpeg` de 69.438 bytes na primeira foto. **A migração foi rodada mais duas vezes e nada se moveu:** 0 mídias enviadas, 24 reaproveitadas, as mesmas contagens, e as respostas de `GET /api/content` iguais campo a campo. Uma ressalva de medição, para não repetir a da T9: comparar o **hash** da resposta não serve como prova de idempotência aqui, porque a ordem das seções no corpo segue a ordem das linhas de uma consulta sem `ORDER BY` e varia entre execuções — a comparação válida é campo a campo, e é a que foi feita. O operador criado para a verificação foi removido (o único que restou é o do usuário), e a carga **permanece no banco**.
+
 ### Como criar um operador do painel
 
 O CMS **não tem tela de gestão de usuários** — os operadores são criados no painel do
@@ -527,8 +529,10 @@ fora de escopo por decisão do PRD.
 
 ### Migração inicial do conteúdo
 
-O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais quatro imagens
-que os componentes importam direto e dois vídeos servidos de `apps/lp/public/videos/`.
+O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais onze imagens
+que os componentes importam direto (o logo, a arte do herói, o packshot, o kit de imagens da
+prova de autoridade e as seis fotos do mosaico do formulário) e dois vídeos servidos de
+`apps/lp/public/videos/`.
 `npm run migrate:content -w apps/api` leva tudo isso para o CMS **uma vez**, e é a carga de
 que a LP passa a depender na T14.
 
@@ -552,7 +556,7 @@ identificador da mídia e o esquema recusa qualquer outra coisa:
 
 1. **Executa** os `*.content.ts` de verdade, em vez de repetir seus textos. Não há uma
    segunda cópia do Copy Deck dentro da API que pudesse envelhecer em silêncio.
-2. **Envia as 17 mídias** (15 imagens e 2 vídeos) ao armazenamento e as registra em
+2. **Envia as 24 mídias** (22 imagens e 2 vídeos) ao armazenamento e as registra em
    `media_assets`, pelos mesmos três passos que o painel usa — os bytes vão do processo
    direto ao Storage, sem passar pela API.
 3. **Grava os 12 documentos de seção e os metadados da página** por `PUT /api/admin/…`, os
@@ -568,6 +572,22 @@ não são reenviadas: a segunda execução pergunta ao conteúdo já gravado qua
 campo (`hero.image`, `demonstracao.videos[1].poster`) e reaproveita aquele identificador.
 Isso importa porque a API sorteia um caminho novo a cada credencial emitida, de propósito, e
 reenviar criaria cópias órfãs no armazenamento.
+
+**Imagens que ganharam campo no esquema.** Duas das que os componentes importavam direto
+passaram a ser editáveis pelo painel, por decisão do usuário registrada em
+`agent_context/CHANGELOG.md`:
+
+| Onde | Campo no painel | Observação |
+|---|---|---|
+| Prova de autoridade | **Kit de imagens** e seu texto alternativo | Imagem informativa: a descrição é obrigatória e é o que o leitor de tela anuncia. O arquivo atual tem 2 MB — cabe no limite de 10 MB do bucket, mas é peso relevante numa página de campanha |
+| Captura de lead | **Fotos do mosaico** (lista, com adicionar, remover e reordenar) | O layout foi desenhado para **6 fotos**: com mais ou menos que isso, a grade fica desequilibrada. A lista não trava a quantidade, e a orientação aparece no próprio campo do painel |
+
+As fotos do mosaico são **imagens decorativas**: elas preenchem o espaço ao lado do
+formulário e não acrescentam nada ao que o texto já diz. Por isso não têm — nem devem ter —
+campo de texto alternativo: entram na página com descrição vazia e escondidas do leitor de
+tela, que anuncia o formulário sem seis descrições de fotos de cachorro no meio. É o
+comportamento que a página já tem hoje, e é o tratamento **correto** de acessibilidade, não
+uma exceção a ela. Ver "Adicionar um campo a uma seção", em Manutenção.
 
 **O que chega não publicado**, e por quê:
 
@@ -588,8 +608,9 @@ campos `legalData` e `ebookTitle` simplesmente não existem no documento gravado
 os declara opcionais por isso. `og:image` não é migrada porque **não existe** em
 `index.html` — é pendência declarada da Virbac, não uma URL a inventar.
 
-Três imagens ficam de fora por não terem campo no esquema: os infográficos SVG de
-`ProductDifferentials.tsx`. Ver "Pendências herdadas do projeto atual".
+Quatro imagens ficam de fora **por decisão do usuário**, não por esquecimento: os três
+infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói. Ver
+"Pendências herdadas do projeto atual".
 
 ## Alterações, testes e validações
 
@@ -614,7 +635,12 @@ Três imagens ficam de fora por não terem campo no esquema: os infográficos SV
 - **Adicionar um campo a uma seção:** edite um arquivo só — o esquema da seção em `packages/content-schema/src/sections/<secao>.ts`.
 
   1. Acrescente o campo ao array `fields` da seção, ou ao `itemFields` da lista quando o campo pertencer a um item (um card, um passo, um parceiro, uma pergunta). Um campo é `{ name, type, label, help, required }`: `label` e `help` são o que o operador lê no painel, em português — `help` diz onde o campo aparece na página, e é opcional só na forma, não na prática. Tipos disponíveis: `texto-curto`, `texto-longo`, `lista-de-textos`, `imagem`, `video`, `legenda`, `link`, `booleano`.
-  2. Se o campo for uma imagem, não o declare à mão: use `requiredImage({ ... })` ou `optionalImage({ ... })` de `src/fields.ts`. Os dois emitem a imagem **e** o texto alternativo obrigatório adjacente de uma vez, de modo que a invariante de acessibilidade não dependa de alguém lembrar dela.
+  2. Se o campo for uma imagem, não o declare à mão — use um dos construtores de `src/fields.ts`, e escolha entre os dois tratamentos de acessibilidade que o esquema admite:
+
+     - **Imagem informativa** — `requiredImage({ ... })` ou `optionalImage({ ... })`. Emitem a imagem **e** o campo de texto alternativo obrigatório adjacente de uma vez. É o caso da maioria: a descrição é o que o leitor de tela anuncia no lugar da imagem.
+     - **Imagem decorativa** — `decorativeImage({ ... })`. Emite só a imagem, sem campo de descrição, porque não há o que descrever: ela entra na página com texto alternativo vazio e escondida do leitor de tela. Descrever uma imagem decorativa é **pior** do que não descrevê-la — injeta ruído sem acrescentar significado. É o caso das fotos do mosaico do formulário.
+
+     Um campo de imagem que não faz essa escolha é recusado pela invariante do esquema (`checkSchemaInvariants`), com o teste de `tests/invariants.test.ts` acusando exatamente qual imagem ficou sem declarar. Não existe caminho de "campo em branco por descuido": ou a imagem é descrita, ou é declarada decorativa.
   3. Preencha o campo novo no documento de exemplo da seção, em `packages/content-schema/tests/fixtures.ts`. Este é o único passo manual obrigatório: os documentos de exemplo são tipados pelos tipos derivados do esquema, então um campo obrigatório sem valor ali reprova `npm run typecheck`.
   4. Rode `npm run test -w packages/content-schema` e `npm run typecheck`.
 
@@ -678,5 +704,5 @@ Itens que já eram pendência antes do CMS e continuam abertos:
 - **Legendas dos vídeos (`.vtt`)** são apontadas por `Demonstracao.content.ts` mas os arquivos não existem em `apps/lp/public/videos/captions/`. O campo é opcional no esquema e ficou vazio na migração, reproduzindo o que a página faz hoje: o navegador simplesmente não oferece legenda.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Conteúdo da seção Ingredientes** e a **faixa etária recomendada** no FAQ aguardam material técnico da Virbac; migrados como não publicados.
-- **Imagens fora do esquema, ainda em código.** A T2 escopou os esquemas nos 12 `*.content.ts`, então algumas imagens que os componentes importam direto não têm campo no CMS e continuam vindo do bundle: os três infográficos SVG de `ProductDifferentials.tsx`, o `Kit-de-imagens.png` e o `grupo-bandeiras.png`, o mosaico de seis fotos do formulário e o pôster do banner de vídeo. Nenhuma delas está em nenhum arquivo de conteúdo, e as que carregam texto (os infográficos) trazem junto um copy que também está escrito no componente — levá-las ao CMS é acrescentar campos ao esquema, não trabalho de migração. A decisão de fazê-lo, e quando, é do usuário.
+- **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixa de ser imagem própria e passa a derivar da miniatura do primeiro vídeo da seção, quando a T14 refizer a fiação dos componentes.
 - **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD). A T8 migrou o payload para `apps/api/src/modules/leads/infrastructure/rdstation-lead.relay.ts` **sem alterá-lo**, e a pendência continua exatamente onde estava — com a diferença de que, enquanto ela não for resolvida, o lead já não se perde: fica gravado com `rdstation_status = "nao_enviado"`.
