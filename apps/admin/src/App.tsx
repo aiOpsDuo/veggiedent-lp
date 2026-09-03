@@ -3,8 +3,10 @@ import type { AdminApiClient } from './api/admin-api-client'
 import { AuthProvider } from './auth/AuthProvider'
 import type { AuthGateway } from './auth/auth-gateway'
 import { RequireSession } from './auth/RequireSession'
+import { SectionEditorScreen } from './content/SectionEditorScreen'
+import { SectionsScreen } from './content/SectionsScreen'
 import { LoginRoute } from './routing/LoginRoute'
-import { HOME_PATH, LOGIN_PATH } from './routing/paths'
+import { HOME_PATH, LOGIN_PATH, SECTIONS_PATH, SECTION_EDITOR_ROUTE } from './routing/paths'
 import { AdminLayout } from './screens/AdminLayout'
 import { HomeScreen } from './screens/HomeScreen'
 
@@ -32,6 +34,11 @@ export function App({ authGateway, apiClient }: AppProps): JSX.Element {
         <Route element={<RequireSession />}>
           <Route element={<AdminLayout />}>
             <Route path={HOME_PATH} element={<HomeScreen apiClient={apiClient} />} />
+            <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
+            <Route
+              path={SECTION_EDITOR_ROUTE}
+              element={<SectionEditorScreen gateway={apiClient} />}
+            />
             <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
           </Route>
         </Route>

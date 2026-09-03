@@ -1,9 +1,10 @@
-import { Outlet } from 'react-router-dom'
+import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
+import { SECTIONS_PATH } from '../routing/paths'
 
 /**
- * O esqueleto autenticado: cabeçalho com quem está logado e a ação de sair, e
- * a área onde as telas de conteúdo, mídia e leads (T11–T13) vão entrar.
+ * O esqueleto autenticado: cabeçalho com quem está logado, o caminho para as
+ * seções e a ação de sair.
  *
  * Só é montado por dentro da guarda — em nenhum caminho do roteador ele aparece
  * sem sessão confirmada.
@@ -16,7 +17,14 @@ export function AdminLayout(): JSX.Element {
     <div data-testid="area-administrativa" className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
-          <span className="font-semibold text-slate-900">Painel Veggiedent</span>
+          <div className="flex items-center gap-6">
+            <span className="font-semibold text-slate-900">Painel Veggiedent</span>
+            <nav aria-label="Áreas do painel">
+              <Link to={SECTIONS_PATH} className="text-sm text-slate-700 hover:underline">
+                Seções da página
+              </Link>
+            </nav>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-600">{operatorEmail}</span>
             <button
