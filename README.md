@@ -17,7 +17,7 @@ Quatro peças em um domínio único:
 | Peça | Papel | Stack |
 |---|---|---|
 | `apps/lp` | Landing page pública, servida estaticamente por CDN | React 18, Vite 5, TypeScript 5, Tailwind 3 |
-| `apps/admin` | Painel de administração, servido em `/admin` atrás de login | React 18, Vite 5, TypeScript 5 |
+| `apps/admin` | Painel de administração, servido em `/admin` atrás de login | React 18, Vite 5, TypeScript 5, React Router 6, Tailwind 3 |
 | `apps/api` | API do CMS: conteúdo, mídia, metadados e leads | NestJS 11, Node 20+ |
 | `packages/content-schema` | Esquemas das seções — fonte única de validação, formulário e tipos | TypeScript 5, Zod |
 
@@ -29,7 +29,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 /
 ├── apps/
 │   ├── lp/                 # landing page (React + Vite + Tailwind)
-│   ├── admin/              # painel — esqueleto, preenchido na T10
+│   ├── admin/              # painel (React + Vite + Tailwind), servido sob /admin
 │   └── api/                # API NestJS — módulos por domínio, quatro camadas em cada
 ├── packages/
 │   └── content-schema/     # esquemas de seção — esqueleto, preenchido na T2
@@ -61,6 +61,25 @@ apps/api/src/
 
 Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads`, na T8.
 
+Dentro de `apps/admin`, a mesma inversão de dependência da API aparece em escala menor — o painel não conhece o Supabase, conhece uma porta:
+
+```
+apps/admin/src/
+├── main.tsx            # lê o ambiente, monta o roteador em /admin e injeta as dependências
+├── App.tsx             # as rotas: uma pública (login) e todas as outras dentro da guarda
+├── config/env.ts       # variáveis do painel, validadas na inicialização
+├── auth/
+│   ├── auth-gateway.ts           # a porta: entrar, sair, observar a sessão
+│   ├── supabase-auth-gateway.ts  # o adaptador do Supabase Auth — o único arquivo que o conhece
+│   ├── AuthProvider.tsx          # estado da sessão, alimentado só pelo que o gateway avisa
+│   └── RequireSession.tsx        # a guarda de rota
+├── api/                # cliente da API do CMS (token no cabeçalho, como a guarda da API espera)
+├── routing/            # caminhos nomeados e a rota de login
+└── screens/            # login, esqueleto autenticado e a área das telas das T11–T13
+```
+
+**A guarda é uma rota de layout, não um invólucro repetido em cada tela** — a mesma ideia da guarda global da API: uma rota nova nasce dentro dela, e expor exigiria declará-la fora, de propósito. A sessão tem três estados, e o terceiro (`verificando`) existe para que não haja instante em que tela administrativa apareça antes de a sessão ser confirmada: sem ele, o painel teria de tratar "ainda não sei" como "tem sessão" (e piscaria conteúdo protegido) ou como "não tem" (e expulsaria quem acabou de recarregar a página).
+
 **Como a API consome `packages/content-schema`:** o pacote é a fonte única de validação (SDD § D-02), mas a API compila para CommonJS e o pacote é lido como TypeScript pelo Vite. Para servir aos dois, ele passou a ter um build próprio (`npm run build -w packages/content-schema`, saída em `packages/content-schema/dist/`): a API resolve o pacote pelo build CommonJS, e Vite e Vitest continuam lendo `src/`. Os scripts `build`, `typecheck` e `test` de `apps/api` reconstroem o pacote antes de rodar, então não existe passo manual a lembrar nem risco de compilar contra uma versão velha do esquema.
 
 **Serviços externos:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) e RD Station Marketing (destino de marketing dos leads).
@@ -90,13 +109,23 @@ O modelo está em [`apps/api/.env.example`](apps/api/.env.example); copie para `
 
 **`apps/lp` e `apps/admin` (públicas, embarcadas no build):**
 
+Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é segredo, e nenhuma chave secreta pode ser acrescentada a esses arquivos (SDD § R-09).
+
+`apps/admin` (modelo em [`apps/admin/.env.example`](apps/admin/.env.example)) — as três são obrigatórias na prática, e o painel **recusa subir** sem as duas do Supabase, dizendo qual falta, em vez de mostrar uma tela de login que não autentica:
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `VITE_API_BASE_URL` | não | Base dos endpoints da API. Padrão `/api` — em desenvolvimento o servidor do painel encaminha `/api` para `http://localhost:3000`, do mesmo jeito que o domínio único fará em produção |
+| `VITE_SUPABASE_URL` | sim | URL do projeto Supabase. O painel a usa **somente** para autenticar (SDD § D-03) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | sim | Chave publicável do Supabase (`sb_publishable_…`), usada só no login. Nunca alcança o banco, por duas barreiras independentes: neste projeto o Supabase a recusa já no portão da Data API (`Only secret API keys can be used for this endpoint`) e, além disso, as quatro tabelas negam a leitura para ela (ver "Verificar o isolamento da superfície pública") |
+
+`apps/lp` (modelo em [`apps/lp/.env.example`](apps/lp/.env.example)) — todas com valor padrão:
+
 | Variável | Descrição |
 |---|---|
-| `VITE_API_BASE_URL` | Base dos endpoints da API |
-| `VITE_SUPABASE_URL` | URL do projeto Supabase (usada só pelo painel, no login) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave publicável do Supabase (`sb_publishable_…`), usada só pelo painel, só no login. Nunca alcança o banco, por duas barreiras independentes: neste projeto o Supabase a recusa já no portão da Data API (`Only secret API keys can be used for this endpoint`) e, além disso, as quatro tabelas negam a leitura para ela (ver "Verificar o isolamento da superfície pública") |
 | `VITE_EBOOK_URL` | URL de download do e-book. Vazia enquanto a Virbac não entregar |
 | `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso |
+| `VITE_LEAD_SUBMIT_ENDPOINT` | Endpoint que recebe o formulário. Aposentado na T16, quando a LP passar a chamar `POST /api/leads` |
 
 ### Comandos
 
@@ -113,7 +142,7 @@ npm run preview      # serve o build da LP em http://localhost:4173
 
 Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w packages/content-schema`.
 
-A API tem dois comandos próprios, que não entram no `npm run dev` da raiz:
+A API tem três comandos próprios, que não entram no `npm run dev` da raiz:
 
 ```bash
 npm run start:dev -w apps/api      # API com recarga automática em http://localhost:3000/api
@@ -121,9 +150,24 @@ npm run start -w apps/api          # roda o build já gerado (exige npm run buil
 npm run migrate:content -w apps/api # carga inicial do conteúdo no CMS (ver "Migração inicial do conteúdo")
 ```
 
-Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0).
+E o painel tem os seus:
 
-`npm run dev` percorre os workspaces em sequência, então um servidor que não termina bloquearia os seguintes. Por isso a API expõe `start:dev` e não `dev`: `npm run dev` na raiz continua equivalendo a subir a LP. Quando o painel (T10) chegar, o script da raiz precisará de execução em paralelo para servir os três de uma vez — hoje ele ainda não tem.
+```bash
+npm run dev -w apps/admin        # painel em http://localhost:5174/admin/
+npm run build -w apps/admin      # gera apps/admin/dist/, com os assets sob /admin/
+npm run preview -w apps/admin    # serve o build do painel em http://localhost:4174/admin/
+npm run test -w apps/admin       # testes do painel (Vitest + Testing Library, em jsdom)
+```
+
+Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0; a T10 rodou em Node 24.18.0 e npm 11.16.0).
+
+**`npm run dev` na raiz sobe apenas a LP** (http://localhost:5173), e continuará assim. O script percorre os workspaces em sequência (`npm run dev --workspaces --if-present`), e o servidor da LP não termina — então nada depois dele chega a rodar. Por isso a API expõe `start:dev` em vez de `dev`. O painel tem `dev`, mas ele só é alcançado quando chamado direto com `-w apps/admin`. Para trabalhar nos três ao mesmo tempo, use um terminal para cada:
+
+```bash
+npm run dev -w apps/lp        # LP    → http://localhost:5173
+npm run dev -w apps/admin     # painel → http://localhost:5174/admin/
+npm run start:dev -w apps/api # API   → http://localhost:3000/api
+```
 
 ### Como rodar localmente
 
@@ -147,6 +191,19 @@ curl -s localhost:3000/api/health        # -> {"status":"ok"}
 ```
 
 A API sobe na **porta 3000** (mude com `PORT` no `.env`) e todas as rotas ficam sob o prefixo `/api`. Ela é um processo separado da LP: subir uma não sobe a outra, e a LP não depende dela para renderizar (SDD § D-08).
+
+Confirmado para o painel (T10):
+
+```bash
+cp apps/admin/.env.example apps/admin/.env  # e preencha as duas variáveis do Supabase
+npm run dev -w apps/admin                   # painel em http://localhost:5174/admin/
+```
+
+O painel sobe na **porta 5174** e é servido sob o caminho `/admin/` — abrir `http://localhost:5174/` devolve a mensagem de base incorreta do Vite, não o painel. O caminho existe desde já porque em produção painel e LP dividem o mesmo domínio (SDD § D-04): a raiz serve a página pública e `/admin` serve este build. `/admin` sem a barra final é redirecionado para `/admin/`, tanto no servidor de desenvolvimento quanto no `preview`; em produção, a configuração de rotas do domínio único (T16) precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele.
+
+**O painel precisa da API no ar** para fazer qualquer coisa além de autenticar: ele lê e grava conteúdo, mídia e leads sempre pela API, nunca direto no Supabase (SDD § "Camadas e padrão arquitetural"). Em desenvolvimento o servidor do painel encaminha `/api` para `http://localhost:3000`, então não há requisição entre origens a liberar — é o mesmo desenho do domínio único de produção. Com a API fora do ar, o painel entra normalmente e avisa na tela que não conseguiu falar com ela.
+
+Para conferir o build de produção do painel: `npm run build -w apps/admin && npm run preview -w apps/admin` (http://localhost:4174/admin/).
 
 As migrações **já foram aplicadas no projeto hospedado** (ver "Estado verificado"). O que ainda falta para a API servir conteúdo de verdade é a migração inicial do conteúdo atual para o CMS, que é a T9: até lá as tabelas estão vazias, e `GET /api/content` responde `200` com `{"sections":{},"metadata":null}` — vazio é o estado correto, não erro.
 
@@ -408,6 +465,8 @@ Na **T7** a sétima migração (`og_image_alt`) foi aplicada ao projeto hospedad
 
 Na **T9** a oitava migração (`allow_svg_in_images_bucket`) foi aplicada pelo mesmo caminho do pooler e o `verify-isolation.mjs` deu de novo **8 checagens, exit 0**, agora com o bucket de imagens reportando `tipos=6`. Em seguida a **carga inicial do conteúdo rodou contra o projeto hospedado**, com a API real: 17 mídias enviadas (15 imagens e 2 vídeos, incluindo o de 23,6 MB), 12 seções e os metadados gravados, `ingredientes` despublicada. O logo entrou como **SVG de 8.764 bytes** e é servido publicamente com `content-type: image/svg+xml`. `GET /api/content` devolveu 11 seções, sem nenhuma ocorrência de `PLACEHOLDER`, com as cinco perguntas prontas do FAQ nas posições 0, 2, 3, 4 e 6 — as posições 1 e 5 são as duas não publicadas, guardadas com o texto inteiro. **A migração foi rodada uma segunda vez e as contagens não se moveram:** 12 seções, 1 registro de metadados, 17 mídias, 15 + 2 + 0 objetos nos buckets, 40 itens de lista, e a resposta de `GET /api/content` com o mesmo hash antes e depois. O operador criado para a verificação foi removido (**0 usuários**), e o conteúdo **permanece no banco**: ele é a carga de que a T14 depende.
 
+Na **T10** o painel foi exercitado num navegador de verdade contra o Supabase e a API reais, nas duas formas em que ele roda — servidor de desenvolvimento e build de produção servido pelo `preview` —, com **14 checagens em cada uma, todas OK**: rota interna sem sessão cai no login sem que a área administrativa chegue a existir no documento; e-mail inexistente e senha errada devolvem exatamente a mesma mensagem; o login válido abre o painel com o operador identificado no cabeçalho; `GET /api/admin/sections` com o token respondeu `200` com as 12 seções e, sem token, `401`; recarregar a página manteve a sessão; sair devolveu ao login, apagou a chave do armazenamento e a área administrativa não reapareceu. O operador de verificação foi criado pela Auth Admin API e removido ao final (**0 usuários**), e a carga da T9 ficou intacta: 12 seções, 17 mídias, 1 registro de metadados, 0 leads.
+
 ### Como criar um operador do painel
 
 O CMS **não tem tela de gestão de usuários** — os operadores são criados no painel do
@@ -436,6 +495,31 @@ fora de escopo por decisão do PRD.
 > contra o JWKS do projeto (`SUPABASE_JWKS_URL`), sem que a API guarde nenhum segredo de
 > assinatura. Requisição sem token a um endpoint administrativo responde `401`; com o token
 > do operador, `200`.
+
+> **Verificado de novo na T10**, agora pelo painel, num navegador de verdade e contra o
+> Supabase e a API reais: o operador foi criado por esta mesma Auth Admin API, entrou pela
+> tela de login do painel, e a chamada autenticada a `GET /api/admin/sections` respondeu
+> `200`; a mesma chamada sem token respondeu `401`. O operador foi removido ao final, e o
+> projeto voltou a **0 usuários**.
+
+### Como o painel trata a sessão
+
+- **Onde a sessão vive:** no armazenamento do navegador do operador, sob a chave
+  `veggiedent-admin-auth` — própria do painel, para que a LP servida no mesmo domínio nunca
+  a compartilhe. É isso que faz a sessão sobreviver a recarregar a página.
+- **Renovação:** o token do Supabase é de vida curta e o painel o renova sozinho antes de
+  expirar. Se o Supabase ficar indisponível, a renovação falha e o operador é deslogado —
+  consequência aceita e declarada desde a T5, em que a API responde `401` quando não
+  consegue consultar o JWKS.
+- **Sair:** encerra a sessão no Supabase e apaga a chave do armazenamento. Se o servidor
+  falhar ao invalidar o token, a sessão local é apagada do mesmo jeito — sair é sempre
+  possível do lado do painel.
+- **Credenciais recusadas:** a mensagem é uma só, `E-mail ou senha inválidos.`, para senha
+  errada, e-mail inexistente e conta não confirmada. Separar esses casos diria a quem tenta
+  se aquele e-mail está cadastrado. Falha de rede tem mensagem própria, porque ali ninguém
+  chegou a julgar as credenciais.
+- **Nenhuma tela é alcançável sem sessão.** Um endereço interno aberto sem sessão leva ao
+  login, e o painel volta a ele depois que o operador entra.
 
 ### Migração inicial do conteúdo
 
@@ -512,6 +596,7 @@ Três imagens ficam de fora por não terem campo no esquema: os infográficos SV
 - **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
 - **Formato de erro:** toda rota que falha responde `{ statusCode, error, fields? }`, e nada além disso — `fields` mapeia o caminho do campo (`hero.headline`) para a mensagem em português. A mensagem é escolhida a partir do status, nunca copiada da exceção, para que caminho de arquivo, nome de variável de ambiente ou detalhe do Supabase fiquem no log do servidor e não na resposta. Erro de validação responde `422`, como o SDD determina, e não o `400` padrão do NestJS.
 - **Autenticação da API:** o painel autentica no Supabase Auth e manda o token em `Authorization: Bearer <token>`; a API o verifica contra o JWKS do projeto (SDD § D-03). A guarda é **global e nega por padrão**: um endpoint novo, criado sem nenhuma marcação, nasce protegido, e só fica público se alguém escrever `@Public()` nele de propósito — esquecer leva a "bloqueado", nunca a "exposto". Toda recusa sai como `401` no formato único de erro, sem distinguir token ausente de expirado ou de assinatura inválida, para não virar oráculo de tokens válidos; o motivo fica no log do servidor, em texto fixo que nunca inclui o token. Os testes de autenticação não tocam a rede: geram um par ES256 próprio, assinam os tokens localmente e apontam a verificação a um JWKS servido em `127.0.0.1`.
+- **Proteção de rota do painel:** os testes do painel não tocam a rede — o dublê entra no lugar do cliente do Supabase, e adaptador, provedor, guarda, roteador e telas exercitados são os de produção. A guarda é provada por mutação, não por leitura: removê-la derruba as 9 provas de rota e sessão, e removê-la **apenas** no estado `verificando` — o caso em que o painel piscaria conteúdo protegido e só depois redirigiria — ainda derruba 3, porque três testes registram cada nó inserido no documento e falham se a área administrativa chegou a existir, ainda que por um quadro. Uma verificação feita depois de a tela assentar não pegaria isso.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
 ## Atualização e monitoramento
