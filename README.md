@@ -201,6 +201,62 @@ esquema da seção em `packages/content-schema/src/sections/`: ele passa a ser v
 a aparecer no formulário do painel e a existir no tipo consumido pela LP, sem nenhuma alteração
 no código do painel. Isso é verificado por mutação na T11 — ver "Estado verificado".
 
+## As telas do painel
+
+O painel tem quatro telas, todas atrás do login. **Nenhuma delas é alcançável sem sessão**: a
+guarda é uma rota de layout, e toda rota nova nasce dentro dela — expor uma tela exigiria
+declará-la fora da guarda, de propósito.
+
+| Tela | Endereço | O que faz |
+|---|---|---|
+| Início | `/admin/` | Caminhos para as demais e a confirmação de que a API aceitou a sessão |
+| Seções da página | `/admin/secoes` | As 12 seções, na ordem da página, com data da última edição e visibilidade |
+| Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
+| Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
+
+### Metadados da página
+
+Edita o que buscadores e redes sociais mostram sobre a página: **título**, **descrição**,
+**endereço oficial** (a URL canônica) e a **imagem de compartilhamento** com seu **texto
+alternativo**. Salvar publica — não há rascunho nem visibilidade, porque os metadados sempre
+valem.
+
+O formulário é gerado do esquema `packages/content-schema/src/site-metadata.ts`, o mesmo
+mecanismo das seções: acrescentar um campo lá o faz aparecer na tela sem tocar no painel. A
+imagem usa o campo de mídia das seções, com envio direto ao armazenamento — o operador nunca
+digita identificador de mídia. A descrição da imagem é **obrigatória quando há imagem**, e o
+painel recusa salvar antes de chamar a API.
+
+A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a arte — ver
+"Pendências herdadas". Com o campo vazio, a LP usa a reserva declarada no `index.html`.
+
+### Leads recebidos
+
+- **Ordem:** do mais recente ao mais antigo. A API já responde assim, e a tela ordena de novo
+  por conta própria: a ordem que o operador vê é promessa do painel, não da resposta.
+- **Data:** exibida em **horário de Brasília (UTC−3)**, o dia que o operador viveu. Um lead
+  enviado às 23h de 2 de setembro aparece como dia 2, ainda que o banco o guarde como 3 de
+  setembro em UTC.
+- **Filtro por período:** dois dias, inclusivos nos dois extremos. O corte do dia é feito pela
+  API, também em horário de Brasília. O painel manda o dia escolhido e não converte nada — fuso
+  resolvido em dois lugares vira dois resultados diferentes na primeira vez que um deles mudar.
+- **Colunas:** uma por campo que o visitante preenche, mais data de recebimento, origem e o
+  resultado do repasse ao RD Station. **Não há coluna de aceite da Política de Privacidade**:
+  sem consentimento nenhum lead é gravado, então ela só poderia dizer "sim" e não prova nada
+  que a existência da linha já não prove.
+- **Exportação em CSV:** `Exportar CSV do período` baixa o arquivo respeitando o **filtro
+  aplicado** — o que está digitado sem filtrar não conta, porque exportaria um período que o
+  operador não viu na tela. O arquivo é montado pela API e entregue ao navegador **sem ser
+  reescrito**, para que o BOM UTF-8 e o separador `;` que fazem o Excel em português abrir a
+  planilha certa cheguem intactos.
+- **Paginação:** aparece só quando o período não cabe em uma página (50 leads).
+- **Exclusão:** em dois passos, para o pedido do titular — ver "Manutenção".
+
+> **Divergência conhecida, escopo da T18:** a data na tela está em horário de Brasília, mas a
+> coluna `Data de envio (UTC)` do CSV continua em UTC. O mesmo lead pode, portanto, aparecer
+> como 2 de setembro na tela e 3 de setembro na planilha. O alinhamento dos dois está previsto
+> na T18, junto com a remoção da coluna `aceite_lgpd` do banco.
+
 ## Acesso e execução do código
 
 ### Variáveis de ambiente
@@ -484,6 +540,8 @@ O envio do formulário passou a ser um endpoint da API (SDD § D-07). A função
 
 **O CSV abre no Excel em português.** Três decisões, cada uma resolvendo um jeito específico de o arquivo chegar errado: **BOM UTF-8** no início (sem ele, "Comunicações" vira "ComunicaÃ§Ãµes" no Windows), **ponto e vírgula** como separador (na configuração regional pt-BR a vírgula é separador decimal, e com ela a planilha inteira cai numa coluna só) e fim de linha **CRLF**. A data sai como `02/09/2026 13:45:07`, e a coluna diz explicitamente que está em UTC. Uma célula que começaria por `=`, `+`, `-` ou `@` recebe um apóstrofo à frente: o conteúdo do lead é texto que um desconhecido digitou num formulário público, e sem isso a planilha executaria a célula como fórmula ao abrir o arquivo. A exportação é limitada a 10.000 linhas por chamada, porque o arquivo é montado em memória antes de ser enviado.
 
+**As colunas do CSV são as da regra de negócio RN-01:** uma por campo que o visitante preenche (nome, e-mail, telefone, nome e porte do cachorro, cidade e estado, conhece a Virbac, usa produto Virbac, qual produto Virbac e o opt-in de comunicações), mais data de envio, origem e o resultado do repasse ao RD Station. **Não existe coluna de aceite da Política de Privacidade**: sem consentimento nenhum lead é gravado, então a coluna só poderia dizer "sim" e não prova nada que a existência da linha já não prove (ver `agent_context/CHANGELOG.md`, 2026-09-02). A validação que **exige** o consentimento continua onde estava; o que saiu foi só a coluna. Remover a coluna do banco é escopo da T18.
+
 ### Banco de dados e armazenamento
 
 O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, aplicadas na ordem do nome do arquivo:
@@ -754,6 +812,7 @@ infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói
 - **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
 - **Formato de erro:** toda rota que falha responde `{ statusCode, error, fields? }`, e nada além disso — `fields` mapeia o caminho do campo (`hero.headline`) para a mensagem em português. A mensagem é escolhida a partir do status, nunca copiada da exceção, para que caminho de arquivo, nome de variável de ambiente ou detalhe do Supabase fiquem no log do servidor e não na resposta. Erro de validação responde `422`, como o SDD determina, e não o `400` padrão do NestJS.
 - **Autenticação da API:** o painel autentica no Supabase Auth e manda o token em `Authorization: Bearer <token>`; a API o verifica contra o JWKS do projeto (SDD § D-03). A guarda é **global e nega por padrão**: um endpoint novo, criado sem nenhuma marcação, nasce protegido, e só fica público se alguém escrever `@Public()` nele de propósito — esquecer leva a "bloqueado", nunca a "exposto". Toda recusa sai como `401` no formato único de erro, sem distinguir token ausente de expirado ou de assinatura inválida, para não virar oráculo de tokens válidos; o motivo fica no log do servidor, em texto fixo que nunca inclui o token. Os testes de autenticação não tocam a rede: geram um par ES256 próprio, assinam os tokens localmente e apontam a verificação a um JWKS servido em `127.0.0.1`.
+- **Telas de metadados e de leads (T13):** verificadas em navegador de verdade, contra a API e o Supabase reais, com três leads criados por `POST /api/leads` e apagados ao final. Abrir `/admin/leads` ou `/admin/metadados` sem sessão levou ao login **sem a área administrativa chegar ao DOM**; a listagem saiu do mais recente ao mais antigo, com as datas em horário de Brasília; o filtro `02/09` a `02/09` trouxe **só** o lead recebido às 23h30 de 2 de setembro em Brasília (3 de setembro em UTC) — recortar em UTC o teria deixado de fora, que é justamente o defeito que o critério C-12 proíbe; o CSV baixado começou com os bytes `ef bb bf`, usou `;` (13 separadores, 14 colunas, nenhuma vírgula), abriu com a acentuação intacta e **sem coluna de aceite LGPD**, e respeitou o filtro aplicado (1 linha filtrada contra 3 sem filtro); a exclusão pela tela não apagou nada no primeiro clique e só apagou depois da confirmação. A gravação dos metadados foi exercitada e **os valores originais foram devolvidos e conferidos campo a campo**.
 - **Proteção de rota do painel:** os testes do painel não tocam a rede — o dublê entra no lugar do cliente do Supabase, e adaptador, provedor, guarda, roteador e telas exercitados são os de produção. A guarda é provada por mutação, não por leitura: removê-la derruba as 9 provas de rota e sessão, e removê-la **apenas** no estado `verificando` — o caso em que o painel piscaria conteúdo protegido e só depois redirigiria — ainda derruba 3, porque três testes registram cada nó inserido no documento e falham se a área administrativa chegou a existir, ainda que por um quadro. Uma verificação feita depois de a tela assentar não pegaria isso.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
@@ -781,9 +840,21 @@ infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói
 
   Fora do pacote, duas coisas continuam sendo trabalho manual: a LP só exibe o campo quando o componente da seção passar a renderizá-lo; e um campo **obrigatório** acrescentado depois da migração inicial (T9) invalida os documentos já gravados até que alguém preencha o valor pelo painel — para evitar isso, crie-o com `required: false`, preencha o conteúdo e só então torne-o obrigatório.
 
-- **Excluir um lead a pedido do titular (LGPD):** a exclusão é **definitiva e não tem desfazer** — é isso que o titular está pedindo. A tela de leads do painel (T13) fará isso com confirmação; até ela existir, e sempre que for preciso fazer pela API, o procedimento é este:
+- **Excluir um lead a pedido do titular (LGPD):** a exclusão é **definitiva e não tem desfazer** — é isso que o titular está pedindo.
+
+  **Pelo painel, que é o caminho normal:**
 
   1. **Registre o pedido** antes de apagar: quem pediu, por qual canal e quando. Depois da exclusão não sobra no banco nada que ligue o pedido ao registro apagado — só o log do servidor, que guarda o identificador do lead e o do operador que executou.
+  2. Abra **Leads recebidos** no painel. Se souber a data do envio, use o filtro por período para encurtar a lista; o dia é o de Brasília.
+  3. **Se o titular quiser uma cópia dos próprios dados antes**, use `Exportar CSV do período` e recorte a linha dele.
+  4. Na linha do titular, clique em **Excluir o lead de \<nome\>**. Nada é apagado neste clique: a linha passa a perguntar *"Excluir para sempre? Não há desfazer."*.
+  5. Confirme em **Confirmar a exclusão do lead de \<nome\>**. A linha some da lista e a tela confirma com *"Lead excluído definitivamente."*.
+  6. **Um mesmo titular pode ter mais de um envio.** O pedido alcança **todos** eles: repita para cada linha com aquele e-mail, e confira a lista depois.
+  7. **O RD Station é um sistema separado** — ver o item 6 do procedimento por API, abaixo.
+
+  **Pela API**, quando for preciso fazer em lote ou sem abrir o painel:
+
+  1. **Registre o pedido**, como acima.
   2. **Encontre o lead pelo e-mail do titular**, com um token de operador válido:
 
      ```bash
@@ -805,7 +876,7 @@ infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói
   5. **Confirme** repetindo a busca do passo 2: nenhum lead com aquele e-mail deve restar.
   6. **O RD Station é um sistema separado.** Apagar o lead aqui não apaga o contato lá. Se o lead chegou a ser repassado (`rdstationStatus: "ok"` na listagem, ou a coluna "Status RD Station" no CSV), o pedido do titular precisa ser encaminhado também ao RD Station, pela conta da Virbac. Um lead com status `falhou` ou `nao_enviado` nunca chegou lá.
 
-  Nunca apague um lead direto no banco pelo painel do Supabase: o caminho pela API é o único que fica registrado no log do servidor, e é esse registro que sustenta a resposta ao titular caso o pedido seja questionado depois.
+  Nunca apague um lead direto no banco pelo painel do Supabase: os dois caminhos acima passam pela API, que registra a exclusão no log do servidor com o identificador do lead e o do operador — e é esse registro que sustenta a resposta ao titular caso o pedido seja questionado depois. O painel do Supabase apaga sem deixar rastro nenhum.
 - **Limpeza de arquivos órfãos no armazenamento:** um upload interrompido entre o passo 2 e o passo 3 do envio de mídia deixa um arquivo no bucket sem linha correspondente em `media_assets` (risco R-04 do SDD). O arquivo é **inerte** — nenhum documento de seção o referencia, porque referência é sempre por identificador de mídia, e identificador só existe depois da confirmação — mas ocupa espaço e é o único resíduo previsto do fluxo.
 
   A conciliação é uma diferença entre duas listas, e a coluna `storage_path` foi guardada qualificada pelo bucket (`veggiedent-videos/<uuid>/<arquivo>`) justamente para que ela seja direta:
