@@ -76,3 +76,121 @@ describe('AdminApiClient sem fetch injetado', () => {
     vi.unstubAllGlobals()
   })
 })
+
+/**
+ * O contrato com a API, verificado onde ele de fato existe: método, caminho,
+ * cabeçalhos e corpo. Teste verde de tela não prova nada disto — a T6 e a T10
+ * já mostraram que a divergência entre painel e API mora exatamente aqui.
+ */
+describe('AdminApiClient — seções', () => {
+  function respondeCom(status: number, body: unknown): typeof fetch {
+    return vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }),
+    ) as unknown as typeof fetch
+  }
+
+  const RESUMO = {
+    key: 'faq',
+    label: 'Perguntas frequentes',
+    isPublished: true,
+    updatedAt: '2026-09-03T12:00:00.000Z',
+  }
+
+  it('lista as seções na rota administrativa, com o token', async () => {
+    const fetchResource = respondeCom(200, { sections: [RESUMO] })
+
+    const resultado = await new AdminApiClient('/api', fetchResource).listSections(TOKEN)
+
+    expect(fetchResource).toHaveBeenCalledWith('/api/admin/sections', {
+      method: 'GET',
+      headers: { authorization: `Bearer ${TOKEN}` },
+    })
+    expect(resultado).toEqual({ status: 'ok', value: [RESUMO] })
+  })
+
+  it('lê o documento completo de uma seção', async () => {
+    const fetchResource = respondeCom(200, { ...RESUMO, data: { heading: 'Olá' } })
+
+    const resultado = await new AdminApiClient('/api', fetchResource).getSection(TOKEN, 'faq')
+
+    expect(fetchResource).toHaveBeenCalledWith('/api/admin/sections/faq', expect.anything())
+    expect(resultado).toMatchObject({ status: 'ok', value: { data: { heading: 'Olá' } } })
+  })
+
+  it('grava a seção com PUT e o documento no corpo', async () => {
+    const fetchResource = respondeCom(200, { ...RESUMO, data: { heading: 'Olá' } })
+
+    await new AdminApiClient('/api', fetchResource).saveSection(TOKEN, 'faq', {
+      heading: 'Olá',
+    })
+
+    expect(fetchResource).toHaveBeenCalledWith('/api/admin/sections/faq', {
+      method: 'PUT',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: '{"heading":"Olá"}',
+    })
+  })
+
+  it('traduz o 422 da API em recusa por campo, não em falha genérica', async () => {
+    const fetchResource = respondeCom(422, {
+      statusCode: 422,
+      error: 'Dados inválidos.',
+      fields: { 'faq.heading': 'Campo obrigatório.' },
+    })
+
+    const resultado = await new AdminApiClient('/api', fetchResource).saveSection(
+      TOKEN,
+      'faq',
+      {},
+    )
+
+    expect(resultado).toEqual({
+      status: 'invalido',
+      fields: { 'faq.heading': 'Campo obrigatório.' },
+    })
+  })
+
+  it('usa a mensagem que a API mandou quando a recusa não é de campo', async () => {
+    const fetchResource = respondeCom(404, {
+      statusCode: 404,
+      error: 'Recurso não encontrado.',
+    })
+
+    const resultado = await new AdminApiClient('/api', fetchResource).getSection(TOKEN, 'faq')
+
+    expect(resultado).toEqual({ status: 'falha', message: 'Recurso não encontrado.' })
+  })
+
+  it('separa a API fora do ar de uma recusa dela', async () => {
+    const fetchResource = vi
+      .fn()
+      .mockRejectedValue(new TypeError('fetch failed')) as unknown as typeof fetch
+
+    const resultado = await new AdminApiClient('/api', fetchResource).listSections(TOKEN)
+
+    expect(resultado).toEqual({
+      status: 'falha',
+      message: 'Não foi possível falar com a API do CMS.',
+    })
+  })
+
+  it('liga e desliga a seção com PATCH na rota de visibilidade', async () => {
+    const fetchResource = respondeCom(200, { ...RESUMO, isPublished: false })
+
+    const resultado = await new AdminApiClient('/api', fetchResource).setSectionVisibility(
+      TOKEN,
+      'faq',
+      false,
+    )
+
+    expect(fetchResource).toHaveBeenCalledWith('/api/admin/sections/faq/visibility', {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: '{"isPublished":false}',
+    })
+    expect(resultado).toMatchObject({ status: 'alterada' })
+  })
+})
