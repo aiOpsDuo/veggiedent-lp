@@ -1,20 +1,22 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { MEDIA_KIND_POLICIES, MEDIA_KINDS, policyForMimeType } from './media-kind'
 
 /**
- * A política de cada bucket é declarada em dois lugares: na migração, que é
+ * A política de cada bucket é declarada em dois lugares: nas migrações, que são
  * quem o armazenamento obedece, e neste módulo, que recusa o arquivo antes de
  * emitir credencial. Duas cópias da mesma regra divergem com o tempo — a menos
  * que algo compare as duas.
  *
- * Este teste lê a migração de verdade. Um limite mudado lá sem ser mudado aqui
- * faria a API emitir credencial para um arquivo que o armazenamento recusaria
- * no meio do envio; mudado aqui sem ser lá, faria a API recusar um arquivo que
- * caberia.
+ * Este teste lê as migrações de verdade e as aplica na mesma ordem que o banco
+ * aplicaria, porque a política de um bucket não vive num arquivo só: ela é
+ * criada em uma migração e alterada em outra. Um limite mudado lá sem ser mudado
+ * aqui faria a API emitir credencial para um arquivo que o armazenamento
+ * recusaria no meio do envio; mudado aqui sem ser lá, faria a API recusar um
+ * arquivo que caberia.
  */
 
-const MIGRATION = join(
+const MIGRATIONS_DIRECTORY = join(
   __dirname,
   '..',
   '..',
@@ -24,42 +26,64 @@ const MIGRATION = join(
   '..',
   'supabase',
   'migrations',
-  '20260902120500_create_storage_buckets.sql',
 )
 
 interface DeclaredBucket {
-  readonly fileSizeLimit: number
-  readonly allowedMimeTypes: readonly string[]
+  fileSizeLimit: number
+  allowedMimeTypes: readonly string[]
 }
 
 /**
- * Lê os `values (...)` do `insert into storage.buckets` da migração. O parser é
- * deliberadamente ingênuo — se ele deixar de reconhecer a migração, o teste
- * falha em vez de aprovar por não ter encontrado nada.
+ * Os parsers são deliberadamente ingênuos — se deixarem de reconhecer uma
+ * migração, o teste falha em vez de aprovar por não ter encontrado nada.
  */
-function declaredBuckets(): Map<string, DeclaredBucket> {
-  const sql = readFileSync(MIGRATION, 'utf8')
-  const entries = new Map<string, DeclaredBucket>()
+const BUCKET_INSERT = /\(\s*'([a-z-]+)',\s*'[a-z-]+',\s*true,\s*(\d+),[^[]*array\[([^\]]*)\]/g
+const MIME_TYPES_UPDATE =
+  /update\s+storage\.buckets\s+set\s+allowed_mime_types\s*=\s*array\[([^\]]*)\][^;]*?where\s+id\s*=\s*'([a-z-]+)'/gis
 
-  const bucketBlock =
-    /\(\s*'([a-z-]+)',\s*'[a-z-]+',\s*true,\s*(\d+),[^[]*array\[([^\]]*)\]/g
-  for (const [, id, limit, types] of sql.matchAll(bucketBlock)) {
-    entries.set(id as string, {
+function toMimeTypeList(declared: string): string[] {
+  return declared
+    .split(',')
+    .map((type) => type.trim().replace(/^'|'$/g, ''))
+    .filter((type) => type.length > 0)
+}
+
+function applyInserts(sql: string, buckets: Map<string, DeclaredBucket>): void {
+  for (const [, id, limit, types] of sql.matchAll(BUCKET_INSERT)) {
+    buckets.set(id as string, {
       fileSizeLimit: Number(limit),
-      allowedMimeTypes: (types as string)
-        .split(',')
-        .map((type) => type.trim().replace(/^'|'$/g, ''))
-        .filter((type) => type.length > 0),
+      allowedMimeTypes: toMimeTypeList(types as string),
     })
   }
+}
 
-  return entries
+function applyMimeTypeUpdates(sql: string, buckets: Map<string, DeclaredBucket>): void {
+  for (const [, types, id] of sql.matchAll(MIME_TYPES_UPDATE)) {
+    const bucket = buckets.get(id as string)
+    if (bucket === undefined) {
+      throw new Error(`Migração altera um bucket que nenhuma migração anterior criou: ${id}`)
+    }
+    bucket.allowedMimeTypes = toMimeTypeList(types as string)
+  }
+}
+
+/** O estado dos buckets depois de todas as migrações, na ordem do nome. */
+function declaredBuckets(): Map<string, DeclaredBucket> {
+  const buckets = new Map<string, DeclaredBucket>()
+
+  for (const file of readdirSync(MIGRATIONS_DIRECTORY).sort()) {
+    const sql = readFileSync(join(MIGRATIONS_DIRECTORY, file), 'utf8')
+    applyInserts(sql, buckets)
+    applyMimeTypeUpdates(sql, buckets)
+  }
+
+  return buckets
 }
 
 describe('política de bucket por natureza de mídia', () => {
   const buckets = declaredBuckets()
 
-  it('encontra os três buckets na migração — o teste não pode passar por não achar nada', () => {
+  it('encontra os três buckets nas migrações — o teste não pode passar por não achar nada', () => {
     expect([...buckets.keys()].sort()).toEqual([
       'veggiedent-captions',
       'veggiedent-images',
@@ -67,7 +91,7 @@ describe('política de bucket por natureza de mídia', () => {
     ])
   })
 
-  it.each(MEDIA_KINDS)('a política de %s repete o que a migração declara', (kind) => {
+  it.each(MEDIA_KINDS)('a política de %s repete o que as migrações declaram', (kind) => {
     const policy = MEDIA_KIND_POLICIES[kind]
     const declared = buckets.get(policy.bucket)
 
@@ -82,9 +106,15 @@ describe('política de bucket por natureza de mídia', () => {
     expect(policyForMimeType('text/vtt')?.kind).toBe('caption')
   })
 
-  /** SVG está fora da lista de propósito: é documento executável (ver migração). */
+  /**
+   * SVG entrou na lista por decisão registrada no CHANGELOG de 2026-09-02: a LP
+   * usa quatro SVGs reais e só operador autenticado envia arquivo.
+   */
+  it('reconhece SVG como imagem', () => {
+    expect(policyForMimeType('image/svg+xml')?.kind).toBe('image')
+  })
+
   it('não reconhece tipo fora das listas declaradas', () => {
-    expect(policyForMimeType('image/svg+xml')).toBeUndefined()
     expect(policyForMimeType('application/pdf')).toBeUndefined()
   })
 })

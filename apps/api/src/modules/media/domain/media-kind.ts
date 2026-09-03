@@ -2,13 +2,16 @@
  * As três naturezas de mídia e a política de armazenamento de cada uma
  * (SDD § "Modelo de dados" — `media_assets.kind` — e § D-05).
  *
- * Um bucket por natureza, com limite de tamanho e lista de tipos próprios. A
- * fonte da verdade é a migração `20260902120500_create_storage_buckets.sql`: o
- * próprio armazenamento recusa o que estiver fora dessas faixas, e este
+ * Um bucket por natureza, com limite de tamanho e lista de tipos próprios. Quem
+ * manda é o armazenamento: ele recusa o que estiver fora dessas faixas. Este
  * catálogo existe para recusar **antes** de emitir a credencial, com mensagem
  * em português, em vez de deixar o navegador descobrir a recusa no meio do
- * upload. `media-kind.spec.ts` compara os dois lado a lado e falha se
- * divergirem.
+ * upload.
+ *
+ * A fonte da verdade não é um arquivo de migração só: é o estado que resulta de
+ * todas as migrações de `supabase/migrations/` aplicadas em ordem — o bucket de
+ * imagens foi criado sem `image/svg+xml` e passou a aceitá-lo depois.
+ * `media-kind.spec.ts` reconstrói esse estado e falha se ele divergir daqui.
  */
 
 export const MEDIA_KINDS = ['image', 'video', 'caption'] as const
@@ -33,7 +36,14 @@ export const MEDIA_KIND_POLICIES: Readonly<Record<MediaKind, MediaKindPolicy>> =
     bucket: 'veggiedent-images',
     label: 'imagem',
     maxBytes: 10 * MEGABYTE,
-    acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'],
+    acceptedMimeTypes: [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/avif',
+      'image/gif',
+      'image/svg+xml',
+    ],
   },
   video: {
     kind: 'video',

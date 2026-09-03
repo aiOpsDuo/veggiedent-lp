@@ -137,12 +137,12 @@ describe('rotas administrativas de mídia', () => {
     })
 
     it('recusa tipo de arquivo não suportado com mensagem clara em português', async () => {
-      const response = await pedirCredencial({ contentType: 'image/svg+xml' }, 2048)
+      const response = await pedirCredencial({ contentType: 'application/pdf' }, 2048)
 
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(response.body.error).toBe('Dados inválidos.')
       expect(response.body.fields.contentType).toBe(
-        'Tipo de arquivo não suportado. Tipos aceitos: image/jpeg, image/png, image/webp, image/avif, image/gif, video/mp4, video/webm, text/vtt.',
+        'Tipo de arquivo não suportado. Tipos aceitos: image/jpeg, image/png, image/webp, image/avif, image/gif, image/svg+xml, video/mp4, video/webm, text/vtt.',
       )
       expect(harness.database.storage.issuedCredentials).toHaveLength(0)
     })
