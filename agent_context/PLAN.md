@@ -204,7 +204,15 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Dependências: T11, T7
 - Execução: sequencial (mesmo app)
 - Toca documentação: não — fluxo já documentado na T7.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-03, branch `feat/T12-campos-de-midia` (6 commits, sem merge). Verificação do orquestrador: typecheck 0 erros, **690 testes** (144 painel + 396 API + 145 content-schema + 5 LP), build limpo, árvore limpa, os três caminhos da entrada única respondendo.
+- Verifiquei pessoalmente o ponto de maior risco — o subagente alterou conteúdo real da página durante a verificação e restaurou: `media_assets` de volta a **24**, `hero.image` apontando para `virbac-kv-hero.png`, `hero.headline` **idêntica** ao texto do `Hero.content.ts` original, os 2 vídeos nos arquivos originais, e só o operador do usuário no projeto.
+- **Prova de que os bytes não passam pela API, medida no navegador:** durante o envio de imagem, o maior corpo enviado a `:5173/api` foi **135 B**, contra `PUT 240.041 B` direto ao armazenamento; no vídeo, **137 B** contra o arquivo inteiro pelo caminho retomável. O subagente notou que `requestBodySize` do Playwright volta `0` em requisições entre origens e mediria "0 bytes pela API" sem provar nada — mediu pelo CDP. Envio em blocos confirmado com o vídeo de 23,6 MB: `POST 6.291.456` + três `PATCH` somando exatamente 24.741.168 B.
+- **Terceiro defeito do projeto encontrado só em navegador real, com a suíte inteira verde.** A primeira versão do campo marcava "já pedi esta mídia" antes de a resposta chegar; sob `StrictMode` o efeito monta duas vezes, a segunda via a marca e não pedia de novo, e a resposta da primeira era descartada — prévia presa em "Carregando…". **jsdom não monta em `StrictMode`.** Corrigido e provado por mutação. Junta-se ao `fetch` sem contexto global da T10 e ao UUID cru da T6: o padrão está consolidado e justifica a exigência de verificação em navegador em toda tarefa de painel.
+- Desvio declarado e aceito: a T11 decidiu "campo obrigatório vazio vai para a API recusar", mas o texto alternativo de imagem informativa é recusado **no próprio painel**, porque o critério da T12 pedia isso. Está isolado num módulo puro e comentado.
+- Limitação declarada e aceita: "retomável" é o que o protocolo entrega — bloco aceito fica aceito e queda de conexão recomeça do último deslocamento —, mas **não há retomada entre recarregamentos da página**, porque credencial e caminho são emitidos a cada tentativa. Documentado no README sem prometer o que não faz.
+- Duplicação declarada: o catálogo de tipos e limites existe na API e agora também no painel, inerente ao requisito de recusar antes de qualquer chamada. Mitigada por um teste do painel que **lê as migrações** e falha se as duas listas divergirem.
+- O subagente corrigiu, por iniciativa própria, a fragilidade posicional que eu havia sinalizado na T11: o teste que lia `hero.fields[5]` passou a achar o campo por nome.
+- Peso: o pacote do painel foi de 425 KB para **494 KB** com o cliente de envio retomável. Não afeta a LP.
 
 ### T13 — Painel: metadados e leads
 - Descrição: tela de edição dos metadados da página e tela de leads com listagem do mais recente ao mais antigo, filtro por período, exportação em CSV e exclusão com confirmação.
