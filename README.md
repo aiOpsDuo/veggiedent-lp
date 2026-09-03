@@ -292,6 +292,7 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 | `VITE_EBOOK_URL` | URL de download do e-book. Vazia enquanto a Virbac não entregar |
 | `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso |
 | `VITE_LEAD_SUBMIT_ENDPOINT` | Endpoint que recebe o formulário. Aposentado na T16, quando a LP passar a chamar `POST /api/leads` |
+| `VITE_CONTENT_ENDPOINT` | De onde a LP lê o conteúdo publicado. Padrão `/api/content` — relativo porque LP e API compartilham domínio |
 
 ### Comandos
 
@@ -304,6 +305,7 @@ npm run build        # build de todos os workspaces; gera apps/lp/dist/ e apps/a
 npm run typecheck    # checagem de tipos de todos os workspaces
 npm run test         # testes de todos os workspaces (Vitest na LP, no painel e em packages/, Jest na API)
 npm run preview      # serve o build da LP em http://localhost:4173
+npm run instantaneo  # regenera o instantâneo de conteúdo da LP (ver "Instantâneo de conteúdo")
 ```
 
 Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w packages/content-schema`.
@@ -313,7 +315,6 @@ Cada aplicação também roda isolada. Isso serve para depurar uma delas, **não
 ```bash
 npm run start:dev -w apps/api       # API sozinha, com recarga automática
 npm run start -w apps/api           # roda o build já gerado (exige npm run build -w apps/api antes)
-npm run migrate:content -w apps/api # carga inicial do conteúdo no CMS (ver "Migração inicial do conteúdo")
 npm run dev -w apps/admin           # painel sozinho
 npm run build -w apps/admin         # gera apps/admin/dist/, com os assets sob /admin/
 npm run preview -w apps/admin       # serve o build do painel em http://localhost:4174/admin/
@@ -675,7 +676,7 @@ Na **T12** os campos de mídia foram exercitados num **navegador de verdade** (C
 
 **Banco devolvido ao estado em que estava.** As duas seções tocadas (`hero` e `demonstracao`) foram restauradas e conferidas **campo a campo** contra o documento original; as três mídias criadas na verificação foram removidas pela própria API (`204` em cada uma). As contagens fecharam onde começaram: **12 seções, 24 mídias, 1 registro de metadados, 0 leads**, com 22 objetos no bucket de imagens, 2 no de vídeos e 0 no de legendas. O operador de verificação foi criado pela Auth Admin API e removido ao final; restou apenas o operador do usuário.
 
-**Limite do que foi verificado:** a LP ainda lê os arquivos `*.content.ts` e **não consome `GET /api/content`** — isso é escopo declarado da T14. Por isso "a imagem aparece na página" foi verificado até a fronteira do conteúdo publicado (a resposta de `GET /api/content` e a URL pública servindo os bytes) e na prévia do painel, **não** na LP renderizada.
+**A verificação foi completada na T14**, quando a LP passou a consumir `GET /api/content`: as imagens do CMS aparecem na página renderizada, conferidas em navegador real (ver "De onde a LP tira o conteúdo").
 
 A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
@@ -733,95 +734,129 @@ fora de escopo por decisão do PRD.
 - **Nenhuma tela é alcançável sem sessão.** Um endereço interno aberto sem sessão leva ao
   login, e o painel volta a ele depois que o operador entra.
 
-### Migração inicial do conteúdo
+### De onde a LP tira o conteúdo
 
-O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais onze imagens
-que os componentes importam direto (o logo, a arte do herói, o packshot, o kit de imagens da
-prova de autoridade e as seis fotos do mosaico do formulário) e dois vídeos servidos de
-`apps/lp/public/videos/`.
-`npm run migrate:content -w apps/api` leva tudo isso para o CMS **uma vez**, e é a carga de
-que a LP passa a depender na T14.
+A landing page **não tem mais texto nem imagem escritos em código**. Toda seção lê
+`GET /api/content` — uma resposta só, com as seções publicadas e os metadados da página
+(SDD § "Endpoints públicos"). O comando abaixo confirma que não sobrou nenhum arquivo de
+conteúdo:
 
 ```bash
-# 1. o banco precisa estar migrado e a API no ar
-npm run start -w apps/api
-
-# 2. em outro terminal, com um operador já criado no Supabase Auth
-CMS_OPERATOR_EMAIL=<e-mail do operador> \
-CMS_OPERATOR_PASSWORD=<senha> \
-  npm run migrate:content -w apps/api
+find apps/lp/src -name "*.content.ts"   # não retorna nada
 ```
 
-O script lê `apps/api/.env` (`SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY`, para trocar e-mail
-e senha por um token) e aceita mais duas variáveis: `CMS_API_URL`, que aponta para outra
-API (padrão `http://localhost:3000/api`), e `CMS_ACCESS_TOKEN`, um token de operador pronto,
-no lugar do par e-mail/senha.
+Como isso está montado, em quatro peças pequenas dentro de `apps/lp/src/content/`:
 
-**O que ele faz**, nesta ordem — que é a única possível, porque um campo de imagem guarda o
-identificador da mídia e o esquema recusa qualquer outra coisa:
+| Arquivo | Papel |
+|---|---|
+| `published-content.ts` | Os tipos da resposta, derivados de `@veggiedent/content-schema`. A LP não redeclara a forma do conteúdo: um campo novo no esquema aparece aqui sozinho |
+| `fetch-published-content.ts` | A leitura HTTP. Nunca lança: API fora do ar, `500` ou corpo ilegível viram todos `null`, porque os três têm o mesmo destino |
+| `PublishedContentProvider.tsx` | O estado da página. Começa pelo instantâneo embutido e troca pelo conteúdo da API quando ela responde |
+| `connect-section.tsx` | Liga um componente de seção à sua chave. Seção que a API não entrega (porque está despublicada) simplesmente não é renderizada — nem o título |
 
-1. **Executa** os `*.content.ts` de verdade, em vez de repetir seus textos. Não há uma
-   segunda cópia do Copy Deck dentro da API que pudesse envelhecer em silêncio.
-2. **Envia as 24 mídias** (22 imagens e 2 vídeos) ao armazenamento e as registra em
-   `media_assets`, pelos mesmos três passos que o painel usa — os bytes vão do processo
-   direto ao Storage, sem passar pela API.
-3. **Grava os 12 documentos de seção e os metadados da página** por `PUT /api/admin/…`, os
-   mesmos endpoints do painel: um documento fora de forma é recusado com `422` aqui do
-   mesmo jeito que seria para um operador. Os metadados vêm de `apps/lp/index.html`
-   (título, descrição, endereço canônico).
-4. **Traduz os controles de publicação de hoje em visibilidade** e imprime um resumo do que
-   fez.
+Cada seção virou um componente **apresentacional**, que recebe o documento pronto por
+propriedade e não sabe de rede, de contexto nem de ausência. É o que permite montar a
+página inteira em teste sem nenhum servidor.
 
-**Ele é idempotente.** Rodar duas vezes não duplica mídia, arquivo, seção nem item de lista.
-As seções e os metadados são substituições — uma seção é uma linha só, pela chave. As mídias
-não são reenviadas: a segunda execução pergunta ao conteúdo já gravado qual mídia ocupa cada
-campo (`hero.image`, `demonstracao.videos[1].poster`) e reaproveita aquele identificador.
-Isso importa porque a API sorteia um caminho novo a cada credencial emitida, de propósito, e
-reenviar criaria cópias órfãs no armazenamento.
+O endereço é relativo (`/api/content`), porque LP e API compartilham domínio: `/` serve a
+página e `/api/*` alcança a API, tanto na entrada única de desenvolvimento quanto em
+produção. `VITE_CONTENT_ENDPOINT` troca o endereço quando for preciso apontar para outra
+API.
 
-**Imagens que ganharam campo no esquema.** Duas das que os componentes importavam direto
-passaram a ser editáveis pelo painel, por decisão do usuário registrada em
-`agent_context/CHANGELOG.md`:
+**Uma seção despublicada some da página.** É assim que a seção de Ingredientes fica fora do
+ar hoje: nada de `isContentReady` no código, ela está despublicada no painel. Publicá-la é o
+que a coloca na página.
 
-| Onde | Campo no painel | Observação |
+### Instantâneo de conteúdo
+
+O requisito do PRD é que **a indisponibilidade do CMS não derrube a página pública**. Quem
+cumpre isso é o instantâneo (SDD § D-08): uma cópia do conteúdo publicado, versionada em
+`apps/lp/src/content/content-snapshot.json` e embutida no build.
+
+A página **renderiza a partir dele imediatamente**, sem esperar rede, e o substitui assim
+que a busca responde. Se a busca não responder, nada acontece: o visitante continua vendo a
+página inteira, com o conteúdo do último instantâneo, em vez de tela vazia ou quebrada.
+Renderizar por ele primeiro também é o que permite ao navegador começar a baixar a imagem da
+abertura no primeiro quadro, em vez de esperar uma ida à API.
+
+**Como é gerado**, com a API no ar:
+
+```bash
+npm run instantaneo                      # lê http://localhost:5173/api/content
+npm run instantaneo -- https://.../api/content   # ou de outro ambiente
+```
+
+O script recusa gravar uma resposta que não seja JSON, que não traga `sections` ou que venha
+sem nenhuma seção publicada — um instantâneo vazio seria pior do que nenhum, porque a página
+de reserva ficaria em branco em silêncio, e só quem abrisse o site durante uma queda
+descobriria. Em qualquer recusa o arquivo anterior é mantido.
+
+**Ele não é gerado durante o `npm run build`**, de propósito: o build precisa passar sem rede
+(integração contínua, máquina de quem desenvolve), e o conteúdo de reserva precisa ser
+revisável no diff de quem publica.
+
+**Quando regenerar:** antes de publicar, depois de o conteúdo mudar no painel. O instantâneo
+envelhece entre builds — é o custo aceito em D-08, e ele só aparece enquanto a API estiver
+fora do ar. Um instantâneo velho não afeta a página quando a API responde: ela é sempre a
+fonte, e o arquivo é só a reserva.
+
+### O que continua importado em código, de propósito
+
+Quatro imagens não passaram para o CMS, por decisão do usuário registrada em
+`agent_context/CHANGELOG.md` (2026-09-03) — não é esquecimento:
+
+| Onde | Arquivo | Por quê |
 |---|---|---|
-| Prova de autoridade | **Kit de imagens** e seu texto alternativo | Imagem informativa: a descrição é obrigatória e é o que o leitor de tela anuncia. O arquivo atual tem 2 MB — cabe no limite de 10 MB do bucket, mas é peso relevante numa página de campanha |
-| Captura de lead | **Fotos do mosaico** (lista, com adicionar, remover e reordenar) | O layout foi desenhado para **6 fotos**: com mais ou menos que isso, a grade fica desequilibrada. A lista não trava a quantidade, e a orientação aparece no próprio campo do painel |
+| Abertura | `hero/grupo-bandeiras.png` | Arte de campanha, junto do texto "A marca N.1 no Brasil, EUA e Europa" escrito no componente |
+| Prova de autoridade | `prova-autoridade/01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg` | São claims de produto, e o texto que os acompanha ("Formato em Z:" e afins) também vive em `ProductDifferentials.tsx`. Torná-los editáveis exigiria campos de imagem **e** de texto |
 
-As fotos do mosaico são **imagens decorativas**: elas preenchem o espaço ao lado do
-formulário e não acrescentam nada ao que o texto já diz. Por isso não têm — nem devem ter —
-campo de texto alternativo: entram na página com descrição vazia e escondidas do leitor de
-tela, que anuncia o formulário sem seis descrições de fotos de cachorro no meio. É o
-comportamento que a página já tem hoje, e é o tratamento **correto** de acessibilidade, não
-uma exceção a ela. Ver "Adicionar um campo a uma seção", em Manutenção.
+Tudo o mais que aparece na página — logos, foto da abertura, packshot, cards, passos da
+rotina, kit de imagens, mosaico do formulário, logos dos parceiros, vídeos e miniaturas —
+vem do CMS.
 
-**O que chega não publicado**, e por quê:
+**O pôster do banner de vídeo deixou de existir como arquivo.** Ele era
+`demonstracao/video-banner-poster.jpg`; hoje o banner usa o **primeiro vídeo da seção** como
+plano de fundo e a **miniatura desse mesmo vídeo** como imagem de espera, que já é um campo
+do esquema. Um ativo a menos, nenhum campo novo (decisão do usuário, 2026-09-03).
 
-| Item | Controle em código hoje | No CMS |
-|---|---|---|
-| Seção **Ingredientes** | `isContentReady: false` | Seção não publicada, com o título já aprovado guardado |
-| FAQ, *"A partir de que idade…"* | `isReadyForProduction: false` (resposta é `[PLACEHOLDER …]`) | Item não publicado, com o texto guardado para o operador substituir |
-| FAQ, *"Onde posso comprar Veggiedent?"* | Bloco comentado no arquivo | Item não publicado, na posição em que o autor o deixou |
+**Identificador do vídeo nos eventos de analytics.** O esquema não tem — nem deve ter — um
+campo de identificador técnico. `video_start` e `video_progress` usam o **nome do arquivo**
+enviado, que é o dado mais estável da seção: o título é texto editável e a posição na lista
+é reordenável, e qualquer um dos dois quebraria a série histórica ao ser mexido no painel.
+Os identificadores mudaram em relação aos que estavam escritos em código
+(`tutor-abrindo-petisco` virou `tutorabrindopetiscoecachorrocomendo`).
 
-O parceiro comentado em `OndeComprar.content.ts` é o único bloco comentado que **não** entra:
-ele não é conteúdo retirado da página, é uma versão anterior de um parceiro que já está
-publicado ("Tudo de Bicho" aparece duas vezes, comentado com `link: "#"` e ativo com o
-endereço real). Migrar os dois criaria um parceiro repetido no painel.
+### Migração inicial do conteúdo (histórico — ferramenta aposentada na T14)
 
-**Campo sem valor real é omitido, nunca preenchido.** `Footer.legalDataPlaceholder` e
-`CapturaLead.ebookTitlePlaceholder` são `null` porque a Virbac ainda não entregou o dado; os
-campos `legalData` e `ebookTitle` simplesmente não existem no documento gravado, e o esquema
-os declara opcionais por isso. `og:image` não é migrada porque **não existe** em
-`index.html` — é pendência declarada da Virbac, não uma URL a inventar.
+O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais as imagens que
+os componentes importavam direto e dois vídeos servidos de `apps/lp/public/videos/`. A T9 e a
+T19 levaram tudo isso para o CMS **uma vez**, por um script que executava aqueles arquivos e
+gravava o resultado pelos mesmos endpoints do painel (`apps/api/src/migration/`, `npm run
+migrate:content -w apps/api`).
 
-Quatro imagens ficam de fora **por decisão do usuário**, não por esquecimento: os três
-infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói. Ver
-"Pendências herdadas do projeto atual".
+**A T14 aposentou o script junto com os arquivos que ele lia.** Sem os `*.content.ts` não há
+o que migrar: o CMS passou a ser a fonte do conteúdo, e o instantâneo acima é o que preserva
+uma cópia utilizável dele dentro do repositório. Foram removidos com ele o teste de cobertura
+dos esquemas sobre os arquivos de conteúdo (`packages/content-schema/tests/content-coverage.test.ts`,
+critério de "pronto" da T2) e a suíte de ponta a ponta da migração — todos exercitavam
+arquivos que não existem mais. O histórico da execução continua registrado em "Estado
+verificado" e em `agent_context/PLAN.md`.
+
+O que a carga inicial produziu, e que segue valendo:
+
+| Item | Estado no CMS |
+|---|---|
+| Seção **Ingredientes** | Não publicada, com o título já aprovado guardado |
+| FAQ, *"A partir de que idade…"* | Item não publicado, com o texto guardado para o operador substituir |
+| FAQ, *"Onde posso comprar Veggiedent?"* | Item não publicado, na posição em que o autor o deixou |
+| `Footer.legalData` e `capturaLead.ebookTitle` | Ausentes do documento: a Virbac não entregou o dado, e campo sem valor real é omitido, nunca preenchido |
+| **Kit de imagens** (prova de autoridade) | Campo de imagem informativa, com texto alternativo obrigatório |
+| **Fotos do mosaico** (captura de lead) | Lista de 6 imagens **decorativas**: sem campo de descrição, exibidas com texto alternativo vazio e escondidas de leitores de tela, como a página sempre fez |
 
 ## Alterações, testes e validações
 
 - **Estratégia de branch:** GitHub Flow. Branch por tarefa (`feat/T{n}-slug`), PR obrigatório para `main`, **revisão obrigatória antes do merge**. Commits em Conventional Commits. Sem `git push --force` em branch compartilhada. Política completa em [`agent_context/PLAN.md`](agent_context/PLAN.md).
-- **Testes automatizados:** `npm run test` (todos os workspaces) ou `npm run test -w <workspace>`. O runner é o **Vitest** na LP, no painel e em `packages/`, e o **Jest** em `apps/api` — o padrão do NestJS, adotado na T4 porque o Vitest depende do esbuild, que não emite os metadados de decorador dos quais a injeção de dependência do Nest precisa. Os workspaces ainda sem teste passam com `--passWithNoTests`.
+- **Testes automatizados:** `npm run test` (todos os workspaces) ou `npm run test -w <workspace>`. O runner é o **Vitest** na LP, no painel e em `packages/`, e o **Jest** em `apps/api` — o padrão do NestJS, adotado na T4 porque o Vitest depende do esbuild, que não emite os metadados de decorador dos quais a injeção de dependência do Nest precisa. A LP roda em **jsdom com a Testing Library** desde a T14: `src/App.test.tsx` monta a página inteira e prende os dois caminhos do instantâneo — com `GET /api/content` fora do ar a página aparece com o conteúdo embutido, e com a API respondendo ela troca pelo que a API entregou.
 - **Verificação de segurança do banco:** `node supabase/scripts/verify-isolation.mjs` (ver "Verificar o isolamento da superfície pública"). Não entra no `npm run test` porque precisa de um Supabase alcançável e de credenciais — é um passo de verificação de ambiente, não um teste unitário.
 - **Qualidade de código:** `npm run typecheck` (TypeScript em modo `strict`). O repositório não tem linter configurado — a T1 não introduziu um, e a checagem de tipos mais a revisão de código são hoje as únicas barreiras automáticas.
 - **Visualização da API:** **sim, com Swagger em `/api/docs` — mas apenas fora de produção** (decidido na T4). A API tem dois consumidores construídos separadamente, a LP e o painel, e num projeto de porte Médio a divergência entre o que a API responde e o que o consumidor espera é o defeito mais provável e o mais caro de achar; um contrato gerado do próprio código é a barreira barata contra isso. Em produção a mesma página seria um catálogo público dos endpoints `/api/admin/*` sem nenhum valor para o visitante da LP, então ela é desligada quando `NODE_ENV=production`. A fonte de verdade do contrato continua sendo o SDD § "Contratos de dados/API/interfaces" (o projeto é Spec-Anchored): o Swagger reflete o código, não o substitui.
@@ -829,6 +864,7 @@ infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói
 - **Autenticação da API:** o painel autentica no Supabase Auth e manda o token em `Authorization: Bearer <token>`; a API o verifica contra o JWKS do projeto (SDD § D-03). A guarda é **global e nega por padrão**: um endpoint novo, criado sem nenhuma marcação, nasce protegido, e só fica público se alguém escrever `@Public()` nele de propósito — esquecer leva a "bloqueado", nunca a "exposto". Toda recusa sai como `401` no formato único de erro, sem distinguir token ausente de expirado ou de assinatura inválida, para não virar oráculo de tokens válidos; o motivo fica no log do servidor, em texto fixo que nunca inclui o token. Os testes de autenticação não tocam a rede: geram um par ES256 próprio, assinam os tokens localmente e apontam a verificação a um JWKS servido em `127.0.0.1`.
 - **Telas de metadados e de leads (T13):** verificadas em navegador de verdade, contra a API e o Supabase reais, com três leads criados por `POST /api/leads` e apagados ao final. Abrir `/admin/leads` ou `/admin/metadados` sem sessão levou ao login **sem a área administrativa chegar ao DOM**; a listagem saiu do mais recente ao mais antigo, com as datas em horário de Brasília; o filtro `02/09` a `02/09` trouxe **só** o lead recebido às 23h30 de 2 de setembro em Brasília (3 de setembro em UTC) — recortar em UTC o teria deixado de fora, que é justamente o defeito que o critério C-12 proíbe; o CSV baixado começou com os bytes `ef bb bf`, usou `;` (13 separadores, 14 colunas, nenhuma vírgula), abriu com a acentuação intacta e **sem coluna de aceite LGPD**, e respeitou o filtro aplicado (1 linha filtrada contra 3 sem filtro); a exclusão pela tela não apagou nada no primeiro clique e só apagou depois da confirmação. A gravação dos metadados foi exercitada e **os valores originais foram devolvidos e conferidos campo a campo**.
 - **Proteção de rota do painel:** os testes do painel não tocam a rede — o dublê entra no lugar do cliente do Supabase, e adaptador, provedor, guarda, roteador e telas exercitados são os de produção. A guarda é provada por mutação, não por leitura: removê-la derruba as 9 provas de rota e sessão, e removê-la **apenas** no estado `verificando` — o caso em que o painel piscaria conteúdo protegido e só depois redirigiria — ainda derruba 3, porque três testes registram cada nó inserido no documento e falham se a área administrativa chegou a existir, ainda que por um quadro. Uma verificação feita depois de a tela assentar não pegaria isso.
+- **LP consumindo a API (T14):** verificada em navegador real, pela entrada única `http://localhost:5173/`, comparando a página antes e depois da troca. O **texto de todas as seções é idêntico** ao de antes, seção por seção, incluindo cabeçalho e rodapé, e as 24 imagens que a página exibe carregam do armazenamento público (`200`/`206`, nenhuma falha). Com a **API derrubada** (`/api/content` respondendo `500`), a página renderiza inteira a partir do instantâneo — mesmas 24 chamadas de imagem, mesmo texto, CSS aplicado. E a página de fato usa a resposta da API, não só o instantâneo: trocando o corpo de `/api/content` no caminho, sem tocar no banco, o `<h1>` e o título do FAQ mudaram junto. O conteúdo do CMS foi conferido campo a campo antes e depois e **não se moveu**: 11 seções publicadas, 3 metadados.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
 ## Atualização e monitoramento
@@ -920,8 +956,8 @@ infográficos SVG de `ProductDifferentials.tsx` e a faixa de bandeiras do herói
 Itens que já eram pendência antes do CMS e continuam abertos:
 
 - **Imagem de compartilhamento social (`og:image`)** ainda não aprovada pela Virbac. Passa a ser editável pelo painel quando chegar. A migração inicial **não** a inventa: `index.html` declara a pendência num comentário e o campo fica vazio no CMS.
-- **Legendas dos vídeos (`.vtt`)** são apontadas por `Demonstracao.content.ts` mas os arquivos não existem em `apps/lp/public/videos/captions/`. O campo é opcional no esquema e ficou vazio na migração, reproduzindo o que a página faz hoje: o navegador simplesmente não oferece legenda.
+- **Legendas dos vídeos (`.vtt`)** nunca existiram como arquivo. O campo é opcional no esquema e está vazio; a LP só declara a faixa de legenda quando há arquivo cadastrado, então o navegador simplesmente não oferece legenda — o mesmo que a página fazia antes. Enviar um `.vtt` pelo painel passa a oferecê-la, sem mudança de código.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Conteúdo da seção Ingredientes** e a **faixa etária recomendada** no FAQ aguardam material técnico da Virbac; migrados como não publicados.
-- **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixa de ser imagem própria e passa a derivar da miniatura do primeiro vídeo da seção, quando a T14 refizer a fiação dos componentes.
+- **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixou de ser imagem própria na T14 e passou a derivar da miniatura do primeiro vídeo da seção; o arquivo saiu do repositório. Ver "O que continua importado em código, de propósito".
 - **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD). A T8 migrou o payload para `apps/api/src/modules/leads/infrastructure/rdstation-lead.relay.ts` **sem alterá-lo**, e a pendência continua exatamente onde estava — com a diferença de que, enquanto ela não for resolvida, o lead já não se perde: fica gravado com `rdstation_status = "nao_enviado"`.
