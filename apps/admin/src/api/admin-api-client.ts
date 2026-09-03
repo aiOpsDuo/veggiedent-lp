@@ -8,6 +8,14 @@ import type {
   SectionsGateway,
   VisibilityResult,
 } from '../content/sections-gateway'
+import type {
+  MediaGateway,
+  MediaResult,
+  RegisterRequest,
+  RegisteredMedia,
+  UploadCredential,
+  UploadRequest,
+} from '../media/media-gateway'
 
 /**
  * O que a API respondeu a uma chamada administrativa autenticada.
@@ -31,6 +39,10 @@ const UNPROCESSABLE_ENTITY = 422
  * aqui interessa apenas se a guarda da API deixou passar.
  */
 const SECTIONS_PATH = '/admin/sections'
+
+/** Rotas de mídia. Nenhuma delas carrega bytes de arquivo (SDD § D-05). */
+const MEDIA_PATH = '/admin/media'
+const UPLOAD_CREDENTIAL_PATH = `${MEDIA_PATH}/upload-url`
 
 /** Mensagem exibida quando a API não respondeu — não é recusa, é ausência. */
 const UNREACHABLE_MESSAGE = 'Não foi possível falar com a API do CMS.'
@@ -90,7 +102,7 @@ function readErrorMessage(body: ApiErrorBody, status: number): string {
  * Supabase é usado exclusivamente para autenticar. O token vai em cada
  * requisição, no mesmo cabeçalho que a guarda da API já lê.
  */
-export class AdminApiClient implements SectionsGateway {
+export class AdminApiClient implements SectionsGateway, MediaGateway {
   private readonly baseUrl: string
 
   constructor(
@@ -166,6 +178,33 @@ export class AdminApiClient implements SectionsGateway {
       : { status: 'falha', message: messageOf(outcome) }
   }
 
+  async requestUploadCredential(
+    accessToken: string,
+    request: UploadRequest,
+  ): Promise<MediaResult<UploadCredential>> {
+    const outcome = await this.request(accessToken, UPLOAD_CREDENTIAL_PATH, {
+      method: 'POST',
+      body: request,
+    })
+    return toMediaResult<UploadCredential>(outcome)
+  }
+
+  async registerMedia(
+    accessToken: string,
+    request: RegisterRequest,
+  ): Promise<MediaResult<RegisteredMedia>> {
+    const outcome = await this.request(accessToken, MEDIA_PATH, {
+      method: 'POST',
+      body: request,
+    })
+    return toMediaResult<RegisteredMedia>(outcome)
+  }
+
+  async getMedia(accessToken: string, id: string): Promise<MediaResult<RegisteredMedia>> {
+    const outcome = await this.request(accessToken, `${MEDIA_PATH}/${id}`)
+    return toMediaResult<RegisteredMedia>(outcome)
+  }
+
   private async request(
     accessToken: string,
     path: string,
@@ -207,6 +246,21 @@ async function readJson(response: Response): Promise<unknown> {
   } catch {
     return null
   }
+}
+
+/**
+ * A recusa de mídia vira uma mensagem só. A API endereça o erro ao campo do
+ * **corpo** que ela recebeu (`contentType`, `sizeBytes`), e nenhum desses
+ * campos existe no formulário — quem os preenche é o navegador, a partir do
+ * arquivo. Mostrar a primeira mensagem ao lado do campo de mídia diz ao
+ * operador o que ele precisa saber; pendurá-la num campo que ele não vê, não.
+ */
+function toMediaResult<T>(outcome: ApiOutcome): MediaResult<T> {
+  if (outcome.kind === 'ok') {
+    return { status: 'ok', value: outcome.body as T }
+  }
+  const fieldMessage = Object.values(outcome.kind === 'recusado' ? outcome.fields ?? {} : {})[0]
+  return { status: 'recusado', message: fieldMessage ?? messageOf(outcome) }
 }
 
 function messageOf(outcome: ApiOutcome): string {
