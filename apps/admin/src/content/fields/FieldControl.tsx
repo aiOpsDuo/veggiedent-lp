@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react'
-import type { FieldSpec, FieldType } from '@veggiedent/content-schema'
+import type { FieldSpec, FieldType, MediaFieldType } from '@veggiedent/content-schema'
+import { MediaField } from '../../media/MediaField'
 
 /**
  * O controle de um campo, escolhido pelo **tipo declarado no esquema**.
@@ -135,49 +136,29 @@ function TextListInput({ describedBy, invalid, spec, value, onChange }: InputPro
   )
 }
 
-const MEDIA_NOUN: Partial<Record<FieldType, string>> = {
-  imagem: 'imagem',
-  video: 'vídeo',
-  legenda: 'legenda',
-}
-
 /**
- * Campo de mídia: espaço reservado até a tarefa de envio de arquivos existir.
- *
- * Mostra o que já está guardado e não deixa editar — digitar um identificador à
- * mão é exatamente o que o SDD proíbe ("referências de mídia guardam o
- * identificador da mídia, nunca uma URL digitada"). O valor atual continua no
- * rascunho e volta intacto na gravação, então salvar texto de uma seção não
- * apaga a imagem dela.
+ * Campo de mídia: o envio do arquivo direto ao armazenamento, com prévia e
+ * progresso (SDD § D-05). O tipo do campo decide o que é aceito, o limite
+ * exibido e a forma da prévia, e chega ao controle já resolvido — daí um
+ * construtor por tipo em vez de uma checagem dentro do componente.
  */
-function MediaPlaceholderInput({
-  id,
-  describedBy,
-  invalid,
-  spec,
-  value,
-}: InputProps): JSX.Element {
-  const stored = asText(value)
-  return (
-    <div className="space-y-1">
-      <input
+function mediaControl(fieldType: MediaFieldType): FieldControlSpec {
+  return {
+    wrapper: 'rotulo',
+    Input: ({ id, describedBy, invalid, spec, value, onChange }: InputProps) => (
+      <MediaField
         id={id}
-        type="text"
-        readOnly
-        className={`${inputClass(invalid)} bg-slate-100 text-slate-600`}
-        aria-describedby={describedBy}
-        aria-invalid={invalid || undefined}
-        aria-required={spec.required || undefined}
-        value={stored === '' ? 'Nenhum arquivo enviado.' : stored}
+        describedBy={describedBy}
+        invalid={invalid}
+        required={spec.required}
+        fieldType={fieldType}
+        label={spec.label}
+        value={asText(value)}
+        onChange={onChange}
       />
-      <p className="text-xs text-slate-500">
-        {`Envio e troca de ${MEDIA_NOUN[spec.type] ?? 'arquivo'} ainda não estão disponíveis nesta tela.`}
-      </p>
-    </div>
-  )
+    ),
+  }
 }
-
-const MEDIA_CONTROL: FieldControlSpec = { Input: MediaPlaceholderInput, wrapper: 'rotulo' }
 
 const CONTROLS_BY_FIELD_TYPE: Readonly<Record<FieldType, FieldControlSpec>> = {
   'texto-curto': { Input: ShortTextInput, wrapper: 'rotulo' },
@@ -185,9 +166,9 @@ const CONTROLS_BY_FIELD_TYPE: Readonly<Record<FieldType, FieldControlSpec>> = {
   'lista-de-textos': { Input: TextListInput, wrapper: 'grupo' },
   link: { Input: ShortTextInput, wrapper: 'rotulo' },
   booleano: { Input: BooleanInput, wrapper: 'rotulo' },
-  imagem: MEDIA_CONTROL,
-  video: MEDIA_CONTROL,
-  legenda: MEDIA_CONTROL,
+  imagem: mediaControl('imagem'),
+  video: mediaControl('video'),
+  legenda: mediaControl('legenda'),
 }
 
 interface FieldMetaProps {

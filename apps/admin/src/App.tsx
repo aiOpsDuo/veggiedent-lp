@@ -5,6 +5,7 @@ import type { AuthGateway } from './auth/auth-gateway'
 import { RequireSession } from './auth/RequireSession'
 import { SectionEditorScreen } from './content/SectionEditorScreen'
 import { SectionsScreen } from './content/SectionsScreen'
+import { ApiMediaProvider } from './media/media-context'
 import { LoginRoute } from './routing/LoginRoute'
 import { HOME_PATH, LOGIN_PATH, SECTIONS_PATH, SECTION_EDITOR_ROUTE } from './routing/paths'
 import { AdminLayout } from './screens/AdminLayout'
@@ -29,20 +30,22 @@ interface AppProps {
 export function App({ authGateway, apiClient }: AppProps): JSX.Element {
   return (
     <AuthProvider gateway={authGateway}>
-      <Routes>
-        <Route path={LOGIN_PATH} element={<LoginRoute />} />
-        <Route element={<RequireSession />}>
-          <Route element={<AdminLayout />}>
-            <Route path={HOME_PATH} element={<HomeScreen apiClient={apiClient} />} />
-            <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
-            <Route
-              path={SECTION_EDITOR_ROUTE}
-              element={<SectionEditorScreen gateway={apiClient} />}
-            />
-            <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
+      <ApiMediaProvider gateway={apiClient}>
+        <Routes>
+          <Route path={LOGIN_PATH} element={<LoginRoute />} />
+          <Route element={<RequireSession />}>
+            <Route element={<AdminLayout />}>
+              <Route path={HOME_PATH} element={<HomeScreen apiClient={apiClient} />} />
+              <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
+              <Route
+                path={SECTION_EDITOR_ROUTE}
+                element={<SectionEditorScreen gateway={apiClient} />}
+              />
+              <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
+            </Route>
           </Route>
-        </Route>
-      </Routes>
+        </Routes>
+      </ApiMediaProvider>
     </AuthProvider>
   )
 }

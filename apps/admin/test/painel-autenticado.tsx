@@ -3,6 +3,8 @@ import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../src/auth/AuthProvider'
 import type { AuthGateway } from '../src/auth/auth-gateway'
+import { MediaServiceProvider } from '../src/media/media-context'
+import type { MediaService } from '../src/media/media-service'
 
 /**
  * Monta uma tela do painel com um operador já logado.
@@ -33,16 +35,20 @@ interface MontagemOptions {
   /** Padrão da rota que renderiza a tela, quando ela lê parâmetros do caminho. */
   readonly routePattern?: string
   readonly initialPath?: string
+  /** Envio de mídia. Sem ele os campos de mídia desenham, mas não enviam. */
+  readonly mediaService?: MediaService
 }
 
 export function montarTela(tela: ReactNode, options: MontagemOptions = {}): void {
-  const { routePattern = '*', initialPath = '/' } = options
+  const { routePattern = '*', initialPath = '/', mediaService = null } = options
   render(
     <MemoryRouter initialEntries={[initialPath]}>
       <AuthProvider gateway={SESSAO_ATIVA}>
-        <Routes>
-          <Route path={routePattern} element={tela} />
-        </Routes>
+        <MediaServiceProvider service={mediaService}>
+          <Routes>
+            <Route path={routePattern} element={tela} />
+          </Routes>
+        </MediaServiceProvider>
       </AuthProvider>
     </MemoryRouter>,
   )
