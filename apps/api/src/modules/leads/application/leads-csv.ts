@@ -14,6 +14,14 @@ import type { Lead } from '../domain/lead'
  *   vírgula é separador decimal, e o Excel espera `;` entre as colunas. Com
  *   vírgula, a planilha inteira cai numa coluna só.
  * - **Fim de linha CRLF**, como manda o RFC 4180 e como as planilhas esperam.
+ *
+ * As colunas são as da regra de negócio RN-01: uma por campo que o visitante
+ * preenche, mais as operacionais que acompanham o registro. **Não existe coluna
+ * de aceite da Política de Privacidade** — sem consentimento nenhum lead é
+ * gravado, então ela só poderia dizer "sim" e não prova nada que a existência
+ * da linha já não prove (ver `agent_context/CHANGELOG.md`, 2026-09-02). A
+ * validação que exige o consentimento continua onde estava; o que sai é apenas
+ * a coluna.
  */
 
 const BOM = '\uFEFF'
@@ -34,7 +42,6 @@ const COLUMNS: readonly { readonly header: string; readonly value: (lead: Lead) 
   { header: 'Conhece a Virbac', value: (lead) => lead.conheceVirbac ?? '' },
   { header: 'Usa produto Virbac', value: (lead) => lead.usaProdutoVirbac ?? '' },
   { header: 'Qual produto Virbac', value: (lead) => lead.qualProdutoVirbac ?? '' },
-  { header: 'Aceite LGPD', value: (lead) => simOuNao(lead.aceiteLgpd) },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => lead.origem ?? '' },
   { header: 'Status RD Station', value: (lead) => lead.rdstationStatus },

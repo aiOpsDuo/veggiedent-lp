@@ -35,6 +35,43 @@ function linhas(conteudo: string): string[] {
   return conteudo.split('\r\n')
 }
 
+/** Uma célula do cabeçalho vem escapada: `"Nome"`. */
+function colunas(): string[] {
+  const cabecalho = linhas(toCsv([]).content)[0] as string
+  return cabecalho.split(';').map((celula) => celula.replace(/^\uFEFF/, '').replace(/^"|"$/g, ''))
+}
+
+describe('Colunas do CSV (regra de negócio RN-01)', () => {
+  it('traz uma coluna por campo do formulário, com cabeçalho em português', () => {
+    expect(colunas()).toEqual([
+      'Data de envio (UTC)',
+      'Nome',
+      'E-mail',
+      'Telefone',
+      'Nome do cachorro',
+      'Porte do cachorro',
+      'Cidade e estado',
+      'Conhece a Virbac',
+      'Usa produto Virbac',
+      'Qual produto Virbac',
+      'Aceite de comunicações',
+      'Origem',
+      'Status RD Station',
+      'Erro RD Station',
+    ])
+  })
+
+  /**
+   * O aceite da Política de Privacidade é condição de envio, não dado variável:
+   * sem ele nenhum lead é gravado, então a coluna só poderia dizer "sim" (ver
+   * `agent_context/CHANGELOG.md`, 2026-09-02).
+   */
+  it('não tem coluna de aceite da Política de Privacidade', () => {
+    expect(colunas().some((coluna) => /LGPD|Política de Privacidade/i.test(coluna))).toBe(false)
+    expect(toCsv([LEAD]).content).not.toMatch(/LGPD/)
+  })
+})
+
 describe('CSV de leads', () => {
   it('começa com o BOM UTF-8, que é o que faz o Excel ler os acentos', () => {
     expect(toCsv([LEAD]).content.startsWith(BOM)).toBe(true)
