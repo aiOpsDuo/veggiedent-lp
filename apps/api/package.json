@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "pretypecheck": "npm run build --prefix ../../packages/content-schema",
     "test": "jest",
-    "pretest": "npm run build --prefix ../../packages/content-schema"
+    "pretest": "npm run build --prefix ../../packages/content-schema",
+    "premigrate:content": "npm run build",
+    "migrate:content": "node --env-file-if-exists=.env dist/migration/main.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
