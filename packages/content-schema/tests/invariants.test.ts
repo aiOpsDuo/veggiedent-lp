@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SECTION_KEYS, altTextFieldName } from '../src/contract'
+import { SECTION_KEYS, altTextFieldName, isDecorativeImage } from '../src/contract'
 import type { FieldSpec, SectionKey } from '../src/contract'
 import { checkSchemaInvariants } from '../src/invariants'
 import { sectionSchemas } from '../src/sections'
@@ -49,7 +49,14 @@ describe('invariantes do esquema de seção', () => {
   })
 
   it.each(findImageFields())(
-    'a imagem $index de $section$list tem texto alternativo obrigatório adjacente',
+    'a imagem $index de $section (lista: $list) declara se é informativa ou decorativa',
+    ({ fields, index }) => {
+      expect(fields[index].imageRole).toBeDefined()
+    },
+  )
+
+  it.each(findImageFields().filter(({ fields, index }) => !isDecorativeImage(fields[index])))(
+    'a imagem informativa $index de $section (lista: $list) tem texto alternativo obrigatório adjacente',
     ({ fields, index }) => {
       const image = fields[index]
       const adjacent = fields[index + 1]
@@ -60,20 +67,71 @@ describe('invariantes do esquema de seção', () => {
     },
   )
 
+  it.each(findImageFields().filter(({ fields, index }) => isDecorativeImage(fields[index])))(
+    'a imagem decorativa $index de $section (lista: $list) não tem campo de descrição a preencher',
+    ({ fields, index }) => {
+      const nomeDoAlternativo = altTextFieldName(fields[index].name)
+
+      expect(fields.some((field) => field.name === nomeDoAlternativo)).toBe(false)
+    },
+  )
+
   it('toda imagem das 12 seções é obrigatória, e o texto alternativo também', () => {
     const imagesInSections = findImageFields().filter((location) => location.section !== 'site_metadata')
 
     for (const { fields, index } of imagesInSections) {
       expect(fields[index].required).toBe(true)
-      expect(fields[index + 1].required).toBe(true)
+      if (!isDecorativeImage(fields[index])) {
+        expect(fields[index + 1].required).toBe(true)
+      }
     }
   })
 
-  it('acusa uma imagem declarada sem texto alternativo adjacente', () => {
+  it('acusa uma imagem que não escolheu entre informativa e decorativa', () => {
     const violations = checkSchemaInvariants({
       key: 'exemplo',
       fields: [
         { name: 'foto', type: 'imagem', label: 'Foto', required: true },
+        { name: 'fotoAlt', type: 'texto-curto', label: 'Texto alternativo', required: true },
+      ],
+      lists: [],
+    })
+
+    expect(violations).toEqual([
+      'exemplo: o campo de imagem "foto" não declara se é informativa ou decorativa.',
+    ])
+  })
+
+  it('acusa uma imagem decorativa com campo de texto alternativo ao lado', () => {
+    const violations = checkSchemaInvariants({
+      key: 'exemplo',
+      fields: [
+        { name: 'foto', type: 'imagem', label: 'Foto', required: true, imageRole: 'decorativa' },
+        { name: 'fotoAlt', type: 'texto-curto', label: 'Texto alternativo', required: true },
+      ],
+      lists: [],
+    })
+
+    expect(violations).toEqual([
+      'exemplo: a imagem decorativa "foto" não pode ter o campo "fotoAlt" — imagem decorativa entra com texto alternativo vazio e escondida de leitores de tela.',
+    ])
+  })
+
+  it('aceita uma imagem decorativa declarada sem texto alternativo', () => {
+    const violations = checkSchemaInvariants({
+      key: 'exemplo',
+      fields: [{ name: 'foto', type: 'imagem', label: 'Foto', required: true, imageRole: 'decorativa' }],
+      lists: [],
+    })
+
+    expect(violations).toEqual([])
+  })
+
+  it('acusa uma imagem informativa declarada sem texto alternativo adjacente', () => {
+    const violations = checkSchemaInvariants({
+      key: 'exemplo',
+      fields: [
+        { name: 'foto', type: 'imagem', label: 'Foto', required: true, imageRole: 'informativa' },
         { name: 'titulo', type: 'texto-curto', label: 'Título', required: true },
       ],
       lists: [],
@@ -86,7 +144,7 @@ describe('invariantes do esquema de seção', () => {
     const violations = checkSchemaInvariants({
       key: 'exemplo',
       fields: [
-        { name: 'foto', type: 'imagem', label: 'Foto', required: true },
+        { name: 'foto', type: 'imagem', label: 'Foto', required: true, imageRole: 'informativa' },
         { name: 'fotoAlt', type: 'texto-curto', label: 'Texto alternativo', required: false },
       ],
       lists: [],
@@ -106,7 +164,9 @@ describe('invariantes do esquema de seção', () => {
           name: 'cards',
           label: 'Cards',
           reorderable: true,
-          itemFields: [{ name: 'foto', type: 'imagem', label: 'Foto', required: true }],
+          itemFields: [
+            { name: 'foto', type: 'imagem', label: 'Foto', required: true, imageRole: 'informativa' },
+          ],
         },
       ],
     })

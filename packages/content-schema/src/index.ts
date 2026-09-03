@@ -1,16 +1,19 @@
 export {
   ALT_TEXT_SUFFIX,
   FIELD_TYPES,
+  IMAGE_ROLES,
   LIST_ITEM_BASE_FIELDS,
   MEDIA_FIELD_TYPES,
   SECTION_KEYS,
   altTextFieldName,
+  isDecorativeImage,
   isMediaField,
   isSectionKey,
 } from './contract'
 export type {
   FieldSpec,
   FieldType,
+  ImageRole,
   ListItemBase,
   ListSpec,
   MediaFieldType,
@@ -18,7 +21,7 @@ export type {
   SectionSchema,
 } from './contract'
 
-export { optionalImage, requiredImage } from './fields'
+export { decorativeImage, optionalImage, requiredImage } from './fields'
 
 export {
   getSectionSchema,

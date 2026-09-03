@@ -1,10 +1,13 @@
 /**
  * Construtores de campo usados na declaracao dos esquemas de secao.
  *
- * Existem para uma unica invariante do SDD: todo campo de imagem tem um campo
- * de texto alternativo adjacente e obrigatorio. Declarar o par por meio destes
- * construtores torna o esquerdo impossivel de existir sem o direito — a
- * invariante deixa de depender de disciplina de quem edita o esquema.
+ * Existem para uma unica invariante do SDD: todo campo de imagem declara,
+ * conscientemente, se e **informativa** — e entao tem um campo de texto
+ * alternativo adjacente e obrigatorio — ou **decorativa** — e entao nao tem
+ * campo de descricao nenhum, porque entra com texto alternativo vazio e
+ * escondida de leitores de tela. Declarar a imagem por meio destes construtores
+ * torna impossivel esquecer a escolha: a invariante deixa de depender de
+ * disciplina de quem edita o esquema.
  */
 import type { FieldSpec } from './contract'
 
@@ -12,6 +15,9 @@ interface ImageFieldInput<N extends string> {
   readonly name: N
   readonly label: string
   readonly help: string
+}
+
+interface InformativeImageInput<N extends string> extends ImageFieldInput<N> {
   readonly altLabel: string
   readonly altHelp: string
 }
@@ -23,6 +29,7 @@ type ImageFieldPair<N extends string, R extends boolean> = readonly [
     readonly label: string
     readonly help: string
     readonly required: R
+    readonly imageRole: 'informativa'
   },
   {
     readonly name: `${N}${'Alt'}`
@@ -33,12 +40,30 @@ type ImageFieldPair<N extends string, R extends boolean> = readonly [
   },
 ]
 
+type DecorativeImageField<N extends string> = readonly [
+  {
+    readonly name: N
+    readonly type: 'imagem'
+    readonly label: string
+    readonly help: string
+    readonly required: true
+    readonly imageRole: 'decorativa'
+  },
+]
+
 function imagePair<const N extends string, const R extends boolean>(
-  input: ImageFieldInput<N>,
+  input: InformativeImageInput<N>,
   required: R,
 ): ImageFieldPair<N, R> {
   return [
-    { name: input.name, type: 'imagem', label: input.label, help: input.help, required },
+    {
+      name: input.name,
+      type: 'imagem',
+      label: input.label,
+      help: input.help,
+      required,
+      imageRole: 'informativa',
+    },
     {
       name: `${input.name}Alt`,
       type: 'texto-curto',
@@ -50,7 +75,9 @@ function imagePair<const N extends string, const R extends boolean>(
 }
 
 /** Imagem obrigatoria e o texto alternativo obrigatorio que a acompanha. */
-export function requiredImage<const N extends string>(input: ImageFieldInput<N>): ImageFieldPair<N, true> {
+export function requiredImage<const N extends string>(
+  input: InformativeImageInput<N>,
+): ImageFieldPair<N, true> {
   return imagePair(input, true)
 }
 
@@ -58,8 +85,34 @@ export function requiredImage<const N extends string>(input: ImageFieldInput<N>)
  * Imagem opcional e seu texto alternativo. O texto alternativo so e exigido
  * quando a imagem esta preenchida — regra aplicada na validacao do documento.
  */
-export function optionalImage<const N extends string>(input: ImageFieldInput<N>): ImageFieldPair<N, false> {
+export function optionalImage<const N extends string>(
+  input: InformativeImageInput<N>,
+): ImageFieldPair<N, false> {
   return imagePair(input, false)
+}
+
+/**
+ * Imagem que nao carrega informacao: o leitor de tela a ignora, e por isso ela
+ * nasce **sem** campo de texto alternativo — nao ha o que o operador descrever.
+ * Esconde-la do leitor de tela e responsabilidade de quem a renderiza, e e o
+ * tratamento correto de acessibilidade, nao uma excecao a ela.
+ *
+ * E sempre obrigatoria: uma imagem decorativa ausente deixa um buraco no
+ * layout, que e a unica razao de ela existir.
+ */
+export function decorativeImage<const N extends string>(
+  input: ImageFieldInput<N>,
+): DecorativeImageField<N> {
+  return [
+    {
+      name: input.name,
+      type: 'imagem',
+      label: input.label,
+      help: input.help,
+      required: true,
+      imageRole: 'decorativa',
+    },
+  ] as const
 }
 
 /** Ajuda a manter a declaracao dos esquemas legivel sem perder os tipos literais. */
