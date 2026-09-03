@@ -74,8 +74,18 @@ apps/admin/src/
 │   ├── AuthProvider.tsx          # estado da sessão, alimentado só pelo que o gateway avisa
 │   └── RequireSession.tsx        # a guarda de rota
 ├── api/                # cliente da API do CMS (token no cabeçalho, como a guarda da API espera)
+├── content/
+│   ├── sections-gateway.ts   # a porta das seções: listar, ler, gravar, ligar/desligar
+│   ├── SectionsScreen.tsx    # a lista das 12 seções, na ordem da página
+│   ├── SectionEditorScreen.tsx  # a tela de edição de uma seção
+│   ├── SectionForm.tsx       # o formulário, percorrendo o esquema
+│   ├── ListEditor.tsx        # itens de lista: adicionar, remover, reordenar, ligar/desligar
+│   ├── fields/FieldControl.tsx  # um controle por tipo de campo do esquema
+│   ├── section-draft.ts      # rascunho e documento: funções puras, sem React
+│   ├── editor-state.ts       # as transições da tela de edição
+│   └── field-errors.ts       # caminhos de erro da API → campos do formulário
 ├── routing/            # caminhos nomeados e a rota de login
-└── screens/            # login, esqueleto autenticado e a área das telas das T11–T13
+└── screens/            # login, esqueleto autenticado e a área das telas de mídia e leads
 ```
 
 **A guarda é uma rota de layout, não um invólucro repetido em cada tela** — a mesma ideia da guarda global da API: uma rota nova nasce dentro dela, e expor exigiria declará-la fora, de propósito. A sessão tem três estados, e o terceiro (`verificando`) existe para que não haja instante em que tela administrativa apareça antes de a sessão ser confirmada: sem ele, o painel teria de tratar "ainda não sei" como "tem sessão" (e piscaria conteúdo protegido) ou como "não tem" (e expulsaria quem acabou de recarregar a página).
@@ -85,6 +95,51 @@ apps/admin/src/
 **Serviços externos:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) e RD Station Marketing (destino de marketing dos leads).
 
 **Ponto de atenção de segurança:** a chave secreta do Supabase e o token do RD Station vivem exclusivamente no ambiente de `apps/api`. Nenhuma credencial pode entrar em um build de navegador — variáveis lidas pelo Vite (`VITE_*`) são públicas por natureza.
+
+## Como o painel gera o formulário de cada seção
+
+**Não existe formulário escrito à mão por seção** (SDD § D-02). `SectionForm.tsx` percorre
+`schema.fields` e `schema.lists` do pacote `packages/content-schema` e desenha o que
+encontra; em nenhum arquivo do painel aparece o nome de um campo ou de uma seção. Cada
+pedaço da tela sai de uma propriedade do esquema:
+
+| No esquema | Na tela |
+|---|---|
+| `label` | o rótulo do campo, em português |
+| `help` | a linha de ajuda logo abaixo do rótulo, ligada ao controle por `aria-describedby` |
+| `required` | o asterisco vermelho (fora do rótulo, para o leitor de tela não anunciá-lo) e `aria-required` no controle |
+| `type` | qual controle é desenhado — a tabela abaixo |
+
+**O que o operador vê em cada tipo de campo:**
+
+| Tipo | Controle | Observação |
+|---|---|---|
+| `texto-curto` | uma linha de texto | |
+| `texto-longo` | uma área de texto de 4 linhas | |
+| `lista-de-textos` | uma linha por valor, com **Adicionar linha** e **Remover a linha N** | é um grupo (`fieldset`/`legend`), porque um rótulo serve a um controle só |
+| `link` | uma linha de texto | quem julga o endereço é a API: `#secao`, `/pagina`, `https://…`, `mailto:` e `tel:` |
+| `booleano` | uma caixa de seleção | |
+| `imagem`, `video`, `legenda` | **espaço reservado**: mostra o identificador da mídia já guardada, em campo somente leitura, e avisa que o envio ainda não está nesta tela | é o escopo da tarefa de mídia (T12). O valor atual continua no rascunho e volta intacto na gravação, então salvar o texto de uma seção **não** apaga a imagem dela |
+
+**Listas de itens.** Cada lista do esquema vira um bloco com **Adicionar item**, e cada item
+traz **Subir**, **Descer**, **Remover** e a caixa **Aparece na página**. Não há campo de
+posição para digitar: a ordem é a ordem dos itens na tela, e `ordem` é recalculada a partir
+dela na hora de gravar — o que torna impossível salvar duas posições iguais ou um buraco na
+sequência. Desligar um item o retira da LP sem apagar o conteúdo (SDD § C-08); o mesmo vale
+para a seção inteira, pela caixa **Seção aparece na página** no topo da tela, que chama
+`PATCH /api/admin/sections/:key/visibility`.
+
+**Salvar publica.** Não há rascunho no servidor: o botão é **Salvar e publicar**, e o sucesso
+aparece como confirmação visível na própria tela. Quando a API recusa com `422`, cada mensagem
+vai para **o campo que a causou** — o painel tira o prefixo da seção do caminho que a API
+devolve (`faq.items.1.question` → a pergunta do segundo item) e pendura a mensagem ali, com
+`aria-invalid` no controle. Uma mensagem cujo caminho não corresponde a nenhum campo da tela
+não é descartada: aparece em uma lista de avisos acima do formulário.
+
+**Acrescentar um campo a uma seção continua sendo editar um arquivo só.** Basta declará-lo no
+esquema da seção em `packages/content-schema/src/sections/`: ele passa a ser validado pela API,
+a aparecer no formulário do painel e a existir no tipo consumido pela LP, sem nenhuma alteração
+no código do painel. Isso é verificado por mutação na T11 — ver "Estado verificado".
 
 ## Acesso e execução do código
 
@@ -472,6 +527,10 @@ Na **T9** a oitava migração (`allow_svg_in_images_bucket`) foi aplicada pelo m
 Na **T10** o painel foi exercitado num navegador de verdade contra o Supabase e a API reais, nas duas formas em que ele roda — servidor de desenvolvimento e build de produção servido pelo `preview` —, com **14 checagens em cada uma, todas OK**: rota interna sem sessão cai no login sem que a área administrativa chegue a existir no documento; e-mail inexistente e senha errada devolvem exatamente a mesma mensagem; o login válido abre o painel com o operador identificado no cabeçalho; `GET /api/admin/sections` com o token respondeu `200` com as 12 seções e, sem token, `401`; recarregar a página manteve a sessão; sair devolveu ao login, apagou a chave do armazenamento e a área administrativa não reapareceu. O operador de verificação foi criado pela Auth Admin API e removido ao final (**0 usuários**), e a carga da T9 ficou intacta: 12 seções, 17 mídias, 1 registro de metadados, 0 leads.
 
 Na **T19** os ativos que passaram a ter campo no esquema foram migrados contra o projeto hospedado, pela **entrada única** (`CMS_API_URL=http://localhost:5173/api`): `media_assets` saiu de **17 para 24** — o `Kit-de-imagens.png` e as seis fotos do mosaico —, com 22 objetos no bucket de imagens e 2 no de vídeos, e as demais contagens intactas (12 seções, 1 registro de metadados, 0 leads). `GET /api/content` passou a devolver o kit como **URL pública** acompanhado do texto alternativo que o componente já escrevia, e as seis fotos do mosaico como URL pública **sem nenhum campo de descrição** — elas são decorativas no esquema, e o corpo da resposta reflete isso. As URLs foram buscadas sem credencial nenhuma: `200`, `image/png` de 2.043.014 bytes no kit e `image/jpeg` de 69.438 bytes na primeira foto. **A migração foi rodada mais duas vezes e nada se moveu:** 0 mídias enviadas, 24 reaproveitadas, as mesmas contagens, e as respostas de `GET /api/content` iguais campo a campo. Uma ressalva de medição, para não repetir a da T9: comparar o **hash** da resposta não serve como prova de idempotência aqui, porque a ordem das seções no corpo segue a ordem das linhas de uma consulta sem `ORDER BY` e varia entre execuções — a comparação válida é campo a campo, e é a que foi feita. O operador criado para a verificação foi removido (o único que restou é o do usuário), e a carga **permanece no banco**.
+
+Na **T11** o formulário gerado foi exercitado num **navegador de verdade** (Chromium via Playwright), pela entrada única, contra a API e o Supabase reais, com **8 checagens, todas OK**: o painel abre no login; o login entra; a lista traz as **12 seções na ordem da página** (Cabeçalho → Abertura → Saúde oral → Rotina de cuidado → Produto → Demonstração em vídeo → Ingredientes → Prova de autoridade → Captura de lead → Onde comprar → Perguntas frequentes → Rodapé); a tela de "Perguntas frequentes" abriu preenchida com o conteúdo real, com os **7 itens** guardados (os 5 publicados e os 2 desligados); salvar mostrou a confirmação visível; **`GET /api/content` passou a devolver o texto novo**; e o console do navegador não acusou nenhum erro. O texto alterado (`faq.heading`) foi **devolvido ao valor original pelo próprio painel**, e o documento voltou intacto: os mesmos 7 itens, com `ordem` de 0 a 6 e a visibilidade de cada um preservada, `ingredientes` seguindo despublicada, e as contagens do banco onde estavam — **12 seções, 24 mídias, 1 registro de metadados, 0 leads**. O operador de verificação foi criado pela Auth Admin API e removido ao final; restou apenas o operador do usuário.
+
+A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
 ### Como criar um operador do painel
 
