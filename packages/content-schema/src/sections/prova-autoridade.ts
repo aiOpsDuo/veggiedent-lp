@@ -1,4 +1,5 @@
 import type { SectionSchema } from '../contract'
+import { requiredImage } from '../fields'
 
 export const provaAutoridadeSchema = {
   key: 'prova_autoridade',
@@ -18,6 +19,13 @@ export const provaAutoridadeSchema = {
       help: 'Texto da fonte, em letra menor, abaixo dos números.',
       required: true,
     },
+    ...requiredImage({
+      name: 'kit',
+      label: 'Kit de imagens',
+      help: 'Arte com a embalagem, o selo N.º 1 e a recomendação veterinária, abaixo dos números.',
+      altLabel: 'Texto alternativo do kit de imagens',
+      altHelp: 'Descrição lida por leitores de tela no lugar da arte com a embalagem e o selo.',
+    }),
   ],
   lists: [
     {

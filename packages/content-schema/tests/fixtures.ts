@@ -131,6 +131,8 @@ export const ingredientesDocument: IngredientesDocument = {
 export const provaAutoridadeDocument: ProvaAutoridadeDocument = {
   heading: 'A recomendação dos médicos-veterinários, em números',
   source: '*Pesquisa IPSOS 2026. Realizada com 1.116 veterinários, base de dados Virbac.',
+  kit: mediaId(11),
+  kitAlt: 'Veggiedent, selo número 1 e recomendação veterinária',
   stats: [
     { visivel: true, ordem: 0, stat: '1.116', label: 'Médicos-veterinários entrevistados' },
     { visivel: true, ordem: 1, stat: 'N.º 1', label: 'Marca mais recomendada no Brasil*' },
@@ -180,6 +182,10 @@ export const capturaLeadDocument: CapturaLeadDocument = {
   simNaoOptions: [
     { visivel: true, ordem: 0, value: 'sim', label: 'Sim' },
     { visivel: true, ordem: 1, value: 'nao', label: 'Não' },
+  ],
+  mosaico: [
+    { visivel: true, ordem: 0, image: mediaId(12) },
+    { visivel: true, ordem: 1, image: mediaId(13) },
   ],
 }
 

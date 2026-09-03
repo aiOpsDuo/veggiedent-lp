@@ -231,14 +231,15 @@ export interface PageMetadataFile {
 
 /**
  * Imagens que hoje não estão em nenhum `*.content.ts`: os componentes as
- * importam diretamente. O esquema da T2 as declara como campo editável, então a
+ * importam diretamente. O esquema as declara como campo editável, então a
  * migração precisa saber onde elas estão — é o único lugar do repositório em
- * que esses quatro caminhos aparecem escritos.
+ * que esses caminhos aparecem escritos.
  */
 export interface ComponentImages {
   readonly headerLogo: string
   readonly heroImage: string
   readonly produtoPackshot: string
+  readonly provaAutoridadeKit: string
   readonly footerLogo: string
 }
 
@@ -258,6 +259,8 @@ export interface LandingPageContent {
   readonly footer: FooterContentFile
   readonly metadata: PageMetadataFile
   readonly componentImages: ComponentImages
+  /** As fotos do mosaico do formulário, na ordem em que o layout as dispõe. */
+  readonly mosaicPhotos: readonly string[]
   /** Raiz de `apps/lp`, para resolver os vídeos servidos de `public/`. */
   readonly landingPageRoot: string
 }
@@ -291,8 +294,28 @@ export const COMPONENT_IMAGE_FILES: ComponentImages = {
   headerLogo: 'src/assets/logos/veggiedent-fresh-edc-logo.svg',
   heroImage: 'src/assets/images/hero/virbac-kv-hero.png',
   produtoPackshot: 'src/assets/images/produto/veggiedent-packshot.jpg',
+  provaAutoridadeKit: 'src/assets/images/prova-autoridade/Kit-de-imagens.png',
   footerLogo: 'src/assets/logos/veggiedent-fresh-edc-logo.svg',
 }
+
+/**
+ * As seis fotos do mosaico que acompanha o formulário do guia, na ordem em que
+ * `LeadFormMosaic.tsx` as dispõe — a ordem é o que a lista do CMS passa a
+ * guardar, e mudá-la aqui muda o desenho da grade.
+ *
+ * Não há texto alternativo a migrar: o esquema as declara **decorativas**, como
+ * a página já as trata hoje (o bloco inteiro é `aria-hidden` e cada foto entra
+ * com `alt=""`). Descrevê-las aqui seria inventar conteúdo que ninguém escreveu
+ * e fazer o leitor de tela anunciar seis fotos no meio de um formulário.
+ */
+export const MOSAIC_PHOTOS: readonly string[] = [
+  'src/assets/images/formulario/mosaico-descanso.jpg',
+  'src/assets/images/formulario/mosaico-mastigando.jpg',
+  'src/assets/images/formulario/mosaico-jardim.jpg',
+  'src/assets/images/formulario/mosaico-produto.jpg',
+  'src/assets/images/formulario/mosaico-retriever.jpg',
+  'src/assets/images/formulario/mosaico-rotina.jpg',
+]
 
 const TITLE = /<title>([\s\S]*?)<\/title>/
 const DESCRIPTION = /<meta\s+name="description"[\s\S]*?content="([\s\S]*?)"/
@@ -361,8 +384,10 @@ export function loadLandingPageContent(
       headerLogo: resolve(landingPageRoot, COMPONENT_IMAGE_FILES.headerLogo),
       heroImage: resolve(landingPageRoot, COMPONENT_IMAGE_FILES.heroImage),
       produtoPackshot: resolve(landingPageRoot, COMPONENT_IMAGE_FILES.produtoPackshot),
+      provaAutoridadeKit: resolve(landingPageRoot, COMPONENT_IMAGE_FILES.provaAutoridadeKit),
       footerLogo: resolve(landingPageRoot, COMPONENT_IMAGE_FILES.footerLogo),
     },
+    mosaicPhotos: MOSAIC_PHOTOS.map((photo) => resolve(landingPageRoot, photo)),
     landingPageRoot,
   }
 }

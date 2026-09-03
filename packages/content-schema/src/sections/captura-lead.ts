@@ -1,4 +1,5 @@
 import type { SectionSchema } from '../contract'
+import { decorativeImage } from '../fields'
 
 /**
  * Cada campo do formulário do guia tem dois textos editáveis: o rótulo acima do
@@ -59,6 +60,21 @@ const optionItemFields = [
     required: true,
   },
 ] as const
+
+/**
+ * O mosaico ao lado do formulário foi desenhado para **seis** fotos: é essa
+ * quantidade que preenche a grade em todos os tamanhos de tela. A lista não trava
+ * o número — travá-la tornaria este campo mais rígido que qualquer outra lista do
+ * CMS, sem ganho real —, então a quantidade é orientação ao operador, escrita no
+ * próprio campo para chegar a ele no painel.
+ *
+ * As fotos são **decorativas**: elas preenchem o espaço ao lado do formulário e
+ * não acrescentam nada ao que o texto já diz. É o que a página faz hoje, e
+ * continua sendo o tratamento correto — o bloco inteiro é escondido do leitor
+ * de tela, que anuncia o formulário sem seis descrições de fotos no meio.
+ */
+const MOSAIC_PHOTO_HELP =
+  'Uma das fotos do mosaico exibido ao lado do formulário. O layout foi desenhado para 6 fotos: com mais ou menos que isso, a grade fica desequilibrada.'
 
 export const capturaLeadSchema = {
   key: 'captura_lead',
@@ -200,6 +216,19 @@ export const capturaLeadSchema = {
       reorderable: true,
       minItems: 1,
       itemFields: optionItemFields,
+    },
+    {
+      name: 'mosaico',
+      label: 'Fotos do mosaico',
+      reorderable: true,
+      minItems: 1,
+      itemFields: [
+        ...decorativeImage({
+          name: 'image',
+          label: 'Foto do mosaico',
+          help: MOSAIC_PHOTO_HELP,
+        }),
+      ],
     },
   ],
 } as const satisfies SectionSchema

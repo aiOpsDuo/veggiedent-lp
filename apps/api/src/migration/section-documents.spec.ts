@@ -176,6 +176,37 @@ describe('o parceiro comentado de Onde comprar', () => {
   })
 })
 
+/**
+ * Os ativos que a decisão do usuário de 2026-09-03 tornou gerenciáveis
+ * (PLAN.md § T19). Eles não vêm de nenhum `*.content.ts`: os componentes os
+ * importam direto, e a migração é o que os leva ao CMS pela primeira vez.
+ */
+describe('as imagens que passam a ser gerenciáveis pelo CMS', () => {
+  it('o kit de imagens entra na Prova de autoridade, com texto alternativo', () => {
+    expect(documents.prova_autoridade.kit).toBe(content.componentImages.provaAutoridadeKit)
+    expect(String(documents.prova_autoridade.kitAlt).trim().length).toBeGreaterThan(0)
+  })
+
+  it('o mosaico do formulário vira uma lista, na ordem em que o layout dispõe as fotos', () => {
+    expect(itensDe('captura_lead', 'mosaico').map((item) => item.image)).toEqual([
+      ...content.mosaicPhotos,
+    ])
+  })
+
+  /**
+   * O mosaico é decorativo na página de hoje, e o esquema o declara assim. Uma
+   * descrição escrita aqui não teria origem em nenhum conteúdo aprovado — e o
+   * documento sequer tem onde guardá-la.
+   */
+  it('toda foto do mosaico nasce publicada e sem texto alternativo', () => {
+    const fotos = itensDe('captura_lead', 'mosaico')
+
+    expect(fotos).toHaveLength(content.mosaicPhotos.length)
+    expect(fotos.every((foto) => foto.visivel)).toBe(true)
+    expect(fotos.every((foto) => !('imageAlt' in foto))).toBe(true)
+  })
+})
+
 describe('campos sem valor real são omitidos, nunca preenchidos', () => {
   it('o rodapé não declara dados legais', () => {
     expect('legalData' in documents.footer).toBe(false)

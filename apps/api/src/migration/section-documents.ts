@@ -212,10 +212,20 @@ function ingredientesDocument(content: LandingPageContent): SectionDocumentDraft
   return { heading: content.ingredientes.heading }
 }
 
+/**
+ * O texto alternativo do kit de imagens já existe: é o `alt` que
+ * `ProvaAutoridade.tsx` escreve hoje na tag `<img>`. Ele vem para cá como
+ * constante porque o componente ainda o guarda em código até a T14 — depois
+ * dela, o valor gravado por esta migração é o que a página passa a ler.
+ */
+const KIT_DE_IMAGENS_ALT = 'Veggiedent, selo número 1 e recomendação veterinária'
+
 function provaAutoridadeDocument(content: LandingPageContent): SectionDocumentDraft {
   return {
     heading: content.provaAutoridade.heading,
     source: content.provaAutoridade.source,
+    kit: content.componentImages.provaAutoridadeKit,
+    kitAlt: KIT_DE_IMAGENS_ALT,
     stats: content.provaAutoridade.stats.map((stat, ordem) => ({
       stat: stat.stat,
       label: stat.label,
@@ -245,6 +255,7 @@ function capturaLeadDocument(content: LandingPageContent): SectionDocumentDraft 
     errorToastMessage: content.form.errorToastMessage,
     porteOptions: toOptionItems(content.form.porteOptions),
     simNaoOptions: toOptionItems(content.form.simNaoOptions),
+    mosaico: content.mosaicPhotos.map((photo, ordem) => ({ image: photo, visivel: true, ordem })),
   }
 }
 

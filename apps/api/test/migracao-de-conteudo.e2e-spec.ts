@@ -441,6 +441,8 @@ function documentosEsperados(
     prova_autoridade: {
       heading: content.provaAutoridade.heading,
       source: content.provaAutoridade.source,
+      kit: urlDe(content.componentImages.provaAutoridadeKit),
+      kitAlt: 'Veggiedent, selo número 1 e recomendação veterinária',
       stats: comOrdem(
         content.provaAutoridade.stats.map((item) => ({
           stat: item.stat,
@@ -488,6 +490,7 @@ function documentosEsperados(
       simNaoOptions: comOrdem(
         form.simNaoOptions.map((option) => ({ value: option.value, label: option.label })),
       ),
+      mosaico: comOrdem(content.mosaicPhotos.map((photo) => ({ image: urlDe(photo) }))),
     },
     onde_comprar: {
       heading: content.ondeComprar.heading,

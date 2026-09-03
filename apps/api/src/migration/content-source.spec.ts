@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import {
   COMPONENT_IMAGE_FILES,
+  MOSAIC_PHOTOS,
   extractPageMetadata,
   findRepositoryRoot,
   loadLandingPageContent,
@@ -63,10 +64,10 @@ describe('leitura dos arquivos de conteúdo', () => {
 })
 
 /**
- * As quatro imagens que nenhum `*.content.ts` declara: os componentes as
- * importam direto. A migração as conhece por um caminho escrito à mão, e um
- * caminho escrito à mão desatualiza em silêncio — a página passaria a mostrar
- * uma imagem e o CMS a guardar outra. Este teste lê o `import` dos próprios
+ * As imagens que nenhum `*.content.ts` declara: os componentes as importam
+ * direto. A migração as conhece por um caminho escrito à mão, e um caminho
+ * escrito à mão desatualiza em silêncio — a página passaria a mostrar uma
+ * imagem e o CMS a guardar outra. Este teste lê o `import` dos próprios
  * componentes e exige que os dois digam o mesmo arquivo.
  */
 describe('imagens que os componentes importam diretamente', () => {
@@ -74,8 +75,11 @@ describe('imagens que os componentes importam diretamente', () => {
     headerLogo: 'src/components/layout/Header/Header.tsx',
     heroImage: 'src/sections/Hero/Hero.tsx',
     produtoPackshot: 'src/sections/Produto/Produto.tsx',
+    provaAutoridadeKit: 'src/sections/ProvaAutoridade/ProvaAutoridade.tsx',
     footerLogo: 'src/components/layout/Footer/Footer.tsx',
   }
+
+  const MOSAIC_COMPONENT = 'src/sections/CapturaLead/components/LeadFormMosaic.tsx'
 
   const ASSET_IMPORT = /^import\s+\w+\s+from\s+['"](\..*\.(?:png|jpe?g|svg|webp|avif|gif))['"]/gm
 
@@ -97,6 +101,15 @@ describe('imagens que os componentes importam diretamente', () => {
 
   it('o logo do cabeçalho e o do rodapé são o mesmo arquivo', () => {
     expect(COMPONENT_IMAGE_FILES.headerLogo).toBe(COMPONENT_IMAGE_FILES.footerLogo)
+  })
+
+  /**
+   * O mosaico é a mesma armadilha, multiplicada por seis: são seis caminhos
+   * escritos à mão de um lado e seis `import` do outro. A comparação é por
+   * conjunto — a ordem da lista do CMS é do operador, não do componente.
+   */
+  it('a migração leva exatamente as fotos que o mosaico do formulário importa', () => {
+    expect([...MOSAIC_PHOTOS].sort()).toEqual(importedAssets(MOSAIC_COMPONENT).sort())
   })
 })
 
