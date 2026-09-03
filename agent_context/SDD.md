@@ -122,11 +122,13 @@ Quatro tabelas em Postgres (Supabase).
 | `nome`, `email` | `text` | Obrigatórios |
 | `telefone`, `nome_cachorro`, `porte_cachorro`, `cidade_estado` | `text` | Opcionais |
 | `conhece_virbac`, `usa_produto_virbac`, `qual_produto_virbac` | `text` | Opcionais — hoje coletados e descartados (ver R-01) |
-| `aceite_lgpd`, `aceite_comunicacoes` | `boolean` | |
+| `aceite_comunicacoes` | `boolean` | Opt-in de marketing. Varia de verdade entre `true` e `false`, por isso é guardado |
 | `origem` | `text` | |
 | `rdstation_status` | `text` | `ok` \| `falhou` \| `nao_enviado` |
 | `rdstation_error` | `text` | Nulo quando `ok` |
 | `created_at` | `timestamptz` | |
+
+**Por que não existe coluna `aceite_lgpd`.** O consentimento com a Política de Privacidade é **condição de envio**: sem ele o formulário é recusado com `422` e nenhum registro nasce. Guardar a coluna significaria gravar a constante `true` em toda linha — informação zero, e uma coluna inútil na exportação. A prova de consentimento é a própria existência do registro somada a `created_at`. Se um dia for preciso provar **a que texto** a pessoa consentiu (por exemplo, depois de a Política de Privacidade mudar), o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre este erro de modelagem.
 
 **Row Level Security:** habilitada em todas as quatro tabelas, sem nenhuma policy permissiva para os papéis anônimo e autenticado. Nenhum cliente alcança o banco diretamente; todo acesso passa pela API usando a chave secreta do lado do servidor. Isso cumpre literalmente o requisito de isolamento da superfície pública do PRD.
 
@@ -356,7 +358,21 @@ Régua usada na Fase 4 para detectar divergência entre o implementado e o prete
 | **C-09** | Metadados de busca e compartilhamento | Após alterar o título no painel, buscar o HTML da LP **sem executar JavaScript** já traz o novo título. Com a API indisponível, o mesmo pedido devolve a página com os metadados padrão, nunca um erro. |
 | **C-10** | Consumo do conteúdo pela LP | Nenhuma seção importa de `*.content.ts`; todas leem da API. A página não apresenta mudança visual perceptível em relação ao estado atual. Com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia ou quebrada. |
 | **C-11** | Registro dos leads | Um envio do formulário cria um registro com todos os campos preenchidos, inclusive os três hoje descartados (R-01). Com o RD Station recusando, o lead ainda é gravado, o visitante ainda vê sucesso e `rdstation_status` registra a falha. O honeypot preenchido não gera registro nem repasse. |
-| **C-12** | Consulta e exportação de leads | A tela lista do mais recente ao mais antigo, com filtro por período. A exportação abre no Excel em português com acentuação correta. A exclusão remove o lead definitivamente. Nenhum lead é acessível sem autenticação. |
+| **C-12** | Consulta e exportação de leads | A tela lista do mais recente ao mais antigo, com filtro por período, recortando o dia em **horário de Brasília (UTC−3)**, não em UTC. A exclusão remove o lead definitivamente. Nenhum lead é acessível sem autenticação. **Exportação (regra de negócio RN-01, abaixo):** o arquivo é `.csv`, traz **todos os dados preenchidos no formulário, um por coluna**, abre no Excel em português com acentuação correta, e respeita os filtros aplicados na tela. |
+
+### RN-01 — Exportação de leads em CSV
+
+Regra de negócio declarada pelo usuário em 2026-09-02.
+
+Deve ser possível exportar, em formato `.csv`, os leads recebidos pelos formulários da landing page, com **todos os dados do formulário separados por colunas**. Detalhamento verificável:
+
+- **Uma coluna por campo do formulário**, com cabeçalho em português legível pelo operador — não o nome técnico da coluna do banco.
+- Cobertura obrigatória dos campos que o visitante preenche: nome, e-mail, telefone, nome do cachorro, porte do cachorro, cidade e estado, conhece a Virbac, usa produto Virbac, qual produto Virbac, e o opt-in de comunicações.
+- Colunas operacionais que acompanham cada lead: data de envio (em horário de Brasília), origem, e o resultado do repasse ao RD Station (status e erro).
+- **Não existe coluna de aceite da Política de Privacidade**, pelo motivo registrado em "Modelo de dados": ele é condição de envio, não dado variável.
+- Separador `;` e BOM UTF-8, para o arquivo abrir corretamente no Excel em português.
+- A exportação respeita os filtros de período aplicados na consulta.
+- Exige autenticação, como todo acesso a lead.
 
 ## Dependências externas
 

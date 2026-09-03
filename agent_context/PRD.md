@@ -73,7 +73,7 @@ Permitir que a equipe responsável pela landing page do Veggiedent altere qualqu
 - O conteúdo hoje presente nos arquivos `*.content.ts` é o conteúdo válido de partida e será migrado para o CMS como estado inicial.
 - Os operadores do painel são pessoas de marketing/conteúdo, não desenvolvedores: nenhuma edição pode exigir escrever HTML, JSON ou qualquer sintaxe de código.
 - O número de usuários do painel e o volume de edições é baixo (dezenas de edições por mês, poucos usuários simultâneos) — não é um sistema de alta carga.
-- Os arquivos de vídeo já existentes no projeto são grandes (na ordem de dezenas a centenas de MB); o CMS precisa suportar arquivos desse porte no upload.
+- Os arquivos de vídeo já existentes no projeto têm **23,6 MB e 4,2 MB** (medidos em 2026-09-02). O CMS precisa suportar arquivos desse porte no upload, com folga. O limite efetivo é de **50 MB por arquivo**, teto do projeto Supabase, e o painel precisa exibi-lo ao operador. Publicar vídeos acima disso exigiria elevar o limite no provedor — decisão de custo, hoje fora de escopo. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre o teto de armazenamento.
 
 **Dependências:**
 

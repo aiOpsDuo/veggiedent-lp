@@ -35,3 +35,122 @@ Motivo: o PRD afirma, em "Premissas", que "os arquivos de video ja existentes no
 Alem disso, a T7 descobriu e o orquestrador confirmou de forma independente que o projeto Supabase tem um **teto global de 50 MB por arquivo** que prevalece sobre o limite de 500 MB declarado na migracao do bucket de video. Verificado: criacao de upload TUS de 60 MB responde `HTTP 413 Maximum size exceeded`; 50 MB responde `201`.
 
 Impacto: nenhum bloqueio hoje — os dois videos reais cabem com folga, e o criterio C-07 do SDD ("um video de porte equivalente aos existentes no projeto") foi cumprido com um upload real de 23,6 MB. Mas a promessa de "centenas de MB" do PRD **nao e atendivel** no plano atual do Supabase. Duas saidas, e a escolha e do usuario: elevar o limite em Project Settings > Storage (exige plano pago) ou corrigir a premissa do PRD para o tamanho real dos arquivos. Ate a decisao, o limite efetivo de video e 50 MB e esta documentado no README. A T12 (campos de midia no painel) precisa exibir esse limite ao operador.
+
+## 2026-09-02 — Tres decisoes do usuario: SVG permitido, limite de video fixado em 50 MB, fuso de Brasilia nos leads
+
+Documentos afetados: PRD.md, SDD.md
+
+Motivo: tres pontos em aberto foram levados ao usuario com recomendacao e ele decidiu os tres.
+
+1. **SVG passa a ser aceito no bucket de imagens.** A LP usa 4 SVGs reais (o logo Veggiedent, referenciado em dois componentes, e tres infograficos da secao de prova de autoridade), e o bucket criado pela T3 aceitava apenas jpeg/png/webp/avif/gif. A T9 havia comecado a converter o logo para PNG por conta propria — de 8,7 KB para 35 KB, com perda de escalabilidade num ativo de marca. O orquestrador barrou a conversao silenciosa e levou a decisao ao usuario. Risco avaliado: um SVG pode carregar script, mas aqui e contido — apenas operadores autenticados enviam, e o arquivo e servido do dominio do Supabase, nao do da LP, entao um script embutido nao alcanca a origem da pagina nem seus cookies.
+
+2. **O limite de video fica em 50 MB**, o teto real do projeto Supabase, em vez de elevar o plano. A premissa do PRD sobre "centenas de MB" foi corrigida para os tamanhos medidos (23,6 MB e 4,2 MB). O painel deve exibir o limite ao operador (T12).
+
+3. **O filtro de datas dos leads passa a usar horario de Brasilia (UTC-3)** em vez de dias em UTC, para que o corte do dia seja o que o operador entende. Corrigido antes de a T13 construir a tela em cima.
+
+Impacto: a T9 ganha uma migracao acrescentando `image/svg+xml` aos tipos aceitos do bucket de imagens, e o PNG gerado por engano e descartado. A secao "Premissas" do PRD foi corrigida. O criterio C-12 do SDD passa a pressupor recorte de dia em horario de Brasilia.
+
+## 2026-09-02 — ERRO DE MODELAGEM DO ORQUESTRADOR: coluna `aceite_lgpd` guarda uma constante
+
+Documentos afetados: SDD.md, PLAN.md
+
+Motivo: o usuario apontou, e a verificacao confirmou, que a coluna `aceite_lgpd` da tabela `leads` **nao guarda informacao nenhuma**. O erro e do orquestrador: eu a coloquei em "Modelo de dados" do SDD ao transcrever os campos do formulario, sem notar que ela e logicamente impossivel de variar.
+
+Evidencia no codigo implementado a partir desse SDD:
+- `apps/api/src/modules/leads/domain/lead-submission.ts:93` — `if (raw.aceite_lgpd !== true)` rejeita a submissao com `422`. Sem consentimento, nenhum registro nasce.
+- `apps/api/src/modules/leads/domain/lead-submission.ts:126` — `aceiteLgpd: true`, **literal hardcoded**. O codigo nao le o valor do visitante; ele grava a constante.
+
+Consequencia: toda linha da tabela tem `aceite_lgpd = true`, e o CSV exportado ganhava uma coluna "Aceite LGPD" que sempre diz "Sim". Uma coluna que so pode ter um valor nao prova nada que a existencia da propria linha ja nao prove.
+
+Onde o raciocinio falhou: confundi "o dado aparece no formulario" com "o dado precisa ser persistido". O checkbox existe na interface e e obrigatorio; disso nao decorre que ele seja um campo do registro. A pergunta que faltou fazer ao escrever o modelo de dados foi "este campo pode assumir mais de um valor no banco?" — para `aceite_lgpd` a resposta e nao, e para `aceite_comunicacoes` (opt-in de marketing, genuinamente opcional) a resposta e sim. Os dois foram tratados como iguais por estarem lado a lado no formulario.
+
+Nota tecnica para nao trocar um erro por outro: se um dia for preciso provar **a que texto** a pessoa consentiu — cenario real depois de a Politica de Privacidade mudar —, o campo correto e a versao do texto aceito, nao um booleano. Isso nao esta em escopo hoje e nao foi adicionado.
+
+Impacto: a coluna sai do modelo de dados do SDD e do CSV. Exige migracao de remocao da coluna, ajuste do repositorio, do DTO, da view e do gerador de CSV, e atualizacao dos testes. Registrado como tarefa **T18** no PLAN.md, a ser executada depois da T9 para nao concorrer com ela no modulo de leads. A validacao que exige o consentimento **permanece** — o que muda e apenas nao persistir o resultado dela.
+
+## 2026-09-02 — ERRO DO ORQUESTRADOR: repassei ao usuario uma afirmacao de subagente sem verificar
+
+Documento afetado: PLAN.md (nota de aceitacao da T6)
+
+Motivo: ao aceitar a correcao da T6, relatei ao usuario, como fato, que "o teste R-05 antigo nao pegaria essa regressao porque os documentos de exemplo repetiam o mesmo identificador". Essa frase veio do relatorio do subagente e eu a reproduzi sem conferir. Ao revisar, medi: `apps/api/test/documento-de-exemplo.ts` contem **1 referencia de midia, 1 identificador distinto** — nao ha repeticao nenhuma. `packages/content-schema/tests/fixtures.ts` tem **10 identificadores, todos distintos**.
+
+A conclusao do subagente estava certa na direcao (a fixture antiga nao conseguiria distinguir 1 consulta de N consultas de midia), mas a **razao** era outra: o documento de exemplo tinha uma unica referencia de midia, entao nao havia como observar crescimento. Repeticao de id e ausencia de variedade sao coisas diferentes, e eu propaguei a explicacao errada.
+
+Onde o raciocinio falhou: a skill exige que eu rode os comandos verificaveis em vez de aceitar o relato do subagente, e eu cumpri isso para teste, build e typecheck. Mas tratei as **explicacoes** do subagente como se tivessem o mesmo grau de verificacao que os numeros. Nao tem. Um relatorio pode acertar a conclusao e errar a causa, e a causa e justamente o que vira aprendizado registrado.
+
+Impacto: a nota de aceitacao da T6 no PLAN.md repete a explicacao errada e precisa ser corrigida. Regra derivada para o orquestrador: afirmacao causal de subagente que eu for repassar ao usuario ou escrever em documento de processo precisa ser verificada como um comando verificavel — ou explicitamente atribuida ("segundo o subagente"), nunca apresentada como fato proprio.
+
+## 2026-09-02 — ERRO DO ORQUESTRADOR: escrevi uma nota de handoff afirmando pendencias que nao verifiquei
+
+Documento afetado: PLAN.md, e o prompt de retomada agendada
+
+Motivo: ao pausar o desenvolvimento a pedido do usuario, interrompi a T6 no meio e escrevi, tanto ao usuario quanto no agendamento de retomada, uma lista do que "faltava": teste de consulta unica (R-05), testes de 422, secao e item despublicados ausentes, ordem preservada, chave desconhecida 404, mensagens em portugues. Ao retomar, fui conferir os nomes dos testes e **todos esses itens ja estavam cobertos** — a suite tinha 125 testes na API.
+
+Montei aquela lista a partir do que eu havia pedido na delegacao, nao do que existia no disco. No momento da pausa eu cheguei a rodar `git status` (54 arquivos alterados), mas nao inspecionei o conteudo.
+
+Onde o raciocinio falhou: confundi "o que eu pedi" com "o que ainda falta". Sao a mesma coisa apenas se nada foi feito. Interromper uma tarefa no meio e exatamente o caso em que a diferenca importa, e foi ai que assumi.
+
+Impacto: o custo real foi baixo (a retomada checou antes de agir), mas o risco nao era: um agente de retomada menos cuidadoso teria refeito trabalho pronto, ou pior, sobrescrito. Regra derivada: nota de handoff de tarefa interrompida so afirma pendencia depois de inspecionar o artefato — no minimo listar os testes existentes e rodar a suite —, e na duvida escreve "estado nao verificado" em vez de uma lista especulativa.
+
+## 2026-09-02 — ERRO DO ORQUESTRADOR: criterios de "pronto" testavam o comportamento interno, nao o contrato com o consumidor
+
+Documento afetado: PLAN.md (criterios das T6, T7 e T8), SDD.md (criterios de aceitacao)
+
+Motivo: o criterio de "pronto" que escrevi para a T6 exigia 422 com erro por campo, despublicados ausentes, ordem preservada, chave desconhecida 404 e consulta unica. O subagente cumpriu todos, com 125 testes verdes — e ainda assim `GET /api/content` devolvia referencias de midia como **UUID cru**, inutil para a LP, que e o unico consumidor daquele endpoint. O defeito so apareceu quando eu exercitei o sistema manualmente contra o Supabase real.
+
+Onde o raciocinio falhou: todos os meus criterios olhavam para dentro — o que a API faz com a propria entrada. Nenhum perguntava se **quem consome a resposta consegue usa-la**. Uma suite pode ficar inteiramente verde enquanto o contrato com o consumidor esta quebrado, porque a suite testa o produtor contra si mesmo.
+
+Impacto: o defeito foi corrigido dentro da propria T6 (a saida publica passa a resolver a URL; a administrativa mantem o identificador). Regra derivada: todo criterio de "pronto" de endpoint precisa incluir ao menos uma verificacao na perspectiva do consumidor real — "a LP consegue renderizar isso?", "o painel consegue preencher o formulario com isso?" —, e nao apenas o comportamento observado de dentro da API. Aplicar retroativamente ao revisar T7 e T8, e prospectivamente nas T10 a T15.
+
+## 2026-09-02 — ERRO DO ORQUESTRADOR: o plano ignorou concorrencia por arquivo compartilhado e por arvore de trabalho
+
+Documento afetado: PLAN.md ("Ordem de execucao")
+
+Motivo: dois enganos de planejamento, ambos descobertos so na execucao.
+
+1. Marquei **T2, T3 e T4 como paralelizaveis**. T2 e T4 instalam dependencias npm e portanto escrevem as duas em `package-lock.json` na raiz — arquivo compartilhado. O guardrail de nao paralelizar tarefas que tocam o mesmo arquivo existe na skill e eu o apliquei pensando so em codigo-fonte, nao em arquivos de infraestrutura do repositorio.
+2. O plano nao previu que **dois subagentes fazendo git na mesma arvore de trabalho se atropelam**. Cada tarefa tem sua branch, mas branch nao isola arvore: dois `git checkout -b` concorrentes no mesmo diretorio corrompem o trabalho um do outro. Percebi ao disparar a T3 e a isolei em worktree, mas a T2 ja rodava na arvore principal — funcionou por sorte de sequencia, nao por desenho.
+
+Onde o raciocinio falhou: tratei "paralelizavel" como propriedade logica da tarefa (nao ha dependencia entre elas) quando e propriedade **fisica** dos recursos que ela toca — arquivos, diretorio de trabalho, banco, porta de rede.
+
+Impacto: corrigido no PLAN.md, com T4 passando a sequencial apos T2 e a regra de worktree isolado registrada. Regra derivada: antes de paralelizar, listar os recursos fisicos que cada tarefa escreve — incluindo `package-lock.json`, a arvore de trabalho git, o banco e portas — e nao apenas os arquivos de codigo.
+
+## 2026-09-02 — ERRO DO ORQUESTRADOR: premissa escrita a partir de comentario de codigo, sem medir
+
+Documento afetado: PRD.md
+
+Motivo: complementa a entrada sobre o teto de 50 MB, registrando o erro em si e nao apenas a correcao. Escrevi na secao "Premissas" do PRD que os videos tem "dezenas a centenas de MB", copiando a ordem de grandeza de um comentario em `Demonstracao.content.ts` ("arquivos de ~130MB"). Os arquivos reais tem **23,6 MB e 4,2 MB** — medi na T7, cinco tarefas depois. O comentario do repositorio estava desatualizado.
+
+Onde o raciocinio falhou: tratei um comentario de codigo como fonte de fato sobre o mundo. Comentario e afirmacao humana nao verificada, e envelhece sem aviso — ao contrario do arquivo, que estava a um `ls -la` de distancia. A premissa entrou num documento aprovado pelo usuario e sustentou uma decisao de arquitetura (upload retomavel para arquivos grandes, D-05).
+
+Nota: a decisao D-05 continua correta por outro motivo — upload direto ao armazenamento e o desenho certo mesmo para 23 MB, e o caminho retomavel foi exercitado com sucesso. O erro nao propagou dano, mas poderia: uma premissa errada de ordem de grandeza e exatamente o tipo de coisa que justifica arquitetura desnecessaria.
+
+Impacto: premissa corrigida no PRD com os valores medidos. Regra derivada: numero que entra em premissa de PRD precisa vir de medicao direta do artefato, nunca de comentario, README ou documento anterior — e se a medicao nao for possivel, a premissa e declarada como estimativa nao verificada.
+
+## 2026-09-02 — ERROS OPERACIONAIS DO ORQUESTRADOR ao subir e derrubar processos
+
+Documento afetado: nenhum (erros de execucao, nao de especificacao) — registrado para a analise da skill
+
+Motivo: tres enganos meus na operacao dos servidores que o usuario usa para testar, todos visiveis para ele.
+
+1. **LP sem CSS nenhum.** Subi o Vite a partir da raiz do repositorio. O Tailwind resolve os globs de `content` relativos ao **diretorio de trabalho**, nao a pasta do arquivo de configuracao, entao ele procurou `/repo/src/**`, que nao existe desde que a T1 moveu a LP para `apps/lp/`. Resultado: 12 KB de preflight e zero utilitarias. O usuario viu a pagina quebrada e teve que reportar.
+2. **Binario errado ao corrigir o item 1.** Usei `./node_modules/.bin/vite` dentro de `apps/lp`, mas em monorepo com workspaces o binario e icado para a raiz. O processo nem subiu.
+3. **`pkill -f` matando o proprio shell.** Rodei `pkill -f "node dist/main.js"`, e o padrao casou com a linha de comando do meu proprio processo bash, que continha aquele texto. Saida 144, duas vezes, antes de eu trocar para localizar o processo pela porta em escuta.
+
+Onde o raciocinio falhou: nos tres casos, executei um comando por analogia com o ambiente "normal" (repo de um projeto so, binario local, pkill por nome) sem checar as condicoes especificas deste ambiente (monorepo com workspaces, hoisting, e o fato de `pkill -f` enxergar a propria invocacao).
+
+Impacto: nenhum dano permanente; a LP ficou alguns minutos sem estilo e a API caiu duas vezes. Regras derivadas: (a) processos de desenvolvimento em monorepo sobem com o binario da raiz e o diretorio de trabalho do workspace-alvo; (b) encerrar processo pela porta em escuta, nunca por `pkill -f` com padrao que a propria linha de comando contem; (c) apos subir um servidor, verificar o **conteudo** servido, nao apenas o codigo HTTP — um `200` sem CSS teria sido pego na hora.
+
+## 2026-09-02 — ERROS DOS SUBAGENTES: tres padroes que se repetiram
+
+Documento afetado: nenhum (analise de execucao) — registrado para a analise da skill
+
+Motivo: consolidacao dos erros cometidos pelos subagentes de implementacao, para servir de material a melhoria da skill.
+
+1. **Regressao de qualidade silenciosa.** O primeiro subagente da T9, ao esbarrar num bucket que nao aceitava `image/svg+xml`, comecou a **converter o logo do Veggiedent de SVG para PNG por conta propria** — 8,7 KB para 35 KB, com perda de escalabilidade num ativo de marca. Nao perguntou, nao sinalizou; tratou uma restricao de infraestrutura como se autorizasse mudar o ativo. Foi barrado pelo orquestrador ao inspecionar a arvore, e a decisao foi levada ao usuario. **Este e o mais grave dos tres**, porque teria chegado ao usuario final como degradacao visual sem nenhum registro.
+2. **Testes verdes que nao cobrem o contrato.** O subagente da T6 entregou 125 testes passando com um endpoint que devolvia UUID onde o consumidor precisa de URL (ver entrada propria acima). O mesmo padrao apareceu no teste do risco R-05: a fixture tinha uma unica referencia de midia, entao o teste nao conseguia distinguir uma consulta de N consultas. Testes escritos a partir do proprio codigo confirmam o codigo, nao o requisito.
+3. **Entrega deixada em estado que nao compila.** O primeiro subagente da T2 foi interrompido deixando `npm run typecheck` quebrado (`tests/sections.test.ts(150,79)`, acesso a `.fields` sem estreitar a uniao discriminada). Interrupcao explica nao ter terminado, nao explica ter deixado o repositorio sem compilar entre um passo e outro.
+
+Aspectos positivos que tambem valem registro, por serem o comportamento a reforcar: os subagentes das T5, T6, T7 e T8 provaram os requisitos criticos **por mutacao** (quebrar de proposito e ver o teste falhar) em vez de por leitura, e declararam explicitamente desvios de camada, decisoes fora de escopo e limitacoes que nao conseguiram resolver — inclusive quando isso os expunha, como o teto de 50 MB e o multipart orfao da T7.
+
+Regras derivadas: (a) toda delegacao deve dizer explicitamente que restricao de infraestrutura nao autoriza alterar um ativo do projeto — a resposta correta e parar e reportar; (b) exigir que o teste seja escrito a partir do requisito e provado por mutacao, nunca a partir do codigo pronto; (c) o criterio de "pronto" deve incluir que o repositorio compila em qualquer ponto de parada, nao apenas ao final.
