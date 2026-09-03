@@ -1,5 +1,4 @@
-import { useRef, useState } from "react";
-import { formContent } from "../CapturaLead.content";
+import { useMemo, useRef, useState } from "react";
 import { useLeadForm } from "../hooks/useLeadForm";
 import { env } from "../../../config/env";
 import { useTracking } from "../../../hooks/useTracking";
@@ -8,13 +7,30 @@ import { PorteSelect } from "./PorteSelect";
 import { ConsentCheckbox } from "./ConsentCheckbox";
 import { SuccessModal } from "./SuccessModal";
 import { ErrorToast } from "./ErrorToast";
+import type { SectionContent } from "../../../content/published-content";
 import type { LeadFormFieldName } from "../CapturaLead.types";
 
+interface LeadCaptureFormProps {
+  content: SectionContent<"captura_lead">;
+}
+
+/** Valor da opção que abre o campo "qual produto Virbac". */
+const OPCAO_SIM = "sim";
+
 // LeadCaptureForm — orquestra os subcomponentes de campo, o hook useLeadForm
-// e os estados de sucesso/erro. Especificacao Funcional, secao 8.
-export function LeadCaptureForm() {
+// e os estados de sucesso/erro. Todo rotulo, mensagem e opcao vem do CMS
+// (Especificacao Funcional, secao 8; SDD, C-10).
+export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
+  const errorMessages = useMemo(
+    () => ({
+      nome: content.errorNome,
+      email: content.errorEmail,
+      aceiteLgpd: content.errorAceiteLgpd,
+    }),
+    [content.errorNome, content.errorEmail, content.errorAceiteLgpd],
+  );
   const { values, errors, status, setValue, handleBlur, submit } =
-    useLeadForm();
+    useLeadForm(errorMessages);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const submitButtonRef = useRef<HTMLButtonElement>(null);
@@ -71,8 +87,8 @@ export function LeadCaptureForm() {
 
         <FormField
           ref={nomeRef}
-          label={formContent.fields.nome.label}
-          placeholder={formContent.fields.nome.placeholder}
+          label={content.formNomeLabel}
+          placeholder={content.formNomePlaceholder}
           value={values.nome}
           onChange={(value) => setValue("nome", value)}
           onBlur={() => handleBlur("nome")}
@@ -82,8 +98,8 @@ export function LeadCaptureForm() {
 
         <FormField
           ref={emailRef}
-          label={formContent.fields.email.label}
-          placeholder={formContent.fields.email.placeholder}
+          label={content.formEmailLabel}
+          placeholder={content.formEmailPlaceholder}
           value={values.email}
           onChange={(value) => setValue("email", value)}
           onBlur={() => handleBlur("email")}
@@ -94,30 +110,33 @@ export function LeadCaptureForm() {
 
         {/* Campo condicional — incluir apenas se aprovado pela estrategia (PRD v1.2, secao 18) */}
         <FormField
-          label={formContent.fields.telefone.label}
-          placeholder={formContent.fields.telefone.placeholder}
+          label={content.formTelefoneLabel}
+          placeholder={content.formTelefonePlaceholder}
           value={values.telefone}
           onChange={(value) => setValue("telefone", value)}
           onBlur={() => handleBlur("telefone")}
         />
 
         <FormField
-          label={formContent.fields.nomeCachorro.label}
-          placeholder={formContent.fields.nomeCachorro.placeholder}
+          label={content.formNomeCachorroLabel}
+          placeholder={content.formNomeCachorroPlaceholder}
           value={values.nomeCachorro}
           onChange={(value) => setValue("nomeCachorro", value)}
           onBlur={() => handleBlur("nomeCachorro")}
         />
 
         <FormField
-          label={formContent.fields.cidadeEstado.label}
-          placeholder={formContent.fields.cidadeEstado.placeholder}
+          label={content.formCidadeEstadoLabel}
+          placeholder={content.formCidadeEstadoPlaceholder}
           value={values.cidadeEstado}
           onChange={(value) => setValue("cidadeEstado", value)}
           onBlur={() => handleBlur("cidadeEstado")}
         />
 
         <PorteSelect
+          label={content.formPorteCachorroLabel}
+          placeholder={content.formPorteCachorroPlaceholder}
+          options={content.porteOptions}
           value={values.porteCachorro}
           onChange={(value) => setValue("porteCachorro", value)}
         />
@@ -125,75 +144,65 @@ export function LeadCaptureForm() {
         <div className="flex flex-col gap-3">
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-ink-900">
-              {formContent.fields.conheceVirbac.label}
+              {content.formConheceVirbacLabel}
             </legend>
 
             <div className="flex items-center gap-6">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
-                <input
-                  type="radio"
-                  name="conheceVirbac"
-                  value="sim"
-                  checked={values.conheceVirbac === "sim"}
-                  onChange={() => setValue("conheceVirbac", "sim")}
-                  className="h-4 w-4 accent-brand-primary"
-                />
-                Sim
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
-                <input
-                  type="radio"
-                  name="conheceVirbac"
-                  value="nao"
-                  checked={values.conheceVirbac === "nao"}
-                  onChange={() => setValue("conheceVirbac", "nao")}
-                  className="h-4 w-4 accent-brand-primary"
-                />
-                Não
-              </label>
+              {content.simNaoOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-ink-700"
+                >
+                  <input
+                    type="radio"
+                    name="conheceVirbac"
+                    value={option.value}
+                    checked={values.conheceVirbac === option.value}
+                    onChange={() => setValue("conheceVirbac", option.value)}
+                    className="h-4 w-4 accent-brand-primary"
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
           </fieldset>
 
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-ink-900">
-              {formContent.fields.usaProdutoVirbac.label}
+              {content.formUsaProdutoVirbacLabel}
             </legend>
 
             <div className="flex items-center gap-6">
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
-                <input
-                  type="radio"
-                  name="usaProdutoVirbac"
-                  value="sim"
-                  checked={values.usaProdutoVirbac === "sim"}
-                  onChange={() => setValue("usaProdutoVirbac", "sim")}
-                  className="h-4 w-4 accent-brand-primary"
-                />
-                Sim
-              </label>
-
-              <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-700">
-                <input
-                  type="radio"
-                  name="usaProdutoVirbac"
-                  value="nao"
-                  checked={values.usaProdutoVirbac === "nao"}
-                  onChange={() => {
-                    setValue("usaProdutoVirbac", "nao");
-                    setValue("qualProdutoVirbac", "");
-                  }}
-                  className="h-4 w-4 accent-brand-primary"
-                />
-                Não
-              </label>
+              {content.simNaoOptions.map((option) => (
+                <label
+                  key={option.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-ink-700"
+                >
+                  <input
+                    type="radio"
+                    name="usaProdutoVirbac"
+                    value={option.value}
+                    checked={values.usaProdutoVirbac === option.value}
+                    onChange={() => {
+                      setValue("usaProdutoVirbac", option.value);
+                      // Quem responde que nao usa nenhum produto nao deve enviar
+                      // um "qual produto" digitado antes de trocar a resposta.
+                      if (option.value !== OPCAO_SIM) {
+                        setValue("qualProdutoVirbac", "");
+                      }
+                    }}
+                    className="h-4 w-4 accent-brand-primary"
+                  />
+                  {option.label}
+                </label>
+              ))}
             </div>
           </fieldset>
 
-          {values.usaProdutoVirbac === "sim" && (
+          {values.usaProdutoVirbac === OPCAO_SIM && (
             <FormField
-              label={formContent.fields.qualProdutoVirbac.label}
-              placeholder={formContent.fields.qualProdutoVirbac.placeholder}
+              label={content.formQualProdutoVirbacLabel}
+              placeholder={content.formQualProdutoVirbacPlaceholder}
               value={values.qualProdutoVirbac}
               onChange={(value) => setValue("qualProdutoVirbac", value)}
               onBlur={() => handleBlur("qualProdutoVirbac")}
@@ -203,7 +212,7 @@ export function LeadCaptureForm() {
 
         <ConsentCheckbox
           ref={aceiteLgpdRef}
-          label={formContent.lgpdLabel}
+          label={content.lgpdLabel}
           checked={values.aceiteLgpd}
           onChange={(checked) => setValue("aceiteLgpd", checked)}
           error={errors.aceiteLgpd}
@@ -211,7 +220,7 @@ export function LeadCaptureForm() {
         />
 
         <ConsentCheckbox
-          label={formContent.optInLabel}
+          label={content.optInLabel}
           checked={values.aceiteComunicacoes}
           onChange={(checked) => setValue("aceiteComunicacoes", checked)}
         />
@@ -223,15 +232,16 @@ export function LeadCaptureForm() {
           className="mt-2 inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-primary px-6 text-base font-semibold text-ink-900 transition-colors hover:bg-brand-primary-hover disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
         >
           {status === "submitting"
-            ? formContent.submitLoadingLabel
-            : formContent.submitLabel}
+            ? content.submitLoadingLabel
+            : content.submitLabel}
         </button>
 
-        {status === "error" && <ErrorToast />}
+        {status === "error" && <ErrorToast message={content.errorToastMessage} />}
       </form>
 
       {isModalOpen && (
         <SuccessModal
+          content={content}
           onClose={() => setIsModalOpen(false)}
           triggerRef={submitButtonRef}
         />

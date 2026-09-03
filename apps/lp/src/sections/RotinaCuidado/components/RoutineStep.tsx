@@ -1,8 +1,8 @@
 import { Card } from "../../../components/ui/Card";
-import type { RoutineStepData } from "../RotinaCuidado.types";
+import type { SectionContent } from "../../../content/published-content";
 
 interface RoutineStepProps {
-  data: RoutineStepData;
+  data: SectionContent<"rotina">["steps"][number];
   index: number;
 }
 
@@ -17,8 +17,8 @@ export function RoutineStep({ data, index }: RoutineStepProps) {
       className="flex h-full flex-1 flex-col gap-2 overflow-hidden !p-0 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-lg"
     >
       <img
-        src={data.image.src}
-        alt={data.image.alt}
+        src={data.image}
+        alt={data.imageAlt}
         loading="lazy"
         className="aspect-[6/6] w-full object-fill"
       />

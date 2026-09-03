@@ -2,10 +2,12 @@ import { useState, useRef } from 'react'
 import { Minus, Plus } from 'lucide-react'
 import { useReducedMotion } from '../../../hooks/useReducedMotion'
 import { gsap, useGSAP } from '../../../lib/gsap'
-import type { FaqItem } from '../Faq.types'
+import type { SectionContent } from '../../../content/published-content'
+
+type FaqItem = SectionContent<'faq'>['items'][number]
 
 interface AccordionProps {
-  items: FaqItem[]
+  items: readonly FaqItem[]
 }
 
 export function Accordion({ items }: AccordionProps) {

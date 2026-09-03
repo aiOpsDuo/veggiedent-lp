@@ -1,9 +1,9 @@
 import { useTracking } from '../../../hooks/useTracking'
 import { useReducedMotion } from '../../../hooks/useReducedMotion'
-import type { Partner } from '../OndeComprar.types'
+import type { SectionContent } from '../../../content/published-content'
 
 interface PartnerLogoMarqueeProps {
-  partners: Partner[]
+  partners: SectionContent<'onde_comprar'>['partners']
 }
 
 // Marquee de logos reais — esteira continua sem salto perceptivel.
@@ -47,8 +47,8 @@ export function PartnerLogoMarquee({ partners }: PartnerLogoMarqueeProps) {
         className="flex min-w-[220px] shrink-0 items-center justify-center px-8 opacity-80 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
       >
         <img
-          src={partner.logoUrl}
-          alt={copyIndex === 0 ? partner.nome : ''}
+          src={partner.logo}
+          alt={copyIndex === 0 ? partner.logoAlt : ''}
           loading="lazy"
           className="h-auto max-h-14 w-auto max-w-[160px] object-contain"
         />

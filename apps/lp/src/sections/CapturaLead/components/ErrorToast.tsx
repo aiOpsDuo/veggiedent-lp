@@ -1,15 +1,17 @@
-import { formContent } from '../CapturaLead.content'
+interface ErrorToastProps {
+  message: string
+}
 
 // Toast/Inline — role="status" (nao interrompe, mas e anunciado) —
 // Especificacao Funcional, secao 13.
-export function ErrorToast() {
+export function ErrorToast({ message }: ErrorToastProps) {
   return (
     <div
       role="status"
       aria-live="polite"
       className="mt-4 rounded-md border border-feedback-error/30 bg-feedback-error/10 px-4 py-3 text-sm text-feedback-error"
     >
-      {formContent.errorToastMessage}
+      {message}
     </div>
   )
 }

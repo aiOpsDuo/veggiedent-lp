@@ -1,22 +1,22 @@
 import { useRef, useState } from 'react'
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { useVideoTracking } from '../hooks/useVideoTracking'
-import type { VideoData } from '../Demonstracao.types'
+import { videoTrackingId } from '../video-tracking-id'
+import type { SectionContent } from '../../../content/published-content'
 
 interface VideoPlayerProps {
-  video: VideoData
+  video: SectionContent<'demonstracao'>['videos'][number]
 }
 
 // Video/Player — Design System v1.2, secao 9.8. Estados: idle/loading/playing/ended.
-// Autoplay desabilitado. `poster` e `<track>` apontam para public/videos/thumbnails
-// e public/videos/captions — se os arquivos ainda nao existirem, o navegador
-// degrada normalmente (sem poster, sem legenda), sem erro visivel e sem exigir
-// alteracao de codigo quando os arquivos chegarem (Especificacao Funcional, 6.6).
+// Autoplay desabilitado. O arquivo, a miniatura e as legendas vem do CMS; as
+// legendas sao opcionais no esquema, entao a faixa de legenda so e declarada
+// quando existe arquivo cadastrado (Especificacao Funcional, 6.6).
 export function VideoPlayer({ video }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'ended'>('idle')
   const [isMuted, setIsMuted] = useState(true)
-  const { handlePlay, handleTimeUpdate, reset } = useVideoTracking(video.id)
+  const { handlePlay, handleTimeUpdate, reset } = useVideoTracking(videoTrackingId(video))
 
   function togglePlay() {
     const el = videoRef.current
@@ -45,7 +45,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
         preload="metadata"
         playsInline
         muted={isMuted}
-        poster={video.posterSrc}
+        poster={video.poster}
         onPlay={() => {
           setStatus('playing')
           handlePlay()
@@ -58,8 +58,10 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
         onTimeUpdate={handleTimeUpdate}
         onCanPlay={() => setStatus((current) => (current === 'loading' ? 'playing' : current))}
       >
-        <source src={video.src} type="video/mp4" />
-        <track kind="captions" srcLang="pt-BR" label="Português" src={video.captionsSrc} />
+        <source src={video.video} type="video/mp4" />
+        {video.captions !== undefined && (
+          <track kind="captions" srcLang="pt-BR" label="Português" src={video.captions} />
+        )}
       </video>
 
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/70 to-transparent p-4">

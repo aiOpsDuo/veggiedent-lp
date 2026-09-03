@@ -1,13 +1,15 @@
 import { useRef } from "react";
-import { claimsInfographicContent } from "./ProvaAutoridade.content";
 import { ClaimIpsosBR } from "./components/ClaimIpsosBR";
 import { ClaimsInfographic } from "./components/ClaimsInfographic";
 import { SectionShell } from "../../components/ui/SectionShell";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { gsap, useGSAP } from "../../lib/gsap";
-import kitDeImagens from "../../assets/images/prova-autoridade/Kit-de-imagens.png";
+import { connectSection } from "../../content/connect-section";
+import type { SectionContent } from "../../content/published-content";
 
-export function ProvaAutoridade() {
+export const ProvaAutoridade = connectSection("prova_autoridade", ProvaAutoridadeSecao);
+
+function ProvaAutoridadeSecao({ content }: { content: SectionContent<"prova_autoridade"> }) {
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -73,12 +75,7 @@ export function ProvaAutoridade() {
                 id="prova-autoridade-heading"
                 className="title-el text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-bold leading-tight text-ink-900 mt-2 tracking-tight"
               >
-                A recomendação dos
-                <br className="hidden lg:block" />
-                <span className="text-brand-primary-hover font-extrabold inline">
-                  médicos-veterinários,
-                </span>{" "}
-                em números
+                {content.heading}
               </h2>
 
               {/* Claim Text */}
@@ -90,8 +87,8 @@ export function ProvaAutoridade() {
             {/* Kit de Imagens (Loaded once, scaled to 85% width, aligned to bottom) */}
             <div className="kit-image-el relative mt-4 w-full">
               <img
-                src={kitDeImagens}
-                alt="Veggiedent, selo número 1 e recomendação veterinária"
+                src={content.kit}
+                alt={content.kitAlt}
                 className="block h-auto w-[85%] mx-auto lg:mx-0 max-w-none object-contain object-left-bottom"
               />
             </div>
@@ -99,14 +96,14 @@ export function ProvaAutoridade() {
 
           {/* Right Column (approximately 36% width on desktop) */}
           <div className="lg:w-[36%] lg:mt-16 w-full">
-            <ClaimsInfographic />
+            <ClaimsInfographic stats={content.stats} />
           </div>
         </div>
 
         {/* Unified Source Reference at the bottom */}
         <div className="mt-6 border-t border-black/5 pt-3 w-full">
           <p className="text-xs leading-relaxed text-ink-400 max-w-[85ch]">
-            {claimsInfographicContent.source}
+            {content.source}
           </p>
         </div>
       </SectionShell>

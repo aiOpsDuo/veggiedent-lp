@@ -1,13 +1,17 @@
 import { useRef } from 'react'
 import { Card } from '../../../components/ui/Card'
-import { claimsInfographicContent } from '../ProvaAutoridade.content'
 import { Stethoscope, ShieldCheck } from 'lucide-react'
 import { useReducedMotion } from '../../../hooks/useReducedMotion'
 import { gsap, useGSAP } from '../../../lib/gsap'
 import { ProductDifferentials } from './ProductDifferentials'
+import type { SectionContent } from '../../../content/published-content'
+
+interface ClaimsInfographicProps {
+  stats: SectionContent<'prova_autoridade'>['stats']
+}
 
 // Claims/Infographic — exibe os números de autoridade em cards premium empilhados.
-export function ClaimsInfographic() {
+export function ClaimsInfographic({ stats }: ClaimsInfographicProps) {
   const reducedMotion = useReducedMotion()
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -31,7 +35,7 @@ export function ClaimsInfographic() {
   return (
     <>
       <div ref={containerRef} role="list" className="flex flex-col gap-4">
-        {claimsInfographicContent.stats.map((item, index) => {
+        {stats.map((item, index) => {
           const isFirst = index === 0
           const StatIcon = isFirst ? Stethoscope : ShieldCheck
           const statColorClass = isFirst ? 'text-brand-primary-hover' : 'text-claim-gold'

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
-import type { NavLink } from '../Header.types'
+import type { SectionContent } from '../../../../content/published-content'
 
 interface MobileMenuProps {
   isOpen: boolean
   onClose: () => void
-  navLinks: NavLink[]
+  navLinks: SectionContent<'header'>['navLinks']
   ctaLabel: string
   triggerRef: React.RefObject<HTMLButtonElement>
 }

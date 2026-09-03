@@ -1,5 +1,4 @@
 import { useRef } from 'react'
-import { capturaLeadContent } from './CapturaLead.content'
 import { LeadCaptureForm } from './components/LeadCaptureForm'
 import { LeadFormMosaic } from './components/LeadFormMosaic'
 import { Card } from '../../components/ui/Card'
@@ -7,8 +6,12 @@ import { SectionShell } from '../../components/ui/SectionShell'
 import { SectionHeading } from '../../components/ui/SectionHeading'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { gsap, useGSAP } from '../../lib/gsap'
+import { connectSection } from '../../content/connect-section'
+import type { SectionContent } from '../../content/published-content'
 
-export function CapturaLead() {
+export const CapturaLead = connectSection('captura_lead', CapturaLeadSecao)
+
+function CapturaLeadSecao({ content }: { content: SectionContent<'captura_lead'> }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
 
@@ -73,15 +76,15 @@ export function CapturaLead() {
         <div className="grid gap-8 md:grid-cols-2 md:items-center">
           <div>
             <div className="lead-header-el">
-              <SectionHeading id="captura-lead-heading">{capturaLeadContent.heading}</SectionHeading>
+              <SectionHeading id="captura-lead-heading">{content.heading}</SectionHeading>
             </div>
-            <p className="lead-header-el mt-4 max-w-[60ch] text-lg text-ink-700">{capturaLeadContent.body}</p>
-            <LeadFormMosaic />
+            <p className="lead-header-el mt-4 max-w-[60ch] text-lg text-ink-700">{content.body}</p>
+            <LeadFormMosaic fotos={content.mosaico} />
           </div>
 
           <div className="form-card-el">
             <Card className="shadow-lg ring-1 ring-black/5 md:shadow-xl">
-              <LeadCaptureForm />
+              <LeadCaptureForm content={content} />
             </Card>
           </div>
         </div>

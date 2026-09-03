@@ -1,19 +1,24 @@
 import { useRef } from "react";
-import { heroContent } from "./Hero.content";
 import { Button } from "../../components/ui/Button";
 import { useTracking } from "../../hooks/useTracking";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { gsap, useGSAP } from "../../lib/gsap";
-import heroBg from "../../assets/images/hero/virbac-kv-hero.png";
+import { connectSection } from "../../content/connect-section";
+import type { SectionContent } from "../../content/published-content";
 import grupoBandeiras from "../../assets/images/hero/grupo-bandeiras.png";
 
 // Hero/Primary — Design System v1.2, secao 9.2.
 // Imagem de fundo e o maior contribuinte de LCP: sem lazy loading, fetchpriority alto
 // (Especificacao Funcional, secao 12.2).
-// Asset oficial: 0705_Virbac_KV 01.png (KV veterinaria + cachorro, selo N.1 e logo
-// Virbac ja embutidos na peca) — usado como background full-bleed da secao,
+// A imagem de fundo (KV veterinaria + cachorro, selo N.1 e logo Virbac ja
+// embutidos na peca) vem do CMS e e usada como background full-bleed da secao,
 // conforme diretriz de marca: nao usar bloco de cor solido.
-export function Hero() {
+//
+// A faixa de bandeiras continua importada do codigo, por decisao registrada do
+// usuario (PLAN, "Decisoes registradas de escopo — o que NAO entra no CMS").
+export const Hero = connectSection("hero", HeroBanner);
+
+function HeroBanner({ content }: { content: SectionContent<"hero"> }) {
   const { track } = useTracking();
   const reducedMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
@@ -57,8 +62,8 @@ export function Hero() {
       className="relative isolate flex min-h-[560px] items-end overflow-hidden sm:min-h-[640px] md:min-h-[720px]"
     >
       <img
-        src={heroBg}
-        alt={heroContent.imageAlt}
+        src={content.image}
+        alt={content.imageAlt}
         fetchPriority="high"
         className="bg-image-el absolute inset-0 -z-10 h-full w-full object-cover object-[65%_center] 3xl:object-[65%_15%]"
       />
@@ -70,13 +75,13 @@ export function Hero() {
 
       <div className="mx-auto w-full max-w-content px-4 pb-10 pt-24 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:px-8 sm:pb-14 md:pb-20">
         <p className="overline-el text-sm font-semibold uppercase tracking-wide text-white/90">
-          {heroContent.overline}
+          {content.overline}
         </p>
         <h1
           id="hero-heading"
           className="title-el mt-3 max-w-[27ch] text-[32px] font-bold leading-[1.15] text-white sm:text-[48px] md:text-[56px]"
         >
-          {heroContent.headline}
+          {content.headline}
         </h1>
         {/* Destaque da pesquisa */}
         <div className="research-el mt-5 max-w-[60ch] text-white">
@@ -94,7 +99,7 @@ export function Hero() {
         </div>
 
         <p className="subtitle-el mt-4 max-w-[60ch] text-lg text-white/90">
-          {heroContent.subheadline}
+          {content.subheadline}
         </p>
 
         {/* Referências */}
@@ -131,24 +136,24 @@ export function Hero() {
             variant="primary"
             onClick={() =>
               track("cta_click", {
-                cta_label: heroContent.ctaPrimaryLabel,
+                cta_label: content.ctaPrimaryLabel,
                 cta_location: "hero_primary",
               })
             }
           >
-            {heroContent.ctaPrimaryLabel}
+            {content.ctaPrimaryLabel}
           </Button>
           <Button
             href="#rotina"
             variant="link"
             onClick={() =>
               track("cta_click", {
-                cta_label: heroContent.ctaSecondaryLabel,
+                cta_label: content.ctaSecondaryLabel,
                 cta_location: "hero_secondary",
               })
             }
           >
-            {heroContent.ctaSecondaryLabel}
+            {content.ctaSecondaryLabel}
           </Button>
         </div>
       </div>

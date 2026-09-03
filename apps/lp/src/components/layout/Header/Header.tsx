@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { headerContent } from "./Header.content";
 import { MobileMenu } from "./components/MobileMenu";
 import { Button } from "../../ui/Button";
 import { useTracking } from "../../../hooks/useTracking";
-import veggiedentLogo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
+import { connectSection } from "../../../content/connect-section";
+import type { SectionContent } from "../../../content/published-content";
 
 // Header/Sticky — Design System v1.2, secao 9.1.
-// Todo texto vem de Header.content.ts (Especificacao Funcional, secao 6.1).
-// Logo importado como modulo ES (Vite processa e copia para dist/assets com
-// hash) — nao referenciado por string de caminho solto.
-export function Header() {
+// Todo texto e o logo vem de GET /api/content (SDD, C-10).
+export const Header = connectSection("header", HeaderBar);
+
+function HeaderBar({ content }: { content: SectionContent<"header"> }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -42,7 +42,7 @@ export function Header() {
 
   function handleCtaClick(location: string) {
     track("cta_click", {
-      cta_label: headerContent.ctaDesktopLabel,
+      cta_label: content.ctaDesktopLabel,
       cta_location: location,
     });
   }
@@ -56,17 +56,17 @@ export function Header() {
       <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-4 py-3 sm:px-8">
         <a href="#main-content" className="flex items-center gap-2">
           <img
-            src={veggiedentLogo}
-            alt={headerContent.logoAlt}
+            src={content.logo}
+            alt={content.logoAlt}
             className="h-10 w-auto"
           />
         </a>
 
         <nav
-          aria-label={headerContent.mainNavAriaLabel}
+          aria-label={content.mainNavAriaLabel}
           className="hidden items-center gap-6 md:flex"
         >
-          {headerContent.navLinks.map((link) => (
+          {content.navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -83,7 +83,7 @@ export function Header() {
             variant="primary"
             onClick={() => handleCtaClick("header")}
           >
-            {headerContent.ctaDesktopLabel}
+            {content.ctaDesktopLabel}
           </Button>
         </div>
 
@@ -93,12 +93,12 @@ export function Header() {
             onClick={() => handleCtaClick("header_mobile")}
             className="inline-flex h-11 items-center justify-center rounded-md bg-brand-primary px-3 text-sm font-semibold text-ink-900"
           >
-            {headerContent.ctaMobileLabel}
+            {content.ctaMobileLabel}
           </a>
           <button
             ref={menuButtonRef}
             type="button"
-            aria-label={headerContent.menuButtonAriaLabel}
+            aria-label={content.menuButtonAriaLabel}
             aria-expanded={isMenuOpen}
             aria-controls="mobile-menu"
             onClick={() => setIsMenuOpen((open) => !open)}
@@ -113,8 +113,8 @@ export function Header() {
         <MobileMenu
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
-          navLinks={headerContent.navLinks}
-          ctaLabel={headerContent.ctaMobileLabel}
+          navLinks={content.navLinks}
+          ctaLabel={content.ctaMobileLabel}
           triggerRef={menuButtonRef}
         />
       </div>

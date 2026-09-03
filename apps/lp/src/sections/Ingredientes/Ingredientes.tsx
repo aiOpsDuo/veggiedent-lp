@@ -1,20 +1,23 @@
-import { ingredientesContent } from './Ingredientes.content'
 import { SectionShell } from '../../components/ui/SectionShell'
 import { SectionHeading } from '../../components/ui/SectionHeading'
+import { connectSection } from '../../content/connect-section'
+import type { SectionContent } from '../../content/published-content'
 
-// [BLOQUEADO] — Especificacao Funcional, secao 6.7: a secao existe no wireframe
-// mas nao vai para produção sem conteúdo real. Enquanto isContentReady for false,
-// o componente nao renderiza nada (nem o H2) — evita título sem corpo em produção
-// e mantém a seção fora do menu de navegação do Header.
-export function Ingredientes() {
-  if (!ingredientesContent.isContentReady) {
-    return null
-  }
+/**
+ * A secao existe no wireframe mas nao tem conteudo aprovado: o material tecnico
+ * da Virbac ainda nao chegou. Ela vive **despublicada** no CMS, e por isso nao
+ * chega em `GET /api/content` e nada e renderizado — nem o titulo, o que evita
+ * um H2 sem corpo na pagina e a mantem fora do menu do cabecalho.
+ *
+ * Publicar a secao no painel e o que a coloca na pagina; nao ha mais nenhuma
+ * chave no codigo para virar (antes era `isContentReady`).
+ */
+export const Ingredientes = connectSection('ingredientes', IngredientesSecao)
 
+function IngredientesSecao({ content }: { content: SectionContent<'ingredientes'> }) {
   return (
     <SectionShell id="ingredientes" aria-labelledby="ingredientes-heading">
-      <SectionHeading id="ingredientes-heading">{ingredientesContent.heading}</SectionHeading>
-      {/* Conteudo real entra aqui assim que o material tecnico da Virbac chegar. */}
+      <SectionHeading id="ingredientes-heading">{content.heading}</SectionHeading>
     </SectionShell>
   )
 }

@@ -1,16 +1,17 @@
-import { footerContent } from "./Footer.content";
-import veggiedentLogo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
+import { connectSection } from "../../../content/connect-section";
+import type { SectionContent } from "../../../content/published-content";
 
 // Footer/Legal — Design System v1.2, secao 9.13.
-// Todo texto vem de Footer.content.ts (Especificacao Funcional, secao 6.12).
-// Logo importado como modulo ES, igual ao Header.
-export function Footer() {
+// Todo texto e o logo vem de GET /api/content (SDD, C-10).
+export const Footer = connectSection("footer", FooterLegal);
+
+function FooterLegal({ content }: { content: SectionContent<"footer"> }) {
   return (
     <footer className="border-t border-black/5 bg-surface-section-alt">
       <div className="mx-auto flex max-w-content flex-col gap-6 px-4 py-12 sm:px-8 sm:flex-row sm:items-start sm:justify-between">
         <img
-          src={veggiedentLogo}
-          alt={footerContent.logoAlt}
+          src={content.logo}
+          alt={content.logoAlt}
           className="h-12 w-auto"
         />
 
@@ -18,7 +19,7 @@ export function Footer() {
           aria-label="Links institucionais"
           className="flex flex-col gap-2 sm:flex-row sm:gap-6"
         >
-          {footerContent.links.map((link) => (
+          {content.links.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -32,19 +33,17 @@ export function Footer() {
 
       <div className="mx-auto max-w-content px-4 pb-8 sm:px-8">
         <p className="max-w-[70ch] text-xs leading-relaxed text-ink-400">
-          {footerContent.claimSource}
+          {content.claimSource}
         </p>
         <p className="mt-3 text-xs font-medium text-ink-700">
-          {footerContent.speciesDisclaimer}
+          {content.speciesDisclaimer}
         </p>
 
-        {footerContent.legalDataPlaceholder && (
-          <p className="mt-1 text-xs text-ink-400">
-            {footerContent.legalDataPlaceholder}
-          </p>
+        {content.legalData && (
+          <p className="mt-1 text-xs text-ink-400">{content.legalData}</p>
         )}
 
-        <p className="mt-4 text-xs text-ink-400">{footerContent.copyright}</p>
+        <p className="mt-4 text-xs text-ink-400">{content.copyright}</p>
       </div>
     </footer>
   );

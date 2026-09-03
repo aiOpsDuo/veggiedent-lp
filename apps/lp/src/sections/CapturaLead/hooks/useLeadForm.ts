@@ -4,6 +4,7 @@ import { useTracking } from "../../../hooks/useTracking";
 import { submitLeadToRDStation } from "../services/submitLeadToRDStation";
 import { validateField, validateLeadForm } from "../utils/validation";
 import type {
+  LeadFormErrorMessages,
   LeadFormErrors,
   LeadFormStatus,
   LeadFormValues,
@@ -24,7 +25,11 @@ const initialValues: LeadFormValues = {
   aceiteLgpd: false,
   aceiteComunicacoes: false,
 };
-export function useLeadForm() {
+/**
+ * O estado do formulario. Recebe as mensagens de erro em vez de importa-las
+ * porque elas sao conteudo do CMS, e o hook nao fala com o CMS.
+ */
+export function useLeadForm(errorMessages: LeadFormErrorMessages) {
   const [values, setValues] = useState<LeadFormValues>(initialValues);
   const [errors, setErrors] = useState<LeadFormErrors>({});
   const [touched, setTouched] = useState<
@@ -48,26 +53,29 @@ export function useLeadForm() {
       if (touched[name]) {
         setErrors((prev) => ({
           ...prev,
-          [name]: validateField(name, { ...values, [name]: value }),
+          [name]: validateField(name, { ...values, [name]: value }, errorMessages),
         }));
       }
     },
-    [touched, values, track],
+    [touched, values, track, errorMessages],
   );
 
   const handleBlur = useCallback(
     (name: keyof LeadFormValues) => {
       setTouched((prev) => ({ ...prev, [name]: true }));
-      setErrors((prev) => ({ ...prev, [name]: validateField(name, values) }));
+      setErrors((prev) => ({
+        ...prev,
+        [name]: validateField(name, values, errorMessages),
+      }));
     },
-    [values],
+    [values, errorMessages],
   );
 
   const submit = useCallback(async (): Promise<
     "success" | "error" | "invalid"
   > => {
     setStatus("validating");
-    const validationErrors = validateLeadForm(values);
+    const validationErrors = validateLeadForm(values, errorMessages);
     setErrors(validationErrors);
 
     const firstInvalidField = Object.keys(validationErrors)[0] as
@@ -94,7 +102,7 @@ export function useLeadForm() {
       });
       return "error";
     }
-  }, [values, track]);
+  }, [values, track, errorMessages]);
 
   return { values, errors, status, setValue, handleBlur, submit };
 }

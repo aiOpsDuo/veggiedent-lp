@@ -12,6 +12,7 @@ import { CapturaLead } from './sections/CapturaLead'
 import { OndeComprar } from './sections/OndeComprar'
 import { Faq } from './sections/Faq'
 import { useTracking } from './hooks/useTracking'
+import { PublishedContentProvider } from './content/PublishedContentProvider'
 
 // Demonstracao e a unica secao com React.lazy — decisao tecnica registrada no
 // relatorio de comparacao v1.0 -> v1.1: e a secao que carrega o VideoPlayer
@@ -26,6 +27,10 @@ const Demonstracao = lazy(() =>
 
 // App.tsx so importa e organiza as secoes (Especificacao Funcional, secao 3.3).
 // Nenhuma logica de secao, nenhum JSX de conteudo, nenhum texto solto aqui.
+//
+// O conteudo de todas elas vem de GET /api/content, servido pelo provedor que
+// envolve a pagina (SDD, D-08 e C-10). Uma secao despublicada nao aparece: o
+// proprio componente devolve null quando a API nao a entrega.
 export default function App() {
   const { track } = useTracking()
 
@@ -34,7 +39,7 @@ export default function App() {
   }, [track])
 
   return (
-    <>
+    <PublishedContentProvider>
       <SkipToContentLink />
       <Header />
 
@@ -54,6 +59,6 @@ export default function App() {
       </main>
 
       <Footer />
-    </>
+    </PublishedContentProvider>
   )
 }

@@ -1,8 +1,8 @@
 import { useTracking } from '../../../hooks/useTracking'
-import type { Partner } from '../OndeComprar.types'
+import type { SectionContent } from '../../../content/published-content'
 
 interface PartnerCardProps {
-  partner: Partner
+  partner: SectionContent<'onde_comprar'>['partners'][number]
 }
 
 // Partner logo — logo inteiramente clicavel, sem card/borda/sombra/botao separado.
@@ -20,8 +20,8 @@ export function PartnerCard({ partner }: PartnerCardProps) {
       className="flex shrink-0 items-center justify-center px-6 opacity-90 transition-opacity hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
     >
       <img
-        src={partner.logoUrl}
-        alt={`Logo ${partner.nome}`}
+        src={partner.logo}
+        alt={partner.logoAlt}
         loading="lazy"
         className="h-auto max-h-16 w-auto max-w-[160px] object-contain"
       />

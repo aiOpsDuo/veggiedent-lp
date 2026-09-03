@@ -1,13 +1,16 @@
 import { useRef } from 'react'
-import { ondeComprarContent } from './OndeComprar.content'
 import { PartnerLogoMarquee } from './components/PartnerLogoMarquee'
 import { PartnerPlaceholderMarquee } from './components/PartnerPlaceholderMarquee'
 import { SectionShell } from '../../components/ui/SectionShell'
 import { SectionHeading } from '../../components/ui/SectionHeading'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
 import { gsap, useGSAP } from '../../lib/gsap'
+import { connectSection } from '../../content/connect-section'
+import type { SectionContent } from '../../content/published-content'
 
-export function OndeComprar() {
+export const OndeComprar = connectSection('onde_comprar', OndeComprarParceiros)
+
+function OndeComprarParceiros({ content }: { content: SectionContent<'onde_comprar'> }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
 
@@ -44,16 +47,16 @@ export function OndeComprar() {
       <SectionShell id="onde-comprar" aria-labelledby="onde-comprar-heading">
         <div className="comprar-header-el">
           <SectionHeading id="onde-comprar-heading" className="text-ink-900">
-            {ondeComprarContent.heading}
+            {content.heading}
           </SectionHeading>
         </div>
         <p className="comprar-header-el mt-4 max-w-[60ch] text-lg text-ink-900/90">
-          {ondeComprarContent.intro}
+          {content.intro}
         </p>
 
-        {ondeComprarContent.partners.length > 0 ? (
+        {content.partners.length > 0 ? (
           <div className="partner-logo-marquee">
-            <PartnerLogoMarquee partners={ondeComprarContent.partners} />
+            <PartnerLogoMarquee partners={content.partners} />
           </div>
         ) : (
           <>

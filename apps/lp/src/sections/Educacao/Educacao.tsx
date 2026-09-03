@@ -1,13 +1,16 @@
 import { useState, useRef } from "react";
-import { educacaoContent } from "./Educacao.content";
 import { SectionShell } from "../../components/ui/SectionShell";
 import { SectionHeading } from "../../components/ui/SectionHeading";
 import { Card } from "../../components/ui/Card";
 import { ChevronDown } from "lucide-react";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { gsap, useGSAP } from "../../lib/gsap";
+import { connectSection } from "../../content/connect-section";
+import type { SectionContent } from "../../content/published-content";
 
-export function Educacao() {
+export const Educacao = connectSection("educacao", EducacaoCards);
+
+function EducacaoCards({ content }: { content: SectionContent<"educacao"> }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const reducedMotion = useReducedMotion();
@@ -55,15 +58,15 @@ export function Educacao() {
       <SectionShell id="educacao" aria-labelledby="educacao-heading">
         <div className="edu-header-el">
           <SectionHeading id="educacao-heading">
-            {educacaoContent.heading}
+            {content.heading}
           </SectionHeading>
         </div>
         <p className="edu-header-el mt-4 max-w-[70ch] text-lg text-ink-700">
-          {educacaoContent.intro}
+          {content.intro}
         </p>
         <div className="edu-header-el mt-5 max-w-[70ch] rounded-xl border-l-4 border-brand-primary bg-brand-primary/10 px-5 py-4">
           <p className="text-base leading-relaxed text-ink-900 sm:text-lg">
-            <strong>{educacaoContent.researchHighlight}</strong>
+            <strong>{content.researchHighlight}</strong>
           </p>
         </div>
 
@@ -71,11 +74,11 @@ export function Educacao() {
         <div className="edu-content-el hidden lg:grid grid-cols-12 gap-8 items-center mt-10">
           {/* Left column: Visual Showcase (spans 7 columns) */}
           <div className="col-span-7 relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-md ring-1 ring-black/5 bg-surface-section-alt">
-            {educacaoContent.cards.map((card, index) => (
+            {content.cards.map((card, index) => (
               <img
                 key={card.title}
-                src={card.image.src}
-                alt={card.image.alt}
+                src={card.image}
+                alt={card.imageAlt}
                 loading="lazy"
                 className={`absolute inset-0 h-full w-full object-cover object-[center_22%] transition-opacity duration-500 ease-in-out ${
                   activeIndex === index ? "opacity-100 z-10" : "opacity-0 z-0"
@@ -89,7 +92,7 @@ export function Educacao() {
             className="col-span-5 flex flex-col gap-3"
             aria-label="Abas de conteúdo educativo"
           >
-            {educacaoContent.cards.map((card, index) => (
+            {content.cards.map((card, index) => (
               <button
                 key={card.title}
                 onClick={() => setActiveIndex(index)}
@@ -113,7 +116,7 @@ export function Educacao() {
 
         {/* Mobile & Tablet Interactive Accordion (visible on screens < 1024px) */}
         <div className="edu-content-el lg:hidden mt-8 flex flex-col gap-3">
-          {educacaoContent.cards.map((card, index) => {
+          {content.cards.map((card, index) => {
             const isOpen = activeIndex === index;
             return (
               <Card
@@ -146,8 +149,8 @@ export function Educacao() {
                       {card.body}
                     </p>
                     <img
-                      src={card.image.src}
-                      alt={card.image.alt}
+                      src={card.image}
+                      alt={card.imageAlt}
                       loading="lazy"
                       className="aspect-[4/3] w-full rounded-xl object-cover object-[center_22%] shadow-sm ring-1 ring-black/5"
                     />

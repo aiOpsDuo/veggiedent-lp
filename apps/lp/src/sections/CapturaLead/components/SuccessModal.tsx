@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
-import { formContent } from '../CapturaLead.content'
 import { env, hasEbookDownloadUrl } from '../../../config/env'
 import { useTracking } from '../../../hooks/useTracking'
+import type { SectionContent } from '../../../content/published-content'
 
 interface SuccessModalProps {
+  content: SectionContent<'captura_lead'>
   onClose: () => void
   triggerRef: React.RefObject<HTMLButtonElement>
 }
@@ -13,7 +14,7 @@ interface SuccessModalProps {
 // (Especificacao Funcional, secao 8.4 e 13). Conteudo do modal (botao de
 // download vs. mensagem de e-mail) depende de VITE_EBOOK_DELIVERY_MODE —
 // nenhuma mudanca estrutural quando o link do e-book chegar (secao 8.6).
-export function SuccessModal({ onClose, triggerRef }: SuccessModalProps) {
+export function SuccessModal({ content, onClose, triggerRef }: SuccessModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const { track } = useTracking()
   const showDownloadButton = hasEbookDownloadUrl()
@@ -47,7 +48,7 @@ export function SuccessModal({ onClose, triggerRef }: SuccessModalProps) {
       <div ref={dialogRef} className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
         <div className="flex items-start justify-between gap-4">
           <h2 id="success-modal-title" className="text-xl font-semibold text-ink-900">
-            {formContent.successModal.title}
+            {content.successModalTitle}
           </h2>
           <button
             type="button"
@@ -55,7 +56,7 @@ export function SuccessModal({ onClose, triggerRef }: SuccessModalProps) {
               onClose()
               triggerRef.current?.focus()
             }}
-            aria-label={formContent.successModal.closeAriaLabel}
+            aria-label={content.successModalCloseAriaLabel}
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
           >
             <X size={20} />
@@ -63,7 +64,7 @@ export function SuccessModal({ onClose, triggerRef }: SuccessModalProps) {
         </div>
 
         <p className="mt-2 text-base text-ink-700">
-          {showDownloadButton ? formContent.successModal.body : formContent.successModal.emailModeMessage}
+          {showDownloadButton ? content.successModalBody : content.successModalEmailModeMessage}
         </p>
 
         {showDownloadButton && (
@@ -72,7 +73,7 @@ export function SuccessModal({ onClose, triggerRef }: SuccessModalProps) {
             onClick={handleDownloadClick}
             className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-primary px-6 text-base font-semibold text-ink-900 hover:bg-brand-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
           >
-            {formContent.successModal.downloadCtaLabel}
+            {content.successModalDownloadCtaLabel}
           </a>
         )}
       </div>

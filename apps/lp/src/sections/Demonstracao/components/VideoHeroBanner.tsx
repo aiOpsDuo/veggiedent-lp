@@ -2,21 +2,32 @@ import { useEffect, useRef } from 'react'
 import { Button } from '../../../components/ui/Button'
 import { useTracking } from '../../../hooks/useTracking'
 import { useReducedMotion } from '../../../hooks/useReducedMotion'
-import posterSrc from '../../../assets/images/demonstracao/video-banner-poster.jpg'
+import { videoTrackingId } from '../video-tracking-id'
+import type { SectionContent } from '../../../content/published-content'
+
+type VideoItem = SectionContent<'demonstracao'>['videos'][number]
 
 interface VideoHeroBannerProps {
   overline: string
   headline: string
   body: string
   ctaLabel: string
+  /** O primeiro vídeo da seção. Ausente quando nenhum vídeo está publicado. */
+  video: VideoItem | undefined
 }
 
-// Banner/VideoBackground — video oficial TutorabrindoPetiscoEcachorroComendo.mp4
-// usado como plano de fundo full-bleed da secao (autoplay, muted, loop, playsInline,
-// object-cover), com overlay escuro para legibilidade e conteudo textual sobreposto.
-// Respeita prefers-reduced-motion: usuarios que pedem menos movimento veem o
-// frame oficial do video como imagem estatica, sem autoplay.
-export function VideoHeroBanner({ overline, headline, body, ctaLabel }: VideoHeroBannerProps) {
+// Banner/VideoBackground — o primeiro video da secao usado como plano de fundo
+// full-bleed (autoplay, muted, loop, playsInline, object-cover), com overlay
+// escuro para legibilidade e conteudo textual sobreposto.
+//
+// O poster deixou de ser uma arte propria e passou a ser a **miniatura desse
+// mesmo video**, ja cadastrada no CMS (decisao do usuario de 2026-09-03, ver
+// CHANGELOG): o banner mostra o video, entao a imagem de espera dele e a
+// miniatura dele. Um ativo a menos no repositorio, nenhum campo novo.
+//
+// Respeita prefers-reduced-motion: quem pede menos movimento ve a miniatura
+// como imagem estatica, sem autoplay.
+export function VideoHeroBanner({ overline, headline, body, ctaLabel, video }: VideoHeroBannerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const { track } = useTracking()
   const reducedMotion = useReducedMotion()
@@ -26,35 +37,36 @@ export function VideoHeroBanner({ overline, headline, body, ctaLabel }: VideoHer
     if (!el || reducedMotion) return
 
     el.play().catch(() => {
-      // Autoplay bloqueado pelo navegador — o poster oficial permanece visivel.
+      // Autoplay bloqueado pelo navegador — a miniatura permanece visivel.
     })
   }, [reducedMotion])
 
   return (
     <div className="relative isolate -mx-4 overflow-hidden rounded-lg sm:-mx-8 md:mx-0">
       <div className="relative flex min-h-[420px] items-end sm:min-h-[480px] md:min-h-[560px]">
-        {reducedMotion ? (
-          <img
-            src={posterSrc}
-            alt="Tutor abrindo o pacote de Veggiedent e cachorro se aproximando para comer o petisco"
-            className="absolute inset-0 -z-10 h-full w-full object-cover"
-          />
-        ) : (
-          <video
-            ref={videoRef}
-            className="absolute inset-0 -z-10 h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            poster={posterSrc}
-            aria-hidden="true"
-            onPlay={() => track('video_start', { video_id: 'tutor-abrindo-petisco-banner' })}
-          >
-            <source src="/videos/TutorabrindoPetiscoEcachorroComendo.mp4" type="video/mp4" />
-          </video>
-        )}
+        {video !== undefined &&
+          (reducedMotion ? (
+            <img
+              src={video.poster}
+              alt={video.posterAlt}
+              className="absolute inset-0 -z-10 h-full w-full object-cover"
+            />
+          ) : (
+            <video
+              ref={videoRef}
+              className="absolute inset-0 -z-10 h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              poster={video.poster}
+              aria-hidden="true"
+              onPlay={() => track('video_start', { video_id: `${videoTrackingId(video)}-banner` })}
+            >
+              <source src={video.video} type="video/mp4" />
+            </video>
+          ))}
 
         {/* Overlay em gradiente — garante contraste AA do texto sobre o video oficial */}
         <div
