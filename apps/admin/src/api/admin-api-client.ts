@@ -21,6 +21,14 @@ const FORBIDDEN = 403
 const ACCESS_PROBE_PATH = '/admin/sections'
 
 /**
+ * O `fetch` do navegador precisa ser chamado com o objeto global como contexto:
+ * guardá-lo em uma propriedade e chamá-lo dali o invocaria com o cliente como
+ * contexto, e o navegador recusa isso com "Illegal invocation" — falha que o
+ * jsdom dos testes não reproduz, e que apareceu na verificação manual da T10.
+ */
+const browserFetch: typeof fetch = (input, init) => globalThis.fetch(input, init)
+
+/**
  * Cliente da API do CMS (SDD § "Visão de tiers").
  *
  * O painel fala com a API e só com ela para conteúdo, mídia e leads — o
@@ -32,7 +40,7 @@ export class AdminApiClient {
 
   constructor(
     baseUrl: string,
-    private readonly fetchResource: typeof fetch = globalThis.fetch,
+    private readonly fetchResource: typeof fetch = browserFetch,
   ) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
   }

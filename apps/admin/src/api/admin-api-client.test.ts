@@ -51,3 +51,28 @@ describe('AdminApiClient', () => {
     )
   })
 })
+
+/**
+ * Regressão da verificação manual da T10: o cliente guardava `globalThis.fetch`
+ * numa propriedade e o chamava dali, o que no navegador o invoca com o próprio
+ * cliente como contexto — "Illegal invocation", e toda chamada à API virava
+ * "indisponível". O jsdom aceita a chamada, então o defeito passou pela suíte
+ * inteira. Este teste olha para o contexto da chamada, que é onde ele estava.
+ */
+describe('AdminApiClient sem fetch injetado', () => {
+  it('chama fetch com o objeto global como contexto', async () => {
+    const contextos: unknown[] = []
+    vi.stubGlobal(
+      'fetch',
+      function (this: unknown): Promise<Response> {
+        contextos.push(this)
+        return Promise.resolve(new Response(null, { status: 200 }))
+      },
+    )
+
+    await new AdminApiClient('/api').checkAccess(TOKEN)
+
+    expect(contextos).toEqual([globalThis])
+    vi.unstubAllGlobals()
+  })
+})
