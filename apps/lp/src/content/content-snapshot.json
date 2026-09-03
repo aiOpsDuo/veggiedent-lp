@@ -1,0 +1,406 @@
+{
+  "sections": {
+    "header": {
+      "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg",
+      "logoAlt": "Veggiedent, por Virbac",
+      "navLinks": [
+        {
+          "href": "#educacao",
+          "label": "Saúde oral",
+          "ordem": 0,
+          "visivel": true
+        },
+        {
+          "href": "#rotina",
+          "label": "Rotina de cuidado",
+          "ordem": 1,
+          "visivel": true
+        },
+        {
+          "href": "#produto",
+          "label": "Produto",
+          "ordem": 2,
+          "visivel": true
+        },
+        {
+          "href": "#onde-comprar",
+          "label": "Onde comprar",
+          "ordem": 3,
+          "visivel": true
+        },
+        {
+          "href": "#faq",
+          "label": "Perguntas frequentes",
+          "ordem": 4,
+          "visivel": true
+        }
+      ],
+      "ctaMobileLabel": "Baixar o guia de cuidados diários",
+      "ctaDesktopLabel": "Baixar o guia de cuidados diários",
+      "mainNavAriaLabel": "Menu principal",
+      "menuButtonAriaLabel": "Abrir menu"
+    },
+    "hero": {
+      "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/53c77460-f784-4705-b485-2c6237fca02e/virbac-kv-hero.png",
+      "headline": "A marca mais recomendada pelos médicos veterinários entrevistados.",
+      "imageAlt": "Beagle recebendo Veggiedent das mãos de uma médica-veterinária em consultório, com selo N.1 Veggiedent Fr3sh e logo Virbac",
+      "overline": "SAÚDE ORAL CANINA",
+      "subheadline": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tártaro e no hálito fresco, sempre com a orientação do médico-veterinário.",
+      "ctaPrimaryLabel": "Baixar o guia de cuidados diários",
+      "ctaSecondaryLabel": "Ver a rotina completa"
+    },
+    "onde_comprar": {
+      "intro": "A Virbac não vende diretamente ao consumidor final. Encontre Veggiedent com os parceiros abaixo.",
+      "heading": "Onde encontrar Veggiedent®",
+      "partners": [
+        {
+          "link": "https://www.lupipet.com.br/tiras-mastigaveis-virbac-veggie-dent-fresh-para-caes-de-5-a-10kg",
+          "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/4d75e9e7-bb09-44ee-9ab0-749c15994228/ativo-1lupi-com-cachorro-gato-2.png",
+          "nome": "Lupi",
+          "ordem": 0,
+          "logoAlt": "Lupi",
+          "visivel": true
+        },
+        {
+          "link": "https://www.tudodebicho.com.br/busca?busca=veggiedent",
+          "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/74130853-5a5b-4e2c-9b80-713a9e243296/tudodebicho-rgb-horizontal-negativo-logomarca.png",
+          "nome": "Tudo de Bicho",
+          "ordem": 1,
+          "logoAlt": "Tudo de Bicho",
+          "visivel": true
+        },
+        {
+          "link": "https://www.lojamanadaanimal.com.br/search/?q=Veggiedent",
+          "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/63dbab32-4bc6-469d-a51e-c9f63bbcd954/manada.jpeg",
+          "nome": "Manada",
+          "ordem": 2,
+          "logoAlt": "Manada",
+          "visivel": true
+        }
+      ]
+    },
+    "produto": {
+      "body": [
+        {
+          "ordem": 0,
+          "texto": "O formato em “Z” de Veggiedent® FR3SH não é por acaso: ele promove a limpeza mecânica que remove a placa e previne o tártaro.",
+          "visivel": true
+        },
+        {
+          "ordem": 1,
+          "texto": "A exclusiva tecnologia FR3SH combate o mau hálito na raiz do problema e, ao mesmo tempo, refresca instantaneamente.",
+          "visivel": true
+        },
+        {
+          "ordem": 2,
+          "texto": "E os cães amam: Veggiedent® FR3SH é superpalatável, facilitando ao máximo a adesão ao cuidado oral diário.",
+          "visivel": true
+        }
+      ],
+      "heading": "Veggiedent® FR3SH rotina de cuidado bucal",
+      "benefits": [
+        {
+          "ordem": 0,
+          "texto": "Controle de tártaro",
+          "visivel": true
+        },
+        {
+          "ordem": 1,
+          "texto": "Hálito fresco e saudável",
+          "visivel": true
+        },
+        {
+          "ordem": 2,
+          "texto": "Uma tira mastigável por dia para todos os portes de cachorro.",
+          "visivel": true
+        }
+      ],
+      "ctaLabel": "Ver onde comprar",
+      "packshot": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/31c2b08d-2f9d-454e-8a95-7422d491ba59/veggiedent-packshot.jpg",
+      "packshotAlt": "Cachorro segurando na boca a embalagem oficial do Veggiedent Fr3sh, em ambiente doméstico"
+    },
+    "demonstracao": {
+      "intro": "Os vídeos abaixo mostram o momento de oferecer o petisco, do desembalar à primeira mordida. Vale assistir antes da estreia do seu cão com o Veggiedent®.",
+      "videos": [
+        {
+          "label": "Do pacote ao petisco",
+          "ordem": 0,
+          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/0f930212-df00-4413-91f5-cea684f9e060/tutorabrindopetiscoecachorrocomendo.mp4",
+          "poster": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/3bc2e311-9869-43c5-a76f-457764b85c8f/tutor-abrindo-petisco.jpg",
+          "visivel": true,
+          "posterAlt": "Do pacote ao petisco"
+        },
+        {
+          "label": "O momento de oferecer",
+          "ordem": 1,
+          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/b5549005-9c37-4257-bee0-380669eb3f49/cachorroganhadopetisco.mp4",
+          "poster": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/028e8838-b2b8-4e98-bd57-980124bfa0aa/cachorro-ganhando-petisco.jpg",
+          "visivel": true,
+          "posterAlt": "O momento de oferecer"
+        }
+      ],
+      "heading": "Como oferecer Veggiedent® ao seu cão",
+      "bannerBody": "Veja como é simples incluir o Veggiedent® no momento do petisco.",
+      "bannerCtaLabel": "Quero receber o guia gratuito",
+      "bannerHeadline": "Do pacote à primeira mordida",
+      "bannerOverline": "NA PRÁTICA"
+    },
+    "rotina": {
+      "intro": "Não existe fórmula pronta. Existe consistência. O médico-veterinário do seu cão ajuda a encontrar a frequência certa para o porte, a idade e o jeito de viver dele.",
+      "steps": [
+        {
+          "body": "Um olhar por perto, sem pressa, ajuda a notar qualquer mudança desde cedo.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/c1becd40-e5e8-4614-a76e-c90268508ea1/observar-boca.jpg",
+          "ordem": 0,
+          "title": "Observe a boca do seu cão de vez em quando",
+          "visivel": true,
+          "imageAlt": "Tutora observando e acariciando o cão em casa, em momento de atenção e carinho"
+        },
+        {
+          "body": "Cada cão tem o seu ritmo. Pergunte ao profissional que acompanha o seu.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/c7aad6e7-ac3a-4075-b499-248707803707/escovacao-rotina.png",
+          "ordem": 1,
+          "title": "Escove os dentes na frequência que o veterinário indicar",
+          "visivel": true,
+          "imageAlt": "Mão próxima à boca do cão, ilustrando a rotina de higiene oral orientada por veterinário"
+        },
+        {
+          "body": "Ofereça uma tira mastigável por dia.\n\nVeggiedent® pode fazer parte da rotina junto com a pasta C.E.T. ou ser utilizado isoladamente quando houver dificuldade com a escovação.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/6708a0eb-fe07-4fce-8449-2a807b9e59a2/veggiedent-na-rotina.jpg",
+          "ordem": 2,
+          "title": "Coloque o Veggiedent na rotina",
+          "visivel": true,
+          "imageAlt": "Embalagem oficial do Veggiedent® Fr3sh com selo N.1 de marca mais recomendada"
+        },
+        {
+          "body": "É o acompanhamento profissional que dá segurança para qualquer ajuste na rotina.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/509888d7-5c21-42d9-be83-634126434dd5/consultas-veterinarias.jpg",
+          "ordem": 3,
+          "title": "Não pule as consultas veterinárias",
+          "visivel": true,
+          "imageAlt": "Médico-veterinário segurando um cão de porte pequeno no colo durante consulta"
+        }
+      ],
+      "heading": "Uma rotina simples, no ritmo do seu dia"
+    },
+    "prova_autoridade": {
+      "kit": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/84d9117f-e075-4787-8af2-0fc9fdcf6375/kit-de-imagens.png",
+      "stats": [
+        {
+          "stat": "1.116",
+          "label": "Médicos-veterinários entrevistados",
+          "ordem": 0,
+          "visivel": true
+        },
+        {
+          "stat": "N.º 1",
+          "label": "Marca mais recomendada no Brasil*",
+          "ordem": 1,
+          "visivel": true
+        }
+      ],
+      "kitAlt": "Veggiedent, selo número 1 e recomendação veterinária",
+      "source": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
+      "heading": "A recomendação dos médicos-veterinários, em números"
+    },
+    "footer": {
+      "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg",
+      "links": [
+        {
+          "href": "/politica-de-privacidade",
+          "label": "Política de privacidade",
+          "ordem": 0,
+          "visivel": true
+        },
+        {
+          "href": "/termos-de-uso",
+          "label": "Termos de uso",
+          "ordem": 1,
+          "visivel": true
+        },
+        {
+          "href": "/fale-conosco",
+          "label": "Fale conosco",
+          "ordem": 2,
+          "visivel": true
+        }
+      ],
+      "logoAlt": "Veggiedent, por Virbac",
+      "copyright": "© 2026 Virbac. Todos os direitos reservados.",
+      "claimSource": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
+      "speciesDisclaimer": "Produto indicado exclusivamente para cães."
+    },
+    "faq": {
+      "items": [
+        {
+          "ordem": 0,
+          "answer": "A placa bacteriana se forma em menos de 24 horas na superfície dental, portanto o ideal é escovar diariamente, ou se acordo com a recomendação do seu médico-veterinário.",
+          "visivel": true,
+          "question": "Com que frequência devo oferecer Veggiedent® ao meu cão?"
+        },
+        {
+          "ordem": 2,
+          "answer": "Não. Veggiedent® faz parte da rotina de cuidado bucal, não substitui a escovação nem o acompanhamento veterinário.",
+          "visivel": true,
+          "question": "Veggiedent® substitui a escovação dos dentes?"
+        },
+        {
+          "ordem": 3,
+          "answer": "Hálito diferente, dificuldade para mastigar ou mudanças na hora da comida são sinais para conversar com o veterinário. Só um profissional consegue avaliar a boca do seu cão com segurança.",
+          "visivel": true,
+          "question": "Como sei se meu cão tem algum problema bucal?"
+        },
+        {
+          "ordem": 4,
+          "answer": "Sim. A composição de Veggiedent® é 100% vegetal, livre de conservantes ou ingredientes transgênicos.",
+          "visivel": true,
+          "question": "VeggieDent pode ser oferecido ao meu cão se ele for alérgico?"
+        },
+        {
+          "ordem": 6,
+          "answer": "Da Pesquisa Ipsos 2026, realizada com 1.116 médicos-veterinários, com base de dados da Virbac. O estudo completo está no link ao lado da informação.",
+          "visivel": true,
+          "question": "De onde vem o dado citado nesta página?"
+        }
+      ],
+      "heading": "Perguntas frequentes"
+    },
+    "educacao": {
+      "cards": [
+        {
+          "body": "Tártaro não aparece do dia para a noite. Por isso, um cuidado constante vale mais do que uma ação isolada de vez em quando.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/ef48280e-5095-4b26-aa3a-037f3b5f06e9/tartaro-alerta.jpg",
+          "ordem": 0,
+          "title": "Devagar, mas sempre",
+          "visivel": true,
+          "imageAlt": "Cachorro deitado observando de perto, ilustrando o acúmulo silencioso de tártaro"
+        },
+        {
+          "body": "Mau hálito, desconforto ao mastigar, mudança na hora de comer. Vale conversar com o veterinário quando notar qualquer um desses sinais.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/67674f69-1138-4d87-908d-1e59da6cdee2/sinais-mau-halito.jpg",
+          "ordem": 1,
+          "title": "Sinais que valem atenção",
+          "visivel": true,
+          "imageAlt": "Ilustração oficial Virbac sobre o mau hálito como primeiro sinal de acúmulo de placa e tártaro"
+        },
+        {
+          "body": "Escovação, petiscos funcionais como o Veggiedent® e visitas regulares ao veterinário formam a base de uma boa rotina bucal.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9dbf24ca-45e4-40fc-8c66-e96d5879906e/prevencao-diaria.jpg",
+          "ordem": 2,
+          "title": "Prevenção no dia a dia",
+          "visivel": true,
+          "imageAlt": "Embalagem de Veggiedent® Fr3sh com a mensagem oficial \"a prevenção deve ser diária\""
+        }
+      ],
+      "intro": "A boca do seu cachorro muda aos poucos. Ninguém percebe de um dia para o outro: placa e o tártaro se acumulam devagar, até que um dia o hálito muda ou a mordida parece diferente. A boa notícia é que é possível cuidar da saúde oral do seu melhor amigo com hábitos simples, no dia a dia. O médico-veterinário é uma referência importante na escolha do cuidado oral do seu cachorro.",
+      "heading": "Por que a saúde oral do seu cachorro importa",
+      "researchHighlight": "E, segundo a Pesquisa Ipsos 2026, Veggiedent® é a marca mais recomendada pelos profissionais entrevistados."
+    },
+    "captura_lead": {
+      "body": "Descubra como tornar o cuidado oral parte da rotina do seu cão, com informações sobre prevenção, controle do tártaro, mau hálito e os diferenciais de Veggiedent® FR3SH. Preencha o formulário ao lado e receba o guia por e-mail.",
+      "heading": "Baixe o guia gratuito sobre cuidados diários com os pets",
+      "mosaico": [
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/3f920dc7-08d1-4981-9fa6-55e41ec52e5c/mosaico-descanso.jpg",
+          "ordem": 0,
+          "visivel": true
+        },
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/55a5d0e7-84fc-44cc-8add-d2adff9afd40/mosaico-mastigando.jpg",
+          "ordem": 1,
+          "visivel": true
+        },
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/0b960700-78f9-4f41-9a33-50f0a6a0d17f/mosaico-jardim.jpg",
+          "ordem": 2,
+          "visivel": true
+        },
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/a7a3a518-4fab-42bf-a4fe-496685fec1c4/mosaico-produto.jpg",
+          "ordem": 3,
+          "visivel": true
+        },
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/f56d7ea3-1a6e-4632-922b-0ea8f93756b3/mosaico-retriever.jpg",
+          "ordem": 4,
+          "visivel": true
+        },
+        {
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/43c6435f-0e2c-44ee-9635-b89fe300fde5/mosaico-rotina.jpg",
+          "ordem": 5,
+          "visivel": true
+        }
+      ],
+      "errorNome": "Digite seu nome.",
+      "lgpdLabel": "Li e aceito a Política de Privacidade e autorizo o uso dos meus dados para receber o guia e comunicações relacionadas.",
+      "errorEmail": "Digite um e-mail válido.",
+      "optInLabel": "Quero receber novidades e conteúdos da Virbac sobre cuidado com o meu cão.",
+      "submitLabel": "Quero o guia gratuito",
+      "porteOptions": [
+        {
+          "label": "Pequeno",
+          "ordem": 0,
+          "value": "pequeno",
+          "visivel": true
+        },
+        {
+          "label": "Médio",
+          "ordem": 1,
+          "value": "medio",
+          "visivel": true
+        },
+        {
+          "label": "Grande",
+          "ordem": 2,
+          "value": "grande",
+          "visivel": true
+        }
+      ],
+      "formNomeLabel": "Nome",
+      "simNaoOptions": [
+        {
+          "label": "Sim",
+          "ordem": 0,
+          "value": "sim",
+          "visivel": true
+        },
+        {
+          "label": "Não",
+          "ordem": 1,
+          "value": "nao",
+          "visivel": true
+        }
+      ],
+      "formEmailLabel": "E-mail",
+      "errorAceiteLgpd": "É preciso aceitar a Política de Privacidade para continuar.",
+      "successModalBody": "Confirmamos seu cadastro. Clique no botão abaixo para acessar o guia agora.",
+      "errorToastMessage": "Não foi possível enviar seu cadastro agora. Tente novamente em alguns instantes.",
+      "formTelefoneLabel": "WhatsApp",
+      "successModalTitle": "Guia a caminho!",
+      "submitLoadingLabel": "Enviando...",
+      "formNomePlaceholder": "Seu nome",
+      "formEmailPlaceholder": "seuemail@exemplo.com",
+      "formCidadeEstadoLabel": "Cidade e estado (opcional)",
+      "formNomeCachorroLabel": "Nome do seu cão (opcional)",
+      "formConheceVirbacLabel": "Você já conhece a Virbac?",
+      "formPorteCachorroLabel": "Porte do seu cão (opcional)",
+      "formTelefonePlaceholder": "(00) 00000-0000",
+      "formUsaProdutoVirbacLabel": "Você já utiliza algum produto Virbac?",
+      "formQualProdutoVirbacLabel": "Qual produto Virbac você utiliza? (opcional)",
+      "successModalCloseAriaLabel": "Fechar",
+      "formCidadeEstadoPlaceholder": "Ex.: São Paulo, SP",
+      "formNomeCachorroPlaceholder": "Ex.: Bidu",
+      "formConheceVirbacPlaceholder": "Selecione uma opção",
+      "formPorteCachorroPlaceholder": "Selecione o porte",
+      "successModalDownloadCtaLabel": "Baixar o guia agora",
+      "successModalEmailModeMessage": "Enviamos o guia para o seu e-mail. Se não encontrar, confira a caixa de spam.",
+      "formUsaProdutoVirbacPlaceholder": "Selecione uma opção",
+      "formQualProdutoVirbacPlaceholder": "Digite o nome do produto"
+    }
+  },
+  "metadata": {
+    "title": "Veggiedent — Rotina de cuidado bucal para cachorros | Virbac",
+    "description": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario.",
+    "canonicalUrl": "https://p.virbac.com.br/"
+  }
+}

@@ -9,6 +9,12 @@ export const env = {
     'email') as EbookDeliveryMode,
   leadSubmitEndpoint:
     (import.meta.env.VITE_LEAD_SUBMIT_ENDPOINT as string | undefined) ?? '/api/rdstation-lead',
+  /**
+   * De onde a LP le o conteudo publicado (SDD, D-08). O padrao e relativo
+   * porque LP e API compartilham dominio: `/` serve a pagina e `/api/*` alcanca
+   * a API, tanto na entrada unica de desenvolvimento quanto em producao.
+   */
+  contentEndpoint: (import.meta.env.VITE_CONTENT_ENDPOINT as string | undefined) ?? '/api/content',
 }
 
 /** true somente quando ha uma URL real configurada para download direto do e-book. */

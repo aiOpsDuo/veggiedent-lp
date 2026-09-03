@@ -12,7 +12,8 @@
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
-    "preview": "npm run preview -w apps/lp"
+    "preview": "npm run preview -w apps/lp",
+    "instantaneo": "node scripts/gerar-instantaneo-de-conteudo.mjs"
   },
   "devDependencies": {
     "vitest": "^2.1.9"
