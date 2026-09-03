@@ -119,7 +119,7 @@ pedaço da tela sai de uma propriedade do esquema:
 | `lista-de-textos` | uma linha por valor, com **Adicionar linha** e **Remover a linha N** | é um grupo (`fieldset`/`legend`), porque um rótulo serve a um controle só |
 | `link` | uma linha de texto | quem julga o endereço é a API: `#secao`, `/pagina`, `https://…`, `mailto:` e `tel:` |
 | `booleano` | uma caixa de seleção | |
-| `imagem`, `video`, `legenda` | **espaço reservado**: mostra o identificador da mídia já guardada, em campo somente leitura, e avisa que o envio ainda não está nesta tela | é o escopo da tarefa de mídia (T12). O valor atual continua no rascunho e volta intacto na gravação, então salvar o texto de uma seção **não** apaga a imagem dela |
+| `imagem`, `video`, `legenda` | prévia do arquivo guardado, um seletor de arquivo, o limite escrito ao lado, barra de progresso durante o envio e um botão de remover | ver **Como o operador envia um arquivo** logo abaixo. Não há onde digitar identificador de mídia, de propósito (SDD § "Contrato do esquema de seção") |
 
 **Listas de itens.** Cada lista do esquema vira um bloco com **Adicionar item**, e cada item
 traz **Subir**, **Descer**, **Remover** e a caixa **Aparece na página**. Não há campo de
@@ -135,6 +135,66 @@ vai para **o campo que a causou** — o painel tira o prefixo da seção do cami
 devolve (`faq.items.1.question` → a pergunta do segundo item) e pendura a mensagem ali, com
 `aria-invalid` no controle. Uma mensagem cujo caminho não corresponde a nenhum campo da tela
 não é descartada: aparece em uma lista de avisos acima do formulário.
+
+#### Como o operador envia um arquivo pelo painel
+
+Abrir a seção, achar o campo de imagem, vídeo ou legenda e **escolher o arquivo**. Não há botão
+de enviar: escolher já envia. Enquanto o arquivo sobe, o campo mostra uma barra de progresso e
+a porcentagem em texto; ao terminar, a prévia do arquivo aparece ali mesmo — a imagem, o vídeo
+com controles de reprodução, ou o link do arquivo de legendas.
+
+**A prévia aparece antes de salvar, e é do arquivo que já está no armazenamento.** O envio e a
+gravação da seção são coisas diferentes: o arquivo já subiu e já foi registrado quando a prévia
+aparece; o botão **Salvar e publicar** é o que faz a seção passar a apontar para ele. Sair da
+tela sem salvar deixa o arquivo no armazenamento sem ninguém usando (ver "Limpeza de arquivos
+órfãos", em Operação).
+
+**O limite fica escrito abaixo do campo, antes de qualquer envio** — por exemplo
+`MP4 ou WebM, até 50 MB.` Arquivo de tipo não aceito ou acima do limite é recusado **no próprio
+painel**, com mensagem em português e sem nenhuma chamada à rede: o operador não espera um
+envio para descobrir que o arquivo nunca teve chance.
+
+> **Por que 50 MB, se o bucket de vídeo declara 500 MB.** O projeto Supabase tem um teto global
+> de upload por arquivo — hoje **50 MB** — que prevalece sobre o limite declarado em cada
+> bucket: acima dele o armazenamento responde `413 Maximum size exceeded` antes de aceitar
+> qualquer byte. O painel exibe e aplica o **menor** dos dois limites, que é o que de fato vale.
+> Elevar o teto é mudança de plano do projeto, em *Project Settings → Storage → Upload file size
+> limit* (o plano Free trava em 50 MB), não mudança de código. Ver "Buckets, limites e tipos
+> aceitos" para a tabela completa.
+
+**Vídeo sobe em blocos, pelo protocolo retomável.** Blocos de 6 MB, direto ao armazenamento: um
+arquivo de 23,6 MB vira quatro blocos, e uma queda de conexão faz o envio recomeçar do último
+bloco confirmado, não do início. Retomar **entre recarregamentos da página** não é oferecido: a
+credencial e o caminho de destino são emitidos a cada tentativa, então recarregar começa um
+envio novo. Arquivo pequeno (imagem, legenda) sobe em uma requisição só, também com progresso.
+
+**Os bytes nunca passam pela API** (SDD § D-05). O painel pede a credencial, envia o arquivo
+direto ao armazenamento e confirma — os três passos descritos em "Envio de mídia em três
+passos". Trocar a imagem de uma seção faz o navegador falar duas vezes com a API, com corpos de
+poucas centenas de bytes, e uma vez com o armazenamento, com o arquivo inteiro.
+
+**Remover** desfaz a referência do campo, e só isso: o arquivo continua no armazenamento e a
+mídia continua registrada, porque ela pode estar em uso em outra seção. Apagar de vez é
+`DELETE /api/admin/media/:id`, que recusa com `409` enquanto alguém a referenciar.
+
+#### Imagem decorativa não tem campo de descrição, e isso é proposital
+
+Todo campo de imagem do esquema declara se a imagem é **informativa** ou **decorativa**
+(SDD § "Contrato do esquema de seção"):
+
+- **informativa** — o esquema declara, ao lado dela, um campo de texto alternativo obrigatório.
+  O painel **recusa salvar** a seção enquanto houver imagem preenchida sem descrição, sem
+  chegar a chamar a API: a mensagem aparece no campo de descrição. É a única validação que o
+  painel decide sozinho — todo o resto quem decide é a API.
+- **decorativa** — o esquema **não** declara campo de descrição, então ele não existe na tela.
+  Não é esquecimento nem exceção à acessibilidade: descrever uma imagem que não carrega
+  informação injeta ruído no leitor de tela sem acrescentar significado. Na página essas imagens
+  entram com texto alternativo vazio e escondidas de leitores de tela. É o caso das seis fotos
+  do mosaico ao lado do formulário do guia.
+
+Quem edita o esquema faz essa escolha uma vez, pelos construtores `requiredImage`,
+`optionalImage` e `decorativeImage` de `packages/content-schema/src/fields.ts` — não há como
+declarar uma imagem sem escolher.
 
 **Acrescentar um campo a uma seção continua sendo editar um arquivo só.** Basta declará-lo no
 esquema da seção em `packages/content-schema/src/sections/`: ele passa a ser validado pela API,
@@ -362,7 +422,7 @@ curl -s -X POST http://localhost:3000/api/admin/media/upload-url \
 **2. Enviar os bytes, do navegador direto ao armazenamento.** Dois caminhos, ambos com a credencial acima e **sem** passar pela API:
 
 - *Arquivo pequeno* (imagem, legenda): `PUT` no `signedUrl`, com o `content-type` do arquivo — é o que o `uploadToSignedUrl(path, token, file)` do `@supabase/supabase-js` faz.
-- *Vídeo*: protocolo retomável (TUS) apontado para `resumableEndpoint`, com o token no cabeçalho **`x-signature`**, blocos de **6 MB** e os metadados `bucketName`, `objectName` e `contentType`. Retomável é o que permite continuar de onde parou depois de uma queda de conexão, e é o que dá o progresso visível que o painel mostra (T12).
+- *Vídeo*: protocolo retomável (TUS) apontado para `resumableEndpoint`, com o token no cabeçalho **`x-signature`**, blocos de **6 MB** e os metadados `bucketName`, `objectName` e `contentType`. Retomável é o que permite continuar de onde parou depois de uma queda de conexão, e é o que dá o progresso visível que o painel mostra. Quem faz esse papel no painel é o `tus-js-client`, a biblioteca que a própria documentação do Supabase Storage indica; a escolha entre este caminho e o `PUT` acima é feita pela natureza da mídia, em `apps/admin/src/media/media-transfer.ts`.
 
 **3. Confirmar.** Só agora nasce o registro em `media_assets` (risco R-04):
 
@@ -529,6 +589,20 @@ Na **T10** o painel foi exercitado num navegador de verdade contra o Supabase e 
 Na **T19** os ativos que passaram a ter campo no esquema foram migrados contra o projeto hospedado, pela **entrada única** (`CMS_API_URL=http://localhost:5173/api`): `media_assets` saiu de **17 para 24** — o `Kit-de-imagens.png` e as seis fotos do mosaico —, com 22 objetos no bucket de imagens e 2 no de vídeos, e as demais contagens intactas (12 seções, 1 registro de metadados, 0 leads). `GET /api/content` passou a devolver o kit como **URL pública** acompanhado do texto alternativo que o componente já escrevia, e as seis fotos do mosaico como URL pública **sem nenhum campo de descrição** — elas são decorativas no esquema, e o corpo da resposta reflete isso. As URLs foram buscadas sem credencial nenhuma: `200`, `image/png` de 2.043.014 bytes no kit e `image/jpeg` de 69.438 bytes na primeira foto. **A migração foi rodada mais duas vezes e nada se moveu:** 0 mídias enviadas, 24 reaproveitadas, as mesmas contagens, e as respostas de `GET /api/content` iguais campo a campo. Uma ressalva de medição, para não repetir a da T9: comparar o **hash** da resposta não serve como prova de idempotência aqui, porque a ordem das seções no corpo segue a ordem das linhas de uma consulta sem `ORDER BY` e varia entre execuções — a comparação válida é campo a campo, e é a que foi feita. O operador criado para a verificação foi removido (o único que restou é o do usuário), e a carga **permanece no banco**.
 
 Na **T11** o formulário gerado foi exercitado num **navegador de verdade** (Chromium via Playwright), pela entrada única, contra a API e o Supabase reais, com **8 checagens, todas OK**: o painel abre no login; o login entra; a lista traz as **12 seções na ordem da página** (Cabeçalho → Abertura → Saúde oral → Rotina de cuidado → Produto → Demonstração em vídeo → Ingredientes → Prova de autoridade → Captura de lead → Onde comprar → Perguntas frequentes → Rodapé); a tela de "Perguntas frequentes" abriu preenchida com o conteúdo real, com os **7 itens** guardados (os 5 publicados e os 2 desligados); salvar mostrou a confirmação visível; **`GET /api/content` passou a devolver o texto novo**; e o console do navegador não acusou nenhum erro. O texto alterado (`faq.heading`) foi **devolvido ao valor original pelo próprio painel**, e o documento voltou intacto: os mesmos 7 itens, com `ordem` de 0 a 6 e a visibilidade de cada um preservada, `ingredientes` seguindo despublicada, e as contagens do banco onde estavam — **12 seções, 24 mídias, 1 registro de metadados, 0 leads**. O operador de verificação foi criado pela Auth Admin API e removido ao final; restou apenas o operador do usuário.
+
+Na **T12** os campos de mídia foram exercitados num **navegador de verdade** (Chromium via Playwright), pela entrada única, contra a API e o Supabase reais, com **26 checagens, todas OK**. Uma **imagem real do projeto** (`virbac-kv-hero-antigo.jpg`, 240.041 bytes) foi enviada pelo campo da Abertura: a prévia apareceu **antes de salvar**, apontando para a URL pública do armazenamento; salvar fez a seção referenciar a mídia nova **por identificador**; `GET /api/content` passou a entregar a URL pública dela, que serviu os **240.041 bytes exatos, `image/jpeg`, sem credencial nenhuma**. Um **vídeo real do projeto** (`cachorroGanhadoPetisco.mp4`, 4.429.533 bytes) foi enviado pelo primeiro item da Demonstração, com **progresso visível** (0% → 42% → 100%), e o vídeo publicado **tocou no navegador** a partir da URL pública (duração 5,94 s, reprodução avançando até 1,46 s).
+
+**Os bytes não passaram pela API, e isso foi medido, não deduzido.** As requisições foram lidas pelo CDP, que enxerga o `content-length` como o navegador o enviou. Durante o envio da imagem, o maior corpo enviado a `:5173/api` foi de **135 bytes**, enquanto o `PUT` para `…/storage/v1/object/upload/sign/…` levou os **240.041 bytes** do arquivo. Durante o envio do vídeo, o maior corpo à API foi de **137 bytes**, e o arquivo inteiro saiu por `…/storage/v1/upload/resumable/…`. Uma ressalva de medição, para quem repetir: `request.sizes().requestBodySize` do Playwright volta **0** para esses envios entre origens — medir por ele daria "0 bytes pela API" sem provar coisa alguma.
+
+**Blocos de 6 MB, verificados pelo tamanho de cada requisição.** O vídeo de 4,2 MB cabe em um bloco só e sobe na própria criação do envio (`POST` de 4.429.533 B). Já `TutorabrindoPetiscoEcachorroComendo.mp4` (24.741.168 B) subiu em **quatro blocos** — `POST 6.291.456` + `PATCH 6.291.456` + `PATCH 6.291.456` + `PATCH 5.866.800`, somando exatamente o tamanho do arquivo — com o progresso passando por 0, 11, 23, 25, 36, 48, 51, 61, 73, 76, 87 e 100%.
+
+**Recusa no painel, antes de qualquer chamada.** Um `application/pdf` foi recusado com *"Tipo de arquivo não suportado para imagem. Envie JPG, PNG, WebP, AVIF, GIF ou SVG."*; um PNG de 11 MB, com *"O arquivo tem 11 MB e o limite para imagem é 10 MB."* — e a contagem de requisições depois da escolha do arquivo foi **zero**, nem à API nem ao armazenamento.
+
+**Um defeito real foi encontrado pela verificação em navegador, com toda a suíte verde.** A primeira versão do campo marcava "já pedi esta mídia" antes de a resposta chegar; sob `StrictMode`, que o painel usa, o efeito monta duas vezes, a segunda montagem via a marca e não pedia de novo, e a resposta da primeira era descartada pela limpeza — a prévia ficava presa em "Carregando o arquivo guardado…". O jsdom não monta em `StrictMode`, então nenhum teste acusava. A correção veio com um teste que monta como o painel monta, provado por mutação: reintroduzido o defeito, ele falha; corrigido, passa.
+
+**Banco devolvido ao estado em que estava.** As duas seções tocadas (`hero` e `demonstracao`) foram restauradas e conferidas **campo a campo** contra o documento original; as três mídias criadas na verificação foram removidas pela própria API (`204` em cada uma). As contagens fecharam onde começaram: **12 seções, 24 mídias, 1 registro de metadados, 0 leads**, com 22 objetos no bucket de imagens, 2 no de vídeos e 0 no de legendas. O operador de verificação foi criado pela Auth Admin API e removido ao final; restou apenas o operador do usuário.
+
+**Limite do que foi verificado:** a LP ainda lê os arquivos `*.content.ts` e **não consome `GET /api/content`** — isso é escopo declarado da T14. Por isso "a imagem aparece na página" foi verificado até a fronteira do conteúdo publicado (a resposta de `GET /api/content` e a URL pública servindo os bytes) e na prévia do painel, **não** na LP renderizada.
 
 A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
