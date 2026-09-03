@@ -31,7 +31,6 @@ function lead(id: string, createdAt: string, overrides: Row = {}): Row {
     conhece_virbac: 'sim',
     usa_produto_virbac: 'não',
     qual_produto_virbac: null,
-    aceite_lgpd: true,
     aceite_comunicacoes: true,
     origem: 'lp-veggiedent',
     rdstation_status: 'ok',
@@ -223,6 +222,25 @@ describe('rotas administrativas de leads', () => {
       expect(resposta.text).toContain(PRIMEIRO)
       expect(resposta.text).not.toContain(SEGUNDO)
     })
+
+    /**
+     * A divergência que a T18 fecha: em UTC este lead sairia da planilha como
+     * 03/09, enquanto a tela do painel o mostra como 02/09. Um lead, duas datas.
+     */
+    it('a data no CSV é a de Brasília, a mesma que a tela mostra', async () => {
+      const resposta = await comToken(
+        agente().get(EXPORTACAO).query({ from: '2026-09-02', to: '2026-09-02' }),
+      )
+
+      expect(resposta.text).toContain('"02/09/2026 23:00:00"')
+      expect(resposta.text).not.toContain('03/09/2026')
+    })
+
+    it('o cabeçalho da data diz de que fuso ela é', async () => {
+      const resposta = await comToken(agente().get(EXPORTACAO))
+
+      expect(resposta.text.split('\r\n')[0]).toContain('"Data de envio (Brasília)"')
+    })
   })
 
   describe('exportação em CSV', () => {
@@ -246,6 +264,17 @@ describe('rotas administrativas de leads', () => {
 
       expect(resposta.text).toContain('Ana Conceição')
       expect(resposta.text).toContain('Aceite de comunicações')
+    })
+
+    /**
+     * O aceite da Política de Privacidade é condição de envio, não dado do lead
+     * (SDD § RN-01). Nem a coluna nem o valor podem reaparecer no arquivo que
+     * chega à equipe de marketing.
+     */
+    it('não traz coluna nem valor de aceite da Política de Privacidade', async () => {
+      const resposta = await comToken(agente().get(EXPORTACAO))
+
+      expect(resposta.text).not.toMatch(/LGPD|Política de Privacidade/i)
     })
 
     it('respeita o mesmo filtro de período da listagem', async () => {

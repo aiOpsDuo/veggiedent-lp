@@ -1,3 +1,4 @@
+import { formatBrasiliaDateTime } from '../domain/brasilia-time'
 import type { Lead } from '../domain/lead'
 
 /**
@@ -14,6 +15,11 @@ import type { Lead } from '../domain/lead'
  *   vírgula é separador decimal, e o Excel espera `;` entre as colunas. Com
  *   vírgula, a planilha inteira cai numa coluna só.
  * - **Fim de linha CRLF**, como manda o RFC 4180 e como as planilhas esperam.
+ *
+ * A data de envio sai em **horário de Brasília**, o mesmo fuso do filtro de
+ * período e o mesmo que a tela do painel mostra (SDD § C-12). Em UTC o lead
+ * recebido às 23h de 2 de setembro apareceria como 3 de setembro na planilha e
+ * como 2 de setembro na tela — duas datas para o mesmo lead.
  *
  * As colunas são as da regra de negócio RN-01: uma por campo que o visitante
  * preenche, mais as operacionais que acompanham o registro. **Não existe coluna
@@ -32,7 +38,7 @@ const LINE_BREAK = '\r\n'
 const FORMULA_STARTERS = ['=', '+', '-', '@', '\t', '\r']
 
 const COLUMNS: readonly { readonly header: string; readonly value: (lead: Lead) => string }[] = [
-  { header: 'Data de envio (UTC)', value: (lead) => formatInstant(lead.createdAt) },
+  { header: 'Data de envio (Brasília)', value: (lead) => formatInstant(lead.createdAt) },
   { header: 'Nome', value: (lead) => lead.nome },
   { header: 'E-mail', value: (lead) => lead.email },
   { header: 'Telefone', value: (lead) => lead.telefone ?? '' },
@@ -57,16 +63,13 @@ function simOuNao(value: boolean): string {
   return value ? 'sim' : 'não'
 }
 
-/** `2026-09-02T13:45:07.123Z` vira `02/09/2026 13:45:07`, como se lê aqui. */
+/**
+ * Um instante que o banco não soube devolver como data vai para a planilha como
+ * veio: perder a linha inteira por causa de uma célula seria pior do que
+ * entregar o texto cru para quem precisa investigá-lo.
+ */
 function formatInstant(iso: string): string {
-  const instant = new Date(iso)
-  if (Number.isNaN(instant.getTime())) {
-    return iso
-  }
-  const pad = (value: number): string => String(value).padStart(2, '0')
-  const dia = `${pad(instant.getUTCDate())}/${pad(instant.getUTCMonth() + 1)}/${instant.getUTCFullYear()}`
-  const hora = `${pad(instant.getUTCHours())}:${pad(instant.getUTCMinutes())}:${pad(instant.getUTCSeconds())}`
-  return `${dia} ${hora}`
+  return formatBrasiliaDateTime(iso) ?? iso
 }
 
 /**
