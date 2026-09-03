@@ -33,7 +33,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 │   └── api/                # API NestJS — módulos por domínio, quatro camadas em cada
 ├── packages/
 │   └── content-schema/     # esquemas de seção — esqueleto, preenchido na T2
-├── serverless/             # relay antigo do RD Station, aposentado na T16
+├── serverless/             # relay antigo do RD Station — ainda em produção, aposentado na T16
 ├── docs/
 ├── supabase/               # migrações SQL do banco, buckets e script de verificação
 ├── agent_context/
@@ -59,7 +59,7 @@ apps/api/src/
         └── infrastructure/ # adaptadores: Supabase, Storage, RD Station
 ```
 
-Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads` chega na T8.
+Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads`, na T8.
 
 **Como a API consome `packages/content-schema`:** o pacote é a fonte única de validação (SDD § D-02), mas a API compila para CommonJS e o pacote é lido como TypeScript pelo Vite. Para servir aos dois, ele passou a ter um build próprio (`npm run build -w packages/content-schema`, saída em `packages/content-schema/dist/`): a API resolve o pacote pelo build CommonJS, e Vite e Vitest continuam lendo `src/`. Os scripts `build`, `typecheck` e `test` de `apps/api` reconstroem o pacote antes de rodar, então não existe passo manual a lembrar nem risco de compilar contra uma versão velha do esquema.
 
@@ -79,12 +79,14 @@ Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; 
 | `SUPABASE_SECRET_KEY` | sim | Chave secreta do Supabase. Ignora RLS — jamais no cliente |
 | `SUPABASE_JWKS_URL` | sim | Endpoint JWKS usado para verificar o token dos operadores |
 | `ALLOWED_ORIGINS` | sim | Origens autorizadas a chamar a API, separadas por vírgula |
-| `RDSTATION_API_TOKEN` | a partir da T8 | Token da API de Conversões do RD Station |
-| `RDSTATION_CONVERSION_IDENTIFIER` | a partir da T8 | Identificador da conversão no RD Station |
+| `RDSTATION_API_TOKEN` | não | Token da API de Conversões do RD Station. Vazio hoje — ver abaixo |
+| `RDSTATION_CONVERSION_IDENTIFIER` | não | Nome da conversão no RD Station (`conversion_identifier`). Vazio hoje — ver abaixo |
 | `NODE_ENV` | não | `development` (padrão), `test` ou `production` |
 | `PORT` | não | Porta HTTP da API. Padrão `3000` |
 
-O modelo está em [`apps/api/.env.example`](apps/api/.env.example); copie para `apps/api/.env` e preencha. A API **valida o ambiente na inicialização**: faltando uma variável obrigatória ela recusa subir e nomeia a variável no log (nunca o valor), em vez de falhar depois em tempo de requisição. As duas do RD Station só passam a ser obrigatórias quando o repasse do lead migrar para a API (T8, SDD § D-07).
+O modelo está em [`apps/api/.env.example`](apps/api/.env.example); copie para `apps/api/.env` e preencha. A API **valida o ambiente na inicialização**: faltando uma variável obrigatória ela recusa subir e nomeia a variável no log (nunca o valor), em vez de falhar depois em tempo de requisição.
+
+**As duas variáveis do RD Station são opcionais de propósito, e hoje estão vazias.** Enquanto a Virbac não confirmar a configuração da conta (risco R-08 do SDD), não há credencial real para preencher. Exigi-las na inicialização faria a API recusar subir — e sem API não há como gravar lead nenhum, que é justamente o dado que não pode se perder. Faltando qualquer uma das duas, `POST /api/leads` continua **gravando o lead** e respondendo sucesso ao visitante; o repasse fica registrado como `rdstation_status = "nao_enviado"`, com a razão em `rdstation_error`. Quem as exige é o adaptador do RD Station, no instante em que o repasse é de fato tentado. Preenchê-las depois não pede mudança de código: os leads que chegarem a partir daí passam a ser repassados.
 
 **`apps/lp` e `apps/admin` (públicas, embarcadas no build):**
 
@@ -158,6 +160,7 @@ Prefixo `/api` em todas as rotas. A guarda de autenticação é **global e nega 
 | `GET /api/health` | Sonda de operação. Responde `{"status":"ok"}`. |
 | `GET /api/content` | Todo o conteúdo publicado em **uma** resposta: `{ sections, metadata }`. Seções não publicadas e itens de lista não publicados são **omitidos**; os itens vêm na ordem definida no painel. |
 | `GET /api/seo` | Só os metadados da página, para o injetor de borda: `{ title, description, ogImageUrl, canonicalUrl }`. Campos ausentes vêm `null`, para que o injetor use a reserva do HTML estático em vez de falhar. |
+| `POST /api/leads` | Recebe o formulário da LP: valida, **grava o lead** e repassa ao RD Station. Responde `200 {"success":true}`; dados inválidos respondem `422` com erro por campo. Ver "Captura e consulta de leads". |
 
 **Exigem token** — cabeçalho `Authorization: Bearer <token do Supabase Auth>`. Sem token, ou com token inválido ou expirado, respondem `401 {"statusCode":401,"error":"Autenticação necessária."}`:
 
@@ -173,8 +176,11 @@ Prefixo `/api` em todas as rotas. A guarda de autenticação é **global e nega 
 | `POST /api/admin/media` | Confirma o upload e registra a mídia. Devolve o registro com a URL pública. |
 | `GET /api/admin/media/:id` | Registro de uma mídia. |
 | `DELETE /api/admin/media/:id` | Remove registro e arquivo. Responde `409` quando a mídia está em uso. |
+| `GET /api/admin/leads` | Lista os leads, **do mais recente ao mais antigo**, paginada. Parâmetros `from`, `to`, `page` e `pageSize`. Devolve `{ leads, total, page, pageSize }`. |
+| `GET /api/admin/leads/export` | Exportação em CSV dos leads do período, com os mesmos filtros `from` e `to` da listagem. |
+| `DELETE /api/admin/leads/:id` | Exclusão **definitiva** de um lead, a pedido do titular (LGPD). Responde `204`; identificador inexistente ou malformado responde `404`. |
 
-Ainda **não implementados**: `/api/leads` (público) e as rotas de leads sob `/api/admin/*`, que chegam na T8. O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_context/SDD.md).
+O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_context/SDD.md).
 
 Comportamentos que valem para todas as rotas administrativas de conteúdo:
 
@@ -277,6 +283,27 @@ curl -s -X PUT http://localhost:3000/api/admin/sections/faq \
   -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"heading":"Perguntas frequentes","items":[{"visivel":true,"ordem":0,"question":"Pergunta?","answer":"Resposta."}]}'
 ```
+
+#### Captura e consulta de leads
+
+O envio do formulário passou a ser um endpoint da API (SDD § D-07). A função em `serverless/rdstation-lead/` continua no repositório e **será aposentada na T16**, junto com o serviço `submitLeadToRDStation` da LP que aponta para ela — até lá ela ainda é o caminho de produção, e nada nela foi alterado.
+
+**A ordem de `POST /api/leads` é a regra, não detalhe de implementação:**
+
+1. **Honeypot.** O formulário tem um campo invisível (`website`). Preenchido, a resposta é **sucesso** e nada acontece: nenhum lead é gravado, nenhum repasse é feito. Responder erro ensinaria ao robô que o campo existe.
+2. **Validação.** Nome não vazio, e-mail com forma de e-mail, consentimento LGPD marcado e porte dentro de `pequeno | medio | grande`. São exatamente as regras do relay que está sendo aposentado. Recusa responde `422` com as chaves `nome`, `email`, `aceite_lgpd` e `porte_cachorro` em `fields`, que é como o formulário da LP marca o campo errado.
+3. **Gravação.** O lead é gravado **antes** de o RD Station ser tentado. Se a gravação falhar, aí sim o visitante vê erro — é o único caso em que o lead se perderia.
+4. **Repasse.** Só então o RD Station é chamado, e o resultado vira `rdstation_status` (`ok`, `falhou` ou `nao_enviado`) mais `rdstation_error`. **Nenhuma falha desse passo chega ao visitante:** recusa do RD Station, queda de rede e credencial ausente respondem `200` do mesmo jeito, com o lead guardado.
+
+**Os três campos que hoje se perdem em produção.** `conheceVirbac`, `usaProdutoVirbac` e `qualProdutoVirbac` são coletados pelo formulário e descartados antes do envio — o relay serverless nem os prevê no tipo. É o risco R-01 do SDD, e a partir deste endpoint eles são gravados (`conhece_virbac`, `usa_produto_virbac`, `qual_produto_virbac`) e repassados (`cf_conhece_virbac`, `cf_usa_produto_virbac`, `cf_qual_produto_virbac`). O formulário da LP passa a enviá-los quando a LP migrar para este endpoint, na T16.
+
+**O formato do payload do RD Station foi preservado**, tal como estava no relay: `POST https://api.rd.services/platform/conversions?api_key=…`, com `event_type: "CONVERSION"`, `event_family: "CDP"` e os campos personalizados prefixados por `cf_`. A forma confere com a documentação vigente da API de Conversões, mas **o método de autenticação e o `api_identifier` de cada campo `cf_*` continuam dependendo de como a conta da Virbac foi configurada** (risco R-08) — é pendência externa, não decisão deste projeto, e nada disso foi "melhorado" na migração.
+
+**Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`. *Limite conhecido:* os dois extremos são calculados em **UTC**, e o operador está em UTC−3 — um lead enviado depois das 21h de Brasília cai no dia seguinte para o filtro. Corrigir exige decidir o fuso do produto, que o SDD não fixa.
+
+**Paginação:** `page` a partir de 1 (padrão 1) e `pageSize` de 1 a 200 (padrão 50). Página além da última devolve lista vazia com o `total` correto, nunca erro.
+
+**O CSV abre no Excel em português.** Três decisões, cada uma resolvendo um jeito específico de o arquivo chegar errado: **BOM UTF-8** no início (sem ele, "Comunicações" vira "ComunicaÃ§Ãµes" no Windows), **ponto e vírgula** como separador (na configuração regional pt-BR a vírgula é separador decimal, e com ela a planilha inteira cai numa coluna só) e fim de linha **CRLF**. A data sai como `02/09/2026 13:45:07`, e a coluna diz explicitamente que está em UTC. Uma célula que começaria por `=`, `+`, `-` ou `@` recebe um apóstrofo à frente: o conteúdo do lead é texto que um desconhecido digitou num formulário público, e sem isso a planilha executaria a célula como fórmula ao abrir o arquivo. A exportação é limitada a 10.000 linhas por chamada, porque o arquivo é montado em memória antes de ser enviado.
 
 ### Banco de dados e armazenamento
 
@@ -434,7 +461,31 @@ fora de escopo por decisão do PRD.
 
   Fora do pacote, duas coisas continuam sendo trabalho manual: a LP só exibe o campo quando o componente da seção passar a renderizá-lo; e um campo **obrigatório** acrescentado depois da migração inicial (T9) invalida os documentos já gravados até que alguém preencha o valor pelo painel — para evitar isso, crie-o com `required: false`, preencha o conteúdo e só então torne-o obrigatório.
 
-- **Excluir um lead a pedido do titular (LGPD):** **[PENDENTE]** — procedimento documentado na T13.
+- **Excluir um lead a pedido do titular (LGPD):** a exclusão é **definitiva e não tem desfazer** — é isso que o titular está pedindo. A tela de leads do painel (T13) fará isso com confirmação; até ela existir, e sempre que for preciso fazer pela API, o procedimento é este:
+
+  1. **Registre o pedido** antes de apagar: quem pediu, por qual canal e quando. Depois da exclusão não sobra no banco nada que ligue o pedido ao registro apagado — só o log do servidor, que guarda o identificador do lead e o do operador que executou.
+  2. **Encontre o lead pelo e-mail do titular**, com um token de operador válido:
+
+     ```bash
+     curl -s "$API_BASE_URL/api/admin/leads?from=2026-01-01&to=2026-12-31" \
+       -H "authorization: Bearer $TOKEN_DO_OPERADOR" | jq '.leads[] | select(.email == "titular@exemplo.com") | {id, email, createdAt}'
+     ```
+
+     Um mesmo titular pode ter mais de um envio; o pedido de exclusão alcança **todos** eles.
+  3. **Se ele quiser uma cópia dos próprios dados antes**, exporte o período com `GET /api/admin/leads/export` e recorte a linha dele — a exportação já sai em CSV legível.
+  4. **Apague cada identificador encontrado:**
+
+     ```bash
+     curl -s -o /dev/null -w '%{http_code}\n' -X DELETE \
+       "$API_BASE_URL/api/admin/leads/<id-do-lead>" \
+       -H "authorization: Bearer $TOKEN_DO_OPERADOR"
+     ```
+
+     `204` significa apagado. `404` significa que aquele identificador não existe (ou já foi apagado) — não é erro a insistir.
+  5. **Confirme** repetindo a busca do passo 2: nenhum lead com aquele e-mail deve restar.
+  6. **O RD Station é um sistema separado.** Apagar o lead aqui não apaga o contato lá. Se o lead chegou a ser repassado (`rdstationStatus: "ok"` na listagem, ou a coluna "Status RD Station" no CSV), o pedido do titular precisa ser encaminhado também ao RD Station, pela conta da Virbac. Um lead com status `falhou` ou `nao_enviado` nunca chegou lá.
+
+  Nunca apague um lead direto no banco pelo painel do Supabase: o caminho pela API é o único que fica registrado no log do servidor, e é esse registro que sustenta a resposta ao titular caso o pedido seja questionado depois.
 - **Limpeza de arquivos órfãos no armazenamento:** um upload interrompido entre o passo 2 e o passo 3 do envio de mídia deixa um arquivo no bucket sem linha correspondente em `media_assets` (risco R-04 do SDD). O arquivo é **inerte** — nenhum documento de seção o referencia, porque referência é sempre por identificador de mídia, e identificador só existe depois da confirmação — mas ocupa espaço e é o único resíduo previsto do fluxo.
 
   A conciliação é uma diferença entre duas listas, e a coluna `storage_path` foi guardada qualificada pelo bucket (`veggiedent-videos/<uuid>/<arquivo>`) justamente para que ela seja direta:
@@ -465,4 +516,4 @@ Itens que já eram pendência antes do CMS e continuam abertos:
 - **Imagem de compartilhamento social (`og:image`)** ainda não aprovada pela Virbac. Passa a ser editável pelo painel quando chegar.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Conteúdo da seção Ingredientes** e a **faixa etária recomendada** no FAQ aguardam material técnico da Virbac; migrados como não publicados.
-- **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD).
+- **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD). A T8 migrou o payload para `apps/api/src/modules/leads/infrastructure/rdstation-lead.relay.ts` **sem alterá-lo**, e a pendência continua exatamente onde estava — com a diferença de que, enquanto ela não for resolvida, o lead já não se perde: fica gravado com `rdstation_status = "nao_enviado"`.
