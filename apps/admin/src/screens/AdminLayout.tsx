@@ -1,10 +1,17 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
-import { SECTIONS_PATH } from '../routing/paths'
+import { LEADS_PATH, METADATA_PATH, SECTIONS_PATH } from '../routing/paths'
+
+/** As áreas do painel, na ordem em que o operador costuma percorrê-las. */
+const AREAS: readonly { readonly path: string; readonly label: string }[] = [
+  { path: SECTIONS_PATH, label: 'Seções da página' },
+  { path: METADATA_PATH, label: 'Metadados da página' },
+  { path: LEADS_PATH, label: 'Leads recebidos' },
+]
 
 /**
- * O esqueleto autenticado: cabeçalho com quem está logado, o caminho para as
- * seções e a ação de sair.
+ * O esqueleto autenticado: cabeçalho com quem está logado, os caminhos para as
+ * áreas do painel e a ação de sair.
  *
  * Só é montado por dentro da guarda — em nenhum caminho do roteador ele aparece
  * sem sessão confirmada.
@@ -19,10 +26,16 @@ export function AdminLayout(): JSX.Element {
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-4">
           <div className="flex items-center gap-6">
             <span className="font-semibold text-slate-900">Painel Veggiedent</span>
-            <nav aria-label="Áreas do painel">
-              <Link to={SECTIONS_PATH} className="text-sm text-slate-700 hover:underline">
-                Seções da página
-              </Link>
+            <nav aria-label="Áreas do painel" className="flex flex-wrap gap-4">
+              {AREAS.map((area) => (
+                <Link
+                  key={area.path}
+                  to={area.path}
+                  className="text-sm text-slate-700 hover:underline"
+                >
+                  {area.label}
+                </Link>
+              ))}
             </nav>
           </div>
           <div className="flex items-center gap-4">

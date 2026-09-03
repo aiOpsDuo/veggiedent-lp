@@ -8,6 +8,8 @@ import type { SectionKey } from '@veggiedent/content-schema'
 export const LOGIN_PATH = '/login'
 export const HOME_PATH = '/'
 export const SECTIONS_PATH = '/secoes'
+export const METADATA_PATH = '/metadados'
+export const LEADS_PATH = '/leads'
 
 /** Padrão de rota da tela de edição, e o caminho de uma seção concreta. */
 export const SECTION_EDITOR_ROUTE = `${SECTIONS_PATH}/:key`

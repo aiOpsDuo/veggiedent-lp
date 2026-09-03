@@ -13,7 +13,13 @@ const OPERADORA = {
   password: 'senha-correta',
 }
 
-/** Uma rota que ainda não existe hoje: é uma das telas das T11–T13. */
+/**
+ * As rotas internas do painel. Ficam listadas para que a proteção seja provada
+ * em **todas** elas, e não só na primeira: uma tela nova declarada fora da
+ * guarda por engano é exatamente o defeito que estes testes existem para pegar.
+ */
+const ROTAS_INTERNAS = ['/', '/secoes', '/metadados', '/leads'] as const
+
 const ROTA_INTERNA = '/leads'
 
 const ADMIN_SHELL = '[data-testid="area-administrativa"]'
@@ -76,31 +82,34 @@ async function entrar(email: string, senha: string): Promise<void> {
 }
 
 describe('Proteção de rota (SDD § C-01)', () => {
-  it('leva ao login quem abre uma rota interna sem sessão', async () => {
+  it.each(ROTAS_INTERNAS)('leva ao login quem abre %s sem sessão', async (rota) => {
     const vigia = vigiarAreaAdministrativa()
 
-    renderPainel(gatewayCom(new Map()), ROTA_INTERNA)
+    renderPainel(gatewayCom(new Map()), rota)
 
     expect(await screen.findByRole('button', { name: 'Entrar' })).toBeInTheDocument()
     expect(vigia.apareceu()).toBe(false)
     vigia.parar()
   })
 
-  it('não renderiza a área administrativa enquanto a sessão não é confirmada', async () => {
-    const vigia = vigiarAreaAdministrativa()
+  it.each(ROTAS_INTERNAS)(
+    'não renderiza a área administrativa em %s enquanto a sessão não é confirmada',
+    async (rota) => {
+      const vigia = vigiarAreaAdministrativa()
 
-    renderPainel(gatewayCom(new Map()), ROTA_INTERNA)
+      renderPainel(gatewayCom(new Map()), rota)
 
-    expect(screen.getByRole('status')).toHaveTextContent('Verificando sessão')
-    expect(vigia.apareceu()).toBe(false)
-    await screen.findByRole('button', { name: 'Entrar' })
-    expect(vigia.apareceu()).toBe(false)
-    vigia.parar()
-  })
+      expect(screen.getByRole('status')).toHaveTextContent('Verificando sessão')
+      expect(vigia.apareceu()).toBe(false)
+      await screen.findByRole('button', { name: 'Entrar' })
+      expect(vigia.apareceu()).toBe(false)
+      vigia.parar()
+    },
+  )
 
-  it('deixa o operador com sessão entrar na rota interna', async () => {
+  it.each(ROTAS_INTERNAS)('deixa o operador com sessão entrar em %s', async (rota) => {
     const storage: SessionStorage = new Map()
-    renderPainel(gatewayCom(storage), ROTA_INTERNA)
+    renderPainel(gatewayCom(storage), rota)
     await entrar(OPERADORA.email, OPERADORA.password)
 
     expect(await screen.findByTestId('area-administrativa')).toBeInTheDocument()

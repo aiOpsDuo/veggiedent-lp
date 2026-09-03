@@ -5,9 +5,18 @@ import type { AuthGateway } from './auth/auth-gateway'
 import { RequireSession } from './auth/RequireSession'
 import { SectionEditorScreen } from './content/SectionEditorScreen'
 import { SectionsScreen } from './content/SectionsScreen'
+import { LeadsScreen } from './leads/LeadsScreen'
 import { ApiMediaProvider } from './media/media-context'
+import { MetadataScreen } from './metadata/MetadataScreen'
 import { LoginRoute } from './routing/LoginRoute'
-import { HOME_PATH, LOGIN_PATH, SECTIONS_PATH, SECTION_EDITOR_ROUTE } from './routing/paths'
+import {
+  HOME_PATH,
+  LEADS_PATH,
+  LOGIN_PATH,
+  METADATA_PATH,
+  SECTIONS_PATH,
+  SECTION_EDITOR_ROUTE,
+} from './routing/paths'
 import { AdminLayout } from './screens/AdminLayout'
 import { HomeScreen } from './screens/HomeScreen'
 
@@ -41,6 +50,8 @@ export function App({ authGateway, apiClient }: AppProps): JSX.Element {
                 path={SECTION_EDITOR_ROUTE}
                 element={<SectionEditorScreen gateway={apiClient} />}
               />
+              <Route path={METADATA_PATH} element={<MetadataScreen gateway={apiClient} />} />
+              <Route path={LEADS_PATH} element={<LeadsScreen gateway={apiClient} />} />
               <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
             </Route>
           </Route>

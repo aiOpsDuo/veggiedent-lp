@@ -9,6 +9,15 @@ import type {
   VisibilityResult,
 } from '../content/sections-gateway'
 import type {
+  LeadDeleteResult,
+  LeadPeriod,
+  LeadsExportResult,
+  LeadsGateway,
+  LeadsPage,
+  LeadsPageResult,
+  LeadsQuery,
+} from '../leads/leads-gateway'
+import type {
   MediaGateway,
   MediaResult,
   RegisterRequest,
@@ -16,6 +25,12 @@ import type {
   UploadCredential,
   UploadRequest,
 } from '../media/media-gateway'
+import type {
+  MetadataGateway,
+  MetadataLoadResult,
+  MetadataSaveResult,
+  SiteMetadataDetail,
+} from '../metadata/metadata-gateway'
 
 /**
  * O que a API respondeu a uma chamada administrativa autenticada.
@@ -44,8 +59,23 @@ const SECTIONS_PATH = '/admin/sections'
 const MEDIA_PATH = '/admin/media'
 const UPLOAD_CREDENTIAL_PATH = `${MEDIA_PATH}/upload-url`
 
+const METADATA_PATH = '/admin/metadata'
+
+const LEADS_PATH = '/admin/leads'
+const LEADS_EXPORT_PATH = `${LEADS_PATH}/export`
+
+/** Nome usado quando a resposta da exportação não traz o dela. */
+const FALLBACK_EXPORT_FILENAME = 'leads.csv'
+
 /** Mensagem exibida quando a API não respondeu — não é recusa, é ausência. */
 const UNREACHABLE_MESSAGE = 'Não foi possível falar com a API do CMS.'
+
+/**
+ * Mensagem para o `200` cujo corpo não é um objeto JSON. Um sucesso ilegível
+ * não pode virar `null` circulando pelas telas: quem recebe faria `dados.campo`
+ * e quebraria longe daqui, com uma mensagem que não diz o que aconteceu.
+ */
+const UNREADABLE_MESSAGE = 'A API do CMS respondeu em um formato inesperado.'
 
 /**
  * O `fetch` do navegador precisa ser chamado com o objeto global como contexto:
@@ -89,10 +119,14 @@ function readFieldErrors(candidate: unknown): FieldErrors | undefined {
   return fields
 }
 
+function refusalMessageOf(status: number): string {
+  return `A API do CMS recusou a operação (erro ${status}).`
+}
+
 function readErrorMessage(body: ApiErrorBody, status: number): string {
   return typeof body.error === 'string' && body.error.length > 0
     ? body.error
-    : `A API do CMS recusou a operação (erro ${status}).`
+    : refusalMessageOf(status)
 }
 
 /**
@@ -102,7 +136,7 @@ function readErrorMessage(body: ApiErrorBody, status: number): string {
  * Supabase é usado exclusivamente para autenticar. O token vai em cada
  * requisição, no mesmo cabeçalho que a guarda da API já lê.
  */
-export class AdminApiClient implements SectionsGateway, MediaGateway {
+export class AdminApiClient implements SectionsGateway, MediaGateway, MetadataGateway, LeadsGateway {
   private readonly baseUrl: string
 
   constructor(
@@ -131,8 +165,8 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
     if (outcome.kind !== 'ok') {
       return { status: 'falha', message: messageOf(outcome) }
     }
-    const body = outcome.body as { sections?: SectionSummary[] }
-    return { status: 'ok', value: body.sections ?? [] }
+    const body = isRecord(outcome.body) ? outcome.body : {}
+    return { status: 'ok', value: Array.isArray(body.sections) ? body.sections : [] }
   }
 
   async getSection(
@@ -140,9 +174,7 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
     key: SectionKey,
   ): Promise<LoadResult<SectionDetail>> {
     const outcome = await this.request(accessToken, `${SECTIONS_PATH}/${key}`)
-    return outcome.kind === 'ok'
-      ? { status: 'ok', value: outcome.body as SectionDetail }
-      : { status: 'falha', message: messageOf(outcome) }
+    return toLoadResult<SectionDetail>(outcome)
   }
 
   async saveSection(
@@ -155,7 +187,9 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
       body: document,
     })
     if (outcome.kind === 'ok') {
-      return { status: 'salvo', section: outcome.body as SectionDetail }
+      return isRecord(outcome.body)
+        ? { status: 'salvo', section: outcome.body as unknown as SectionDetail }
+        : { status: 'falha', message: UNREADABLE_MESSAGE }
     }
     if (outcome.kind === 'recusado' && outcome.status === UNPROCESSABLE_ENTITY) {
       return { status: 'invalido', fields: outcome.fields ?? {} }
@@ -173,9 +207,12 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
       `${SECTIONS_PATH}/${key}/visibility`,
       { method: 'PATCH', body: { isPublished } },
     )
-    return outcome.kind === 'ok'
-      ? { status: 'alterada', section: outcome.body as SectionSummary }
-      : { status: 'falha', message: messageOf(outcome) }
+    if (outcome.kind !== 'ok') {
+      return { status: 'falha', message: messageOf(outcome) }
+    }
+    return isRecord(outcome.body)
+      ? { status: 'alterada', section: outcome.body as unknown as SectionSummary }
+      : { status: 'falha', message: UNREADABLE_MESSAGE }
   }
 
   async requestUploadCredential(
@@ -205,13 +242,86 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
     return toMediaResult<RegisteredMedia>(outcome)
   }
 
+  async getMetadata(accessToken: string): Promise<MetadataLoadResult> {
+    const outcome = await this.request(accessToken, METADATA_PATH)
+    return outcome.kind === 'ok'
+      ? { status: 'ok', value: toMetadataDetail(outcome.body) }
+      : { status: 'falha', message: messageOf(outcome) }
+  }
+
+  async saveMetadata(
+    accessToken: string,
+    document: Readonly<Record<string, unknown>>,
+  ): Promise<MetadataSaveResult> {
+    const outcome = await this.request(accessToken, METADATA_PATH, {
+      method: 'PUT',
+      body: document,
+    })
+    if (outcome.kind === 'ok') {
+      return { status: 'salvo', value: toMetadataDetail(outcome.body) }
+    }
+    if (outcome.kind === 'recusado' && outcome.status === UNPROCESSABLE_ENTITY) {
+      return { status: 'invalido', fields: outcome.fields ?? {} }
+    }
+    return { status: 'falha', message: messageOf(outcome) }
+  }
+
+  async listLeads(accessToken: string, query: LeadsQuery): Promise<LeadsPageResult> {
+    const outcome = await this.request(
+      accessToken,
+      `${LEADS_PATH}${queryString({ from: query.from, to: query.to, page: String(query.page) })}`,
+    )
+    return outcome.kind === 'ok'
+      ? { status: 'ok', value: toLeadsPage(outcome.body, query.page) }
+      : { status: 'falha', message: messageOf(outcome) }
+  }
+
+  /**
+   * A exportação é a única resposta administrativa que não é JSON: o corpo é o
+   * arquivo. Ele é lido como `Blob` e entregue **sem ser reescrito**, para que
+   * o BOM UTF-8 e o separador que a API escreveu cheguem intactos ao Excel
+   * (regra de negócio RN-01).
+   */
+  async exportLeads(accessToken: string, period: LeadPeriod): Promise<LeadsExportResult> {
+    const path = `${LEADS_EXPORT_PATH}${queryString({ from: period.from, to: period.to })}`
+    let response: Response
+    try {
+      response = await this.fetchResource(`${this.baseUrl}${path}`, {
+        headers: { authorization: `Bearer ${accessToken}` },
+      })
+    } catch {
+      return { status: 'falha', message: UNREACHABLE_MESSAGE }
+    }
+
+    if (!response.ok) {
+      return { status: 'falha', message: refusalMessageOf(response.status) }
+    }
+    return {
+      status: 'ok',
+      value: {
+        filename: filenameOf(response.headers.get('content-disposition')),
+        content: await response.blob(),
+      },
+    }
+  }
+
+  async deleteLead(accessToken: string, id: string): Promise<LeadDeleteResult> {
+    const outcome = await this.request(accessToken, `${LEADS_PATH}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+    return outcome.kind === 'ok'
+      ? { status: 'excluido' }
+      : { status: 'falha', message: messageOf(outcome) }
+  }
+
   private async request(
     accessToken: string,
     path: string,
-    call?: { readonly method: string; readonly body: unknown },
+    call?: { readonly method: string; readonly body?: unknown },
   ): Promise<ApiOutcome> {
     const headers: Record<string, string> = { authorization: `Bearer ${accessToken}` }
-    if (call !== undefined) {
+    const hasBody = call?.body !== undefined
+    if (hasBody) {
       headers['content-type'] = 'application/json'
     }
 
@@ -220,7 +330,7 @@ export class AdminApiClient implements SectionsGateway, MediaGateway {
       response = await this.fetchResource(`${this.baseUrl}${path}`, {
         method: call?.method ?? 'GET',
         headers,
-        ...(call === undefined ? {} : { body: JSON.stringify(call.body) }),
+        ...(hasBody ? { body: JSON.stringify(call?.body) } : {}),
       })
     } catch {
       return { kind: 'sem-resposta' }
@@ -263,6 +373,68 @@ function toMediaResult<T>(outcome: ApiOutcome): MediaResult<T> {
   return { status: 'recusado', message: fieldMessage ?? messageOf(outcome) }
 }
 
+/** Sucesso vira valor só quando o corpo tem forma de objeto (ver `UNREADABLE_MESSAGE`). */
+function toLoadResult<T>(outcome: ApiOutcome): LoadResult<T> {
+  if (outcome.kind !== 'ok') {
+    return { status: 'falha', message: messageOf(outcome) }
+  }
+  return isRecord(outcome.body)
+    ? { status: 'ok', value: outcome.body as unknown as T }
+    : { status: 'falha', message: UNREADABLE_MESSAGE }
+}
+
 function messageOf(outcome: ApiOutcome): string {
   return outcome.kind === 'recusado' ? outcome.message : UNREACHABLE_MESSAGE
+}
+
+/**
+ * Os parâmetros de consulta que têm valor. Um filtro em branco é ausência de
+ * filtro, e mandá-lo vazio faria a API validar um dia que ninguém escolheu.
+ */
+function queryString(params: Readonly<Record<string, string>>): string {
+  const search = new URLSearchParams()
+  for (const [name, value] of Object.entries(params)) {
+    if (value.trim().length > 0) {
+      search.set(name, value.trim())
+    }
+  }
+  const query = search.toString()
+  return query.length > 0 ? `?${query}` : ''
+}
+
+/**
+ * Uma resposta incompleta vira metadados vazios, nunca uma tela quebrada: o
+ * formulário sabe desenhar campo sem valor, que é o estado real de metadados
+ * ainda não preenchidos.
+ */
+function toMetadataDetail(body: unknown): SiteMetadataDetail {
+  const source = isRecord(body) ? body : {}
+  return {
+    metadata: isRecord(source.metadata) ? source.metadata : {},
+    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : null,
+  }
+}
+
+/**
+ * A página de leads, tolerante ao que faltar. Ficar sem `total` não pode virar
+ * `NaN` na contagem exibida nem paginação impossível de sair.
+ */
+function toLeadsPage(body: unknown, requestedPage: number): LeadsPage {
+  const source = isRecord(body) ? body : {}
+  const leads = Array.isArray(source.leads) ? (source.leads as LeadsPage['leads']) : []
+  return {
+    leads,
+    total: typeof source.total === 'number' ? source.total : leads.length,
+    page: typeof source.page === 'number' ? source.page : requestedPage,
+    pageSize:
+      typeof source.pageSize === 'number' && source.pageSize > 0
+        ? source.pageSize
+        : Math.max(leads.length, 1),
+  }
+}
+
+/** O nome do arquivo que a API mandou baixar, em `Content-Disposition`. */
+function filenameOf(contentDisposition: string | null): string {
+  const quoted = contentDisposition?.match(/filename="([^"]+)"/)?.[1]
+  return quoted !== undefined && quoted.length > 0 ? quoted : FALLBACK_EXPORT_FILENAME
 }
