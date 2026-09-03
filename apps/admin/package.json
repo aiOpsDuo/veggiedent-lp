@@ -6,13 +6,16 @@
   "description": "Painel de administracao do CMS Veggiedent, servido sob /admin.",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run build --prefix ../../packages/content-schema",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "pretypecheck": "npm run build --prefix ../../packages/content-schema",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.114.0",
+    "@veggiedent/content-schema": "*",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.30.1"
