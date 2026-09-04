@@ -21,6 +21,8 @@ function valueFor(field: FieldSpec, seed: string): unknown {
     case 'texto-curto':
     case 'texto-longo':
       return `Conteúdo de ${field.label} — ${seed}`
+    case 'texto-rico':
+      return `Conteúdo de ${field.label} <br><strong>em destaque</strong> — ${seed}`
     case 'lista-de-textos':
       return [`Primeiro item (${seed})`, 'Segundo item, com acentuação']
     case 'imagem':
