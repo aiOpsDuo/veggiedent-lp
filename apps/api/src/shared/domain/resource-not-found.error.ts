@@ -2,7 +2,7 @@
  * Recurso inexistente, dito no vocabulário do domínio.
  *
  * Vive no domínio e não importa framework nenhum: é o que permite a uma regra
- * — "a chave não é uma das 12 seções conhecidas" — recusar sem saber que existe
+ * — "a chave não é uma das 10 seções conhecidas" — recusar sem saber que existe
  * HTTP. A tradução para `404` acontece uma única vez, em
  * `presentation/error-response.factory.ts`, junto da de `FieldValidationError`.
  *

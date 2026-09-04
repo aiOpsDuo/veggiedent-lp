@@ -29,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * A linha vira documento de domínio, ou é descartada.
  *
- * Uma chave fora das 12 não pode existir (o `check` da migração a barra) mas,
+ * Uma chave fora das 10 não pode existir (o `check` da migração a barra) mas,
  * se existisse, entrar no conteúdo servido seria pior do que sumir: o restante
  * da página continua correto. `data` fora de forma vira documento vazio pela
  * mesma razão — o banco guarda `jsonb` e não garante estrutura (SDD § D-01).
@@ -56,7 +56,7 @@ export class SupabaseSectionRepository implements SectionRepository {
     @Inject(SUPABASE_CLIENT) private readonly supabase: SupabaseClient,
   ) {}
 
-  /** Uma consulta para as 12 seções — a leitura agregada do risco R-05. */
+  /** Uma consulta para as 10 seções — a leitura agregada do risco R-05. */
   async findAll(): Promise<StoredSection[]> {
     const rows = unwrap<SectionRow[]>(
       'listar seções',
@@ -81,7 +81,7 @@ export class SupabaseSectionRepository implements SectionRepository {
 
   /**
    * Substitui o documento e publica: salvar é publicar (SDD § "Linguagem
-   * ubíqua"). `upsert` porque a seção existe no conjunto fechado das 12 desde
+   * ubíqua"). `upsert` porque a seção existe no conjunto fechado das 10 desde
    * sempre — a primeira gravação cria a linha, as seguintes a substituem, e a
    * chave nunca é inventada aqui: quem chega até este método já passou por
    * `ensureSectionKey`.

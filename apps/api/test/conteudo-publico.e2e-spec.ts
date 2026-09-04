@@ -124,8 +124,8 @@ describe('GET /api/content — conteúdo publicado', () => {
   /**
    * RISCO R-05, o teste que a T6 existe para não deixar regredir.
    *
-   * Ele conta as idas ao cliente Supabase com as 12 seções gravadas. Se alguém
-   * trocar a leitura agregada por uma consulta por seção, a contagem vira 13 e
+   * Ele conta as idas ao cliente Supabase com as 10 seções gravadas. Se alguém
+   * trocar a leitura agregada por uma consulta por seção, a contagem vira 11 e
    * este teste falha. Contar no nível do cliente — e não no da porta de
    * repositório — é o que faz a contagem valer para o adaptador de verdade.
    */

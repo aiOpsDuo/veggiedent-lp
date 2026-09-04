@@ -10,12 +10,12 @@ import type { SectionSummary } from './section-view'
 /**
  * Lista as seções para o painel (SDD § C-03).
  *
- * A lista sai do esquema, não do banco: as 12 seções são um conjunto fechado e
+ * A lista sai do esquema, não do banco: as 10 seções são um conjunto fechado e
  * aparecem sempre, na ordem da página, mesmo antes de existir documento salvo —
  * é o que faz o painel abrir com sentido em um banco recém-migrado. O banco
  * responde apenas *quando* cada uma foi editada e se está publicada.
  *
- * Uma consulta só, para as 12 (risco R-05).
+ * Uma consulta só, para as 10 (risco R-05).
  */
 @Injectable()
 export class ListSectionsUseCase {
