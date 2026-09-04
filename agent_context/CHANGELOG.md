@@ -219,3 +219,47 @@ Onde o raciocinio falhou: escrevi "DTO" como se houvesse um so, quando ha dois p
 Verificacao do orquestrador apos a correcao: envio sem consentimento responde `422` com `{"aceite_lgpd":"Consentimento LGPD e obrigatorio."}`; com `aceite_lgpd:false` responde `422`; com consentimento responde `200` e grava. A coluna nao existe mais no banco hospedado (`42703 column leads.aceite_lgpd does not exist`) e `verify-isolation.mjs` segue com exit 0.
 
 Impacto: nenhum — o subagente parou e relatou em vez de executar a instrucao ao pe da letra, que era o comportamento certo. Regra derivada: ao mandar remover um campo, dizer **em qual fronteira** ele deve sumir (entrada da requisicao, saida para o consumidor, registro persistido), porque as tres sao independentes e uma instrucao generica sobre "o DTO" e ambigua.
+
+## 2026-09-03 — ERRO DO ORQUESTRADOR: interpretei mal o pedido do usuario sobre o banner de video
+
+Documento afetado: PLAN.md (T14, T19), SDD.md
+
+Motivo: em 2026-09-02 o usuario escreveu "o banner do video deve vir direto do video cadastrado". Eu interpretei como "reaproveite o campo `poster` que o video ja tem no esquema" e registrei assim no PLAN e no CHANGELOG, propagando a leitura errada por tres tarefas (T19, T14). O usuario esclareceu: ele queria que a imagem de pre-carregamento fosse o **primeiro quadro do proprio arquivo de video**, derivada automaticamente — nao um campo cadastrado.
+
+Onde o raciocinio falhou: "vir direto do video" descreve **origem derivada** (extrair do arquivo), e eu li como **referencia a um campo** (apontar para o poster ja cadastrado). Quando uma frase curta do usuario admite duas leituras com implementacoes diferentes, a regra do proprio processo manda perguntar — e eu tinha acabado de fazer uma rodada de perguntas, entao havia oportunidade. Assumi a leitura que exigia menos trabalho.
+
+O usuario acrescentou o principio que sustenta a leitura correta, e ele vale alem deste caso: **nao se pede a um operador leigo um dado que ele nao tem como entender**. Uma "imagem de pre-carregamento" e conceito de quem constroi a pagina, nao de quem escreve conteudo. Campo que so faz sentido para desenvolvedor nao deve existir no painel.
+
+Impacto: o banner passa a aceitar **video ou imagem**, a escolha do operador; **nao existe campo de imagem de pre-carregamento**; e quando for video, a imagem exibida antes do carregamento vem do **primeiro quadro do proprio video**. Registrado como tarefa T24. A nota da T19 e a da T14 que descrevem "miniatura do primeiro video" ficam superadas por esta entrada.
+
+## 2026-09-03 — Decisoes do usuario: editor de texto rico com Lexical, migracao recriada a partir do instantaneo
+
+Documentos afetados: SDD.md, PLAN.md
+
+Motivo: tres pontos levados ao usuario apos a T14.
+
+1. **Campo de texto rico.** O titulo da Prova de Autoridade perdeu, na T14, a quebra de linha forcada e o destaque em turquesa extra-bold, porque o JSX escrito a mao deu lugar ao texto do CMS. Em vez de tirar o campo do painel, o usuario decidiu criar um **tipo de campo de texto rico**, que guarda HTML: o operador cria a quebra de linha e marca o trecho em **negrito**, e esse negrito e o que vira o destaque visual. Serve a este titulo e a outros com a mesma necessidade.
+
+   **Editor escolhido: Lexical.** O orquestrador levantou que o CKEditor 5, pedido inicialmente, e distribuido sob GPL na versao aberta, com licenca comercial a parte — e o JavaScript dele vai para o navegador junto com o codigo do projeto, o que tem implicacao num trabalho entregue a cliente. O usuario optou por Lexical (MIT).
+
+   **Requisito de seguranca inegociavel:** HTML vindo do banco renderizado na pagina publica abre porta para injecao de script. So as marcacoes que fazem sentido para titulo passam; qualquer outra coisa e removida. Sem isso, um operador com acesso comprometido injetaria script na LP.
+
+2. **A migracao de conteudo volta, lendo o instantaneo.** A T14 aposentou `apps/api/src/migration/` porque a fonte que ele lia (`*.content.ts`) deixou de existir — decisao correta naquele momento, mas que tira a capacidade de popular um ambiente novo, de que a T21 (Docker/homologacao) e a T16 (publicacao) vao precisar. O modulo volta lendo `apps/lp/src/content/content-snapshot.json`, sem duplicar conteudo. Tarefa T23.
+
+3. **O banner mantem o video vindo do CMS** — ver a entrada acima sobre a interpretacao errada.
+
+Impacto: tres tarefas novas no PLAN — T22 (campo de texto rico com Lexical), T23 (migracao a partir do instantaneo) e T24 (midia do banner: video ou imagem, com pre-carregamento derivado). Ordem: T22 e T24 alteram esquema e painel e sao sequenciais entre si; T23 vem depois das duas, para semear conteudo ja no formato final.
+
+## 2026-09-03 — A regra do pre-carregamento vale para TODOS os videos, nao so o do banner
+
+Documentos afetados: PLAN.md (T24), SDD.md
+
+Motivo: ao registrar a interpretacao errada do banner, o orquestrador levantou que os dois videos da secao Demonstracao tambem tem campo de miniatura cadastravel, e que pelo principio declarado pelo usuario eles provavelmente tambem nao deveriam pedir isso. O usuario confirmou: **a regra vale para todos os videos**.
+
+Estado atual da lista `videos` de `demonstracao`, quatro campos por item: `label` (Titulo do video), `video` (Arquivo de video), `poster` (Miniatura do video) e `captions` (Arquivo de legendas).
+
+Decisao: **`poster` deixa de existir** em todo lugar onde houver video. A imagem exibida antes do carregamento passa a ser derivada do primeiro quadro do proprio arquivo. `label` e `captions` permanecem — o operador entende os dois, e legenda e acessibilidade real, com arquivo que ele de fato possui.
+
+Consequencia registrada: as duas miniaturas hoje cadastradas (`tutor-abrindo-petisco.jpg` e `cachorro-ganhando-petisco.jpg`) ficam sem referencia. Nao serao apagadas pela T24 — a remocao e decisao a parte, para nao misturar limpeza com mudanca de contrato.
+
+Impacto: T24 passa a alterar o esquema da secao Demonstracao alem do banner, e a T23 (migracao a partir do instantaneo) precisa semear o formato novo. Reforca o criterio de revisao ja registrado na T24: verificar se ha outros campos que so fazem sentido para quem constroi a pagina.

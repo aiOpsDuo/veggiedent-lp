@@ -319,6 +319,39 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Toca documentação: sim — README ganha a seção de como subir tudo e como configurar o ambiente.
 - Status: pendente
 
+### T22 — Campo de texto rico (Lexical)
+- Descrição: acrescentar ao esquema um tipo de campo **texto rico**, que guarda HTML, e implementá-lo no painel com **Lexical** (MIT). O operador cria quebra de linha e marca trechos em **negrito**; o negrito é o que a LP renderiza como destaque visual. Aplicar ao título da Prova de Autoridade, restaurando a quebra forçada no desktop e o destaque em turquesa extra-bold que a T14 perdeu.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre as decisões do usuário; SDD § "Contrato do esquema de seção"; critério C-04.
+- **Requisito de segurança inegociável:** HTML vindo do banco e renderizado na página pública precisa ser **sanitizado**. Só as marcações que fazem sentido para título passam (negrito, itálico, quebra de linha); qualquer outra é removida. Sem isso, um operador com acesso comprometido injeta script na LP. Cobrir com teste que tenta injetar `<script>` e um manipulador de evento em atributo, e prova que nada disso chega à página.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; teste de sanitização com tentativa real de injeção; o título da Prova de Autoridade volta a exibir quebra e destaque, **verificado em navegador real**, comparando com o estado anterior à T14; o operador consegue editar esse título pelo painel e ver o resultado na página.
+- Dependências: T14
+- Execução: sequencial — altera esquema, painel e LP.
+- Toca documentação: sim — README, no que o operador vê nesse tipo de campo e no que é permitido no HTML.
+- Status: pendente
+
+### T24 — Mídia do banner: vídeo ou imagem, com pré-carregamento derivado
+- Descrição: o banner da seção Demonstração passa a aceitar **vídeo ou imagem**, à escolha do operador. **Não existe campo de imagem de pré-carregamento** — é conceito de quem constrói a página, não de quem escreve conteúdo. Quando a mídia for vídeo, a imagem exibida antes do carregamento vem do **primeiro quadro do próprio arquivo**, derivada automaticamente.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre a interpretação errada do orquestrador; SDD § C-07.
+- **Princípio declarado pelo usuário, que vale além deste caso:** não se pede a um operador leigo um dado que ele não tem como entender. Campo que só faz sentido para desenvolvedor não deve existir no painel.
+- **Escopo ampliado pelo usuário em 2026-09-03: a regra vale para TODOS os vídeos do CMS, não só o do banner.** A lista `videos` da seção Demonstração tem hoje quatro campos por item — `label`, `video`, `poster`, `captions`. O campo **`poster` (Miniatura do vídeo) deixa de existir**: a imagem de pré-carregamento passa a ser derivada do primeiro quadro do próprio arquivo, em todo lugar onde houver vídeo.
+  - `label` (Título do vídeo) **permanece** — o operador entende e usa.
+  - `captions` (Arquivo de legendas) **permanece** — é acessibilidade real, compreensível, e o operador tem o arquivo.
+  - As duas miniaturas hoje cadastradas (`tutor-abrindo-petisco.jpg` e `cachorro-ganhando-petisco.jpg`) ficam sem referência. **Não as apague** — relate, e a remoção é decisão à parte.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; o painel permite escolher entre enviar vídeo ou imagem para o banner, sem pedir pôster; **verificado em navegador real** que, com vídeo cadastrado, algo sensato aparece antes de o vídeo tocar — e que com imagem cadastrada a imagem aparece. O mecanismo de derivação do quadro é escolha do subagente, com justificativa no relatório.
+- Dependências: T22
+- Execução: sequencial — altera esquema, painel e LP, os mesmos artefatos da T22.
+- Toca documentação: sim — README, no que o operador pode enviar para o banner.
+- Status: pendente
+
+### T23 — Recriar a migração de conteúdo a partir do instantâneo
+- Descrição: restaurar a capacidade de popular um ambiente novo, que a T14 removeu junto com `apps/api/src/migration/`. O módulo volta lendo `apps/lp/src/content/content-snapshot.json` em vez dos `*.content.ts` apagados — sem duplicar conteúdo, porque o instantâneo já é a cópia versionada do que está publicado.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; SDD § D-08; nota de status da T14.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; a migração roda contra um CMS vazio e o popula; é **idempotente**, provado por contagem antes/depois da segunda execução; o conteúdo semeado bate campo a campo com o instantâneo.
+- Dependências: T22, T24 — precisa semear conteúdo já no formato final do esquema.
+- Execução: sequencial
+- Toca documentação: sim — README, no procedimento de popular um ambiente novo.
+- Status: pendente
+
 ## Ordem de execução
 
 ```
