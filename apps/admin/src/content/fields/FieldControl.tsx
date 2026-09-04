@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import type { FieldSpec, FieldType, MediaFieldType } from '@veggiedent/content-schema'
 import { MediaField } from '../../media/MediaField'
+import { RichTextInput } from './rich-text/RichTextInput'
 
 /**
  * O controle de um campo, escolhido pelo **tipo declarado no esquema**.
@@ -137,6 +138,26 @@ function TextListInput({ describedBy, invalid, spec, value, onChange }: InputPro
 }
 
 /**
+ * Texto rico: um editor com negrito e quebra de linha, que guarda HTML. O
+ * rótulo vira `legend` (o wrapper de grupo) porque um `label` só nomeia um
+ * controle de formulário nativo, e a área de edição do Lexical não é um — quem
+ * dá nome a ela é o `aria-label` que o controle recebe aqui.
+ */
+function RichTextField({ id, describedBy, invalid, spec, value, onChange }: InputProps): JSX.Element {
+  return (
+    <RichTextInput
+      id={id}
+      describedBy={describedBy}
+      invalid={invalid}
+      required={spec.required}
+      label={spec.label}
+      value={value}
+      onChange={onChange}
+    />
+  )
+}
+
+/**
  * Campo de mídia: o envio do arquivo direto ao armazenamento, com prévia e
  * progresso (SDD § D-05). O tipo do campo decide o que é aceito, o limite
  * exibido e a forma da prévia, e chega ao controle já resolvido — daí um
@@ -163,6 +184,7 @@ function mediaControl(fieldType: MediaFieldType): FieldControlSpec {
 const CONTROLS_BY_FIELD_TYPE: Readonly<Record<FieldType, FieldControlSpec>> = {
   'texto-curto': { Input: ShortTextInput, wrapper: 'rotulo' },
   'texto-longo': { Input: LongTextInput, wrapper: 'rotulo' },
+  'texto-rico': { Input: RichTextField, wrapper: 'grupo' },
   'lista-de-textos': { Input: TextListInput, wrapper: 'grupo' },
   link: { Input: ShortTextInput, wrapper: 'rotulo' },
   booleano: { Input: BooleanInput, wrapper: 'rotulo' },
