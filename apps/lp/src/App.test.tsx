@@ -50,13 +50,24 @@ function conteudoDaApiComTitulo(headline: string): PublishedContent {
   }
 }
 
+/**
+ * A primeira montagem paga o custo de compilar o pedaço carregado por
+ * `React.lazy`, e sob a suíte inteira isso passa do 1s padrão do
+ * `findBy*` — o teste falhava por prazo, não por a página estar errada. A
+ * espera é generosa de propósito: quem resolve primeiro é a asserção, e o
+ * prazo só existe para o caso em que a seção nunca aparece.
+ */
+const MONTAGEM_DA_PAGINA = { timeout: 10_000 }
+
 async function renderizarPagina() {
   render(<App />)
   // A seção de demonstração entra por React.lazy: esperar por ela é esperar a
   // página inteira estar montada.
-  await screen.findByRole('heading', {
-    name: contentSnapshot.sections.demonstracao!.heading,
-  })
+  await screen.findByRole(
+    'heading',
+    { name: contentSnapshot.sections.demonstracao!.heading },
+    MONTAGEM_DA_PAGINA,
+  )
 }
 
 afterEach(() => {

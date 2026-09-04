@@ -26,8 +26,6 @@ export interface LeadView {
   readonly qualProdutoVirbac: string | null
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
-  readonly rdstationStatus: string
-  readonly rdstationError: string | null
   readonly createdAt: string
 }
 

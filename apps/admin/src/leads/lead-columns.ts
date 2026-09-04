@@ -49,8 +49,6 @@ export const LEAD_COLUMNS: readonly LeadColumn[] = [
   { header: 'Qual produto Virbac', value: (lead) => text(lead.qualProdutoVirbac) },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => text(lead.origem) },
-  { header: 'Status RD Station', value: (lead) => lead.rdstationStatus },
-  { header: 'Erro RD Station', value: (lead) => text(lead.rdstationError) },
 ]
 
 /**

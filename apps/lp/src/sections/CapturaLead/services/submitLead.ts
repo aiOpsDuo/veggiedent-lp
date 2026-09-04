@@ -1,12 +1,10 @@
-// Integracao com RD Station Marketing — Especificacao Funcional, secao 8.5.
+// Envio do formulario de captura para a API do CMS.
 //
-// O front-end NUNCA chama a API do RD Station diretamente e nunca guarda a
-// credencial privada. Este servico so faz um POST para um endpoint proprio
-// (funcao serverless — Vercel/Netlify Function ou Cloudflare Worker), que e
-// quem efetivamente conversa com o RD Station usando um token de ambiente
-// do lado do servidor. Sem banco de dados proprio e sem processo de
-// exportacao manual — o RD Station Marketing e o unico sistema de registro
-// do lead.
+// O lead e gravado no banco do CMS, que desde 2026-09-03 e o UNICO lugar onde
+// ele existe: nao ha repasse a sistema externo, e a saida do dado e a
+// exportacao em CSV feita pelo painel (SDD, RN-01 e C-11). Por isso uma
+// resposta que nao seja 2xx precisa virar erro visivel aqui — engoli-la faria a
+// pagina agradecer por um lead que nao foi gravado em lugar nenhum.
 import { env } from '../../../config/env'
 import type { LeadFormValues } from '../CapturaLead.types'
 
@@ -14,7 +12,7 @@ export interface SubmitLeadResult {
   success: boolean
 }
 
-export async function submitLeadToRDStation(values: LeadFormValues): Promise<SubmitLeadResult> {
+export async function submitLead(values: LeadFormValues): Promise<SubmitLeadResult> {
   const payload = {
     nome: values.nome.trim(),
     email: values.email.trim(),
@@ -34,7 +32,7 @@ export async function submitLeadToRDStation(values: LeadFormValues): Promise<Sub
   })
 
   if (!response.ok) {
-    throw new Error(`Falha ao enviar lead ao RD Station (status ${response.status})`)
+    throw new Error(`Falha ao enviar o lead (status ${response.status})`)
   }
 
   return { success: true }

@@ -23,8 +23,6 @@ describe('Colunas da tela (regra de negócio RN-01)', () => {
       'Qual produto Virbac',
       'Aceite de comunicações',
       'Origem',
-      'Status RD Station',
-      'Erro RD Station',
     ])
   })
 

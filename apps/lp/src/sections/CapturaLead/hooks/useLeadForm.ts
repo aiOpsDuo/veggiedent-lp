@@ -1,7 +1,7 @@
 // Hook exclusivo desta secao — Especificacao Funcional, secao 8.4.
 import { useCallback, useRef, useState } from "react";
 import { useTracking } from "../../../hooks/useTracking";
-import { submitLeadToRDStation } from "../services/submitLeadToRDStation";
+import { submitLead } from "../services/submitLead";
 import { validateField, validateLeadForm } from "../utils/validation";
 import type {
   LeadFormErrorMessages,
@@ -90,7 +90,7 @@ export function useLeadForm(errorMessages: LeadFormErrorMessages) {
     setStatus("submitting");
 
     try {
-      await submitLeadToRDStation(values);
+      await submitLead(values);
       setStatus("success");
       track("form_submit_success", { form_id: "lead_capture" });
       return "success";

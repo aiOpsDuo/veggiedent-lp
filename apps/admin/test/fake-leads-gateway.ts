@@ -132,8 +132,6 @@ export function leadDeTeste(overrides: Partial<LeadView> & Pick<LeadView, 'id'>)
     qualProdutoVirbac: null,
     aceiteComunicacoes: true,
     origem: 'lp-veggiedent',
-    rdstationStatus: 'nao_enviado',
-    rdstationError: null,
     createdAt: '2026-09-03T12:00:00.000Z',
     ...overrides,
   }
