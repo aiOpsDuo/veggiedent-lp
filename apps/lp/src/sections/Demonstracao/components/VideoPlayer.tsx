@@ -10,9 +10,7 @@ interface VideoPlayerProps {
 }
 
 // Video/Player — Design System v1.2, secao 9.8. Estados: idle/loading/playing/ended.
-// Autoplay desabilitado. O arquivo e as legendas vem do CMS; as legendas sao
-// opcionais no esquema, entao a faixa de legenda so e declarada quando existe
-// arquivo cadastrado (Especificacao Funcional, 6.6).
+// Autoplay desabilitado. O arquivo de video vem do CMS (Especificacao Funcional, 6.6).
 //
 // Nao existe miniatura cadastrada, e por isso nao ha atributo `poster`: a
 // imagem exibida antes do play e o primeiro quadro do proprio arquivo (ver
@@ -63,11 +61,7 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
         }}
         onTimeUpdate={handleTimeUpdate}
         onCanPlay={() => setStatus((current) => (current === 'loading' ? 'playing' : current))}
-      >
-        {video.captions !== undefined && (
-          <track kind="captions" srcLang="pt-BR" label="Português" src={video.captions} />
-        )}
-      </video>
+      />
 
       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-black/70 to-transparent p-4">
         <button

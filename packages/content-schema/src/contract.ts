@@ -15,7 +15,6 @@ export const FIELD_TYPES = [
   'lista-de-textos',
   'imagem',
   'video',
-  'legenda',
   'link',
   'booleano',
 ] as const
@@ -23,7 +22,7 @@ export const FIELD_TYPES = [
 export type FieldType = (typeof FIELD_TYPES)[number]
 
 /** Tipos cujo valor e o identificador de uma midia, nunca uma URL digitada a mao. */
-export const MEDIA_FIELD_TYPES = ['imagem', 'video', 'legenda'] as const
+export const MEDIA_FIELD_TYPES = ['imagem', 'video'] as const
 
 export type MediaFieldType = (typeof MEDIA_FIELD_TYPES)[number]
 

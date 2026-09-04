@@ -8,8 +8,8 @@
  * (SDD § D-05).
  */
 
-/** As três naturezas de mídia, como a API as nomeia. */
-export type MediaKind = 'image' | 'video' | 'caption'
+/** As duas naturezas de mídia, como a API as nomeia. */
+export type MediaKind = 'image' | 'video'
 
 /** O que o painel declara à API antes de enviar: nome, tipo e tamanho. */
 export interface UploadRequest {

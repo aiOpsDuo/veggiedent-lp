@@ -80,7 +80,6 @@ const buildersByFieldType: Record<FieldType, FieldZodBuilder> = {
   },
   imagem: { required: mediaReference, optional: () => mediaReference().optional() },
   video: { required: mediaReference, optional: () => mediaReference().optional() },
-  legenda: { required: mediaReference, optional: () => mediaReference().optional() },
   link: {
     required: () => text().min(1, MESSAGES.required).refine(isValidLink, MESSAGES.invalidLink),
     optional: () =>

@@ -147,7 +147,7 @@ describe('fundo do banner da Demonstração', () => {
   it('não tem campo de miniatura em nenhum vídeo da lista', () => {
     const videos = demonstracaoSchema.lists.find((list) => list.name === 'videos')
 
-    expect(videos?.itemFields.map((field) => field.name)).toEqual(['label', 'video', 'captions'])
+    expect(videos?.itemFields.map((field) => field.name)).toEqual(['label', 'video'])
   })
 })
 

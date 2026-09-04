@@ -21,7 +21,7 @@ export class PublicContentController {
     summary: 'Todo o conteúdo publicado da landing page, em uma resposta.',
     description:
       'Seções e itens de lista não publicados são omitidos. Os itens vêm na ordem definida no painel. ' +
-      'Campos de imagem, vídeo e legenda vêm com a URL pública no lugar do identificador da mídia; ' +
+      'Campos de imagem e vídeo vêm com a URL pública no lugar do identificador da mídia; ' +
       'mídia inexistente faz o campo ser omitido, nunca entregar o identificador.',
   })
   @ApiOkResponse({

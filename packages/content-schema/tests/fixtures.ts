@@ -100,7 +100,6 @@ export const demonstracaoDocument: DemonstracaoDocument = {
       ordem: 0,
       label: 'Do pacote ao petisco',
       video: mediaId(6),
-      captions: mediaId(8),
     },
   ],
 }

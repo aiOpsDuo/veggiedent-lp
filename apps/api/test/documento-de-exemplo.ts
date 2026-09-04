@@ -27,7 +27,6 @@ function valueFor(field: FieldSpec, seed: string): unknown {
       return [`Primeiro item (${seed})`, 'Segundo item, com acentuação']
     case 'imagem':
     case 'video':
-    case 'legenda':
       return MEDIA_ID
     case 'link':
       return '#secao-de-destino'

@@ -79,6 +79,14 @@ function declaredBuckets(): Map<string, DeclaredBucket> {
   return buckets
 }
 
+/**
+ * `veggiedent-captions` continua aparecendo aqui mesmo depois da T31: o
+ * projeto hospedado recusa `delete` direto em `storage.buckets` (o Supabase
+ * exige a Storage API para isso), então a remoção do bucket foi feita por
+ * ela, fora de qualquer migração — nenhuma migração SQL apaga a linha que o
+ * criou. `MEDIA_FIELD_TYPES` já não referencia mais `legenda`, então nenhum
+ * campo do painel aponta para este bucket órfão.
+ */
 describe('o catálogo do painel repete o que as migrações declaram', () => {
   const buckets = declaredBuckets()
 

@@ -45,7 +45,7 @@ export class FakeMediaService implements MediaService {
     const id = `00000000-0000-4000-8000-00000000000${this.nextNumber}`
     const media: RegisteredMedia = {
       id,
-      kind: fieldType === 'imagem' ? 'image' : fieldType === 'video' ? 'video' : 'caption',
+      kind: fieldType === 'imagem' ? 'image' : 'video',
       publicUrl: `${PUBLIC_URL_PREFIX}${file.name}`,
       mimeType: file.type,
       sizeBytes: file.size,

@@ -36,7 +36,7 @@ export class RegisterMediaDto {
     example: 'video',
   })
   @IsIn(MEDIA_KINDS, {
-    message: 'Natureza de mídia desconhecida. Use image, video ou caption.',
+    message: 'Natureza de mídia desconhecida. Use image ou video.',
   })
   kind!: MediaKind
 

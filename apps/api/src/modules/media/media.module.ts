@@ -16,7 +16,7 @@ import { SupabaseMediaUrlRepository } from './infrastructure/supabase-media-url.
 import { AdminMediaController } from './presentation/admin-media.controller'
 
 /**
- * Mídia: imagem, vídeo e legenda enviados pelo painel (T7).
+ * Mídia: imagem e vídeo enviados pelo painel (T7).
  *
  * Camadas (SDD § "Visão de layers dentro da API"): `presentation/` traduz HTTP,
  * `application/` orquestra casos de uso, `domain/` guarda as regras e as portas,

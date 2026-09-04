@@ -16,7 +16,7 @@ export interface MediaAsset {
   readonly mimeType: string
   readonly sizeBytes: number
   readonly originalFilename: string
-  /** Nulos conforme a natureza: legenda não tem dimensão, imagem não tem duração. */
+  /** Nulos conforme a natureza: imagem não tem duração, e só vídeo tem os três. */
   readonly width: number | null
   readonly height: number | null
   readonly durationSeconds: number | null

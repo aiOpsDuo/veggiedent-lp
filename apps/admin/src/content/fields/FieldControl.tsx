@@ -190,7 +190,6 @@ const CONTROLS_BY_FIELD_TYPE: Readonly<Record<FieldType, FieldControlSpec>> = {
   booleano: { Input: BooleanInput, wrapper: 'rotulo' },
   imagem: mediaControl('imagem'),
   video: mediaControl('video'),
-  legenda: mediaControl('legenda'),
 }
 
 interface FieldMetaProps {

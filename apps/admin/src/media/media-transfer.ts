@@ -145,7 +145,6 @@ function transferMessageOf(error: unknown): string {
  */
 export const TRANSFERS_BY_KIND: Readonly<Record<MediaKind, MediaTransfer>> = {
   image: directTransfer,
-  caption: directTransfer,
   video: resumableTransfer,
 }
 

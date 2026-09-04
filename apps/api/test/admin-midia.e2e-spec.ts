@@ -19,7 +19,6 @@ import { exampleDocument, exampleMetadata } from './documento-de-exemplo'
 
 const IMAGEM = { contentType: 'image/png', bucket: 'veggiedent-images' }
 const VIDEO = { contentType: 'video/mp4', bucket: 'veggiedent-videos' }
-const LEGENDA = { contentType: 'text/vtt', bucket: 'veggiedent-captions' }
 
 const MEGABYTE = 1024 * 1024
 const AGORA = '2026-09-02T12:00:00.000Z'
@@ -142,7 +141,7 @@ describe('rotas administrativas de mídia', () => {
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(response.body.error).toBe('Dados inválidos.')
       expect(response.body.fields.contentType).toBe(
-        'Tipo de arquivo não suportado. Tipos aceitos: image/jpeg, image/png, image/webp, image/avif, image/gif, image/svg+xml, video/mp4, video/webm, text/vtt.',
+        'Tipo de arquivo não suportado. Tipos aceitos: image/jpeg, image/png, image/webp, image/avif, image/gif, image/svg+xml, video/mp4, video/webm.',
       )
       expect(harness.database.storage.issuedCredentials).toHaveLength(0)
     })
@@ -247,13 +246,6 @@ describe('rotas administrativas de mídia', () => {
       ])
     })
 
-    it('registra legenda no bucket de legendas', async () => {
-      const registro = await enviarMidia(LEGENDA, 4096, 'legendas.vtt')
-
-      expect(registro).toMatchObject({ kind: 'caption', mimeType: 'text/vtt' })
-      expect(registro.storagePath).toContain(`${LEGENDA.bucket}/`)
-    })
-
     it('recusa arquivo que não corresponde à natureza declarada', async () => {
       const emissao = await pedirCredencial(IMAGEM, 2048, 'foto.png')
       const credencial = emissao.body as CredencialEmitida
@@ -277,9 +269,7 @@ describe('rotas administrativas de mídia', () => {
       })
 
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
-      expect(response.body.fields.kind).toBe(
-        'Natureza de mídia desconhecida. Use image, video ou caption.',
-      )
+      expect(response.body.fields.kind).toBe('Natureza de mídia desconhecida. Use image ou video.')
     })
 
     it('confirmar duas vezes o mesmo caminho não duplica o registro', async () => {

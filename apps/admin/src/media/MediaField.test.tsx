@@ -33,7 +33,7 @@ interface Montagem {
 }
 
 function montar(
-  fieldType: 'imagem' | 'video' | 'legenda' = 'imagem',
+  fieldType: 'imagem' | 'video' = 'imagem',
   value = '',
   service = new FakeMediaService(),
 ): Montagem {

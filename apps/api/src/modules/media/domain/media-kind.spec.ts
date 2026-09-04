@@ -80,6 +80,15 @@ function declaredBuckets(): Map<string, DeclaredBucket> {
   return buckets
 }
 
+/**
+ * `veggiedent-captions` continua aparecendo aqui mesmo depois da T31: o
+ * projeto hospedado recusa `delete` direto em `storage.buckets` ("Direct
+ * deletion from storage tables is not allowed. Use the Storage API instead.",
+ * SQLSTATE 42501), então a remoção do bucket foi feita pela Storage API
+ * (`.../bucket/veggiedent-captions`), fora de qualquer migração — nenhuma
+ * migração SQL apaga a linha que a criou. `MEDIA_KINDS` já não referencia mais
+ * `caption`, então nenhuma política aponta para este bucket órfão.
+ */
 describe('política de bucket por natureza de mídia', () => {
   const buckets = declaredBuckets()
 
@@ -103,7 +112,6 @@ describe('política de bucket por natureza de mídia', () => {
   it('deduz a natureza a partir do tipo do arquivo', () => {
     expect(policyForMimeType('video/webm')?.kind).toBe('video')
     expect(policyForMimeType('IMAGE/PNG')?.kind).toBe('image')
-    expect(policyForMimeType('text/vtt')?.kind).toBe('caption')
   })
 
   /**

@@ -7,12 +7,10 @@ import { collectMediaIds, withResolvedMedia } from './media-references'
 
 const IMAGEM = '00000000-0000-4000-8000-00000000000a'
 const VIDEO = '00000000-0000-4000-8000-00000000000b'
-const LEGENDA = '00000000-0000-4000-8000-00000000000c'
 
 const urls = new Map([
   [IMAGEM, 'https://cdn.exemplo/imagem.png'],
   [VIDEO, 'https://cdn.exemplo/video.mp4'],
-  [LEGENDA, 'https://cdn.exemplo/legendas.vtt'],
 ])
 
 const heroi = (image: unknown) => ({ headline: 'Hálito fresco', image, imageAlt: 'Cão' })
@@ -32,21 +30,18 @@ describe('collectMediaIds', () => {
   })
 
   it('reúne também os identificadores dentro dos itens de lista', () => {
-    const ids = collectMediaIds(
-      demonstracaoSchema,
-      demonstracao([video(0, { video: VIDEO, captions: LEGENDA })]),
-    )
+    const ids = collectMediaIds(demonstracaoSchema, demonstracao([video(0, { video: VIDEO })]))
 
-    expect(ids.sort()).toEqual([VIDEO, LEGENDA].sort())
+    expect(ids).toEqual([VIDEO])
   })
 
   it('não repete a mesma mídia usada em mais de um lugar', () => {
     const ids = collectMediaIds(
       demonstracaoSchema,
-      demonstracao([video(0, { captions: LEGENDA }), video(1, { captions: LEGENDA })]),
+      demonstracao([video(0, { video: VIDEO }), video(1, { video: VIDEO })]),
     )
 
-    expect(ids).toEqual([LEGENDA])
+    expect(ids).toEqual([VIDEO])
   })
 
   it('ignora campo de mídia vazio, ausente ou fora de forma', () => {
@@ -74,16 +69,11 @@ describe('withResolvedMedia', () => {
   it('resolve a mídia de cada item de lista, não só a do topo', () => {
     const resolvido = withResolvedMedia(
       demonstracaoSchema,
-      demonstracao([video(0, { video: VIDEO, captions: LEGENDA })]),
+      demonstracao([video(0, { video: VIDEO })]),
       urls,
     )
 
-    expect(resolvido.videos).toEqual([
-      video(0, {
-        video: 'https://cdn.exemplo/video.mp4',
-        captions: 'https://cdn.exemplo/legendas.vtt',
-      }),
-    ])
+    expect(resolvido.videos).toEqual([video(0, { video: 'https://cdn.exemplo/video.mp4' })])
   })
 
   it('omite o campo cuja mídia foi apagada, em vez de entregar o identificador', () => {
@@ -109,7 +99,7 @@ describe('withResolvedMedia', () => {
   it('preserva item de lista fora de forma', () => {
     const resolvido = withResolvedMedia(
       demonstracaoSchema,
-      demonstracao([null, 42, video(0, { captions: LEGENDA })]),
+      demonstracao([null, 42, video(0, { video: VIDEO })]),
       urls,
     )
 
@@ -118,7 +108,7 @@ describe('withResolvedMedia', () => {
   })
 
   it('não altera o documento recebido', () => {
-    const original = demonstracao([video(0, { video: VIDEO, captions: LEGENDA })])
+    const original = demonstracao([video(0, { video: VIDEO })])
     const copia = JSON.parse(JSON.stringify(original)) as unknown
 
     withResolvedMedia(demonstracaoSchema, original, urls)

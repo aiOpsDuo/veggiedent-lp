@@ -12,7 +12,6 @@ describe('plano de upload', () => {
   it('leva o arquivo ao bucket da sua natureza', () => {
     expect(plan('video/mp4', 10 * MEGABYTE).policy.bucket).toBe('veggiedent-videos')
     expect(plan('image/webp', MEGABYTE).policy.bucket).toBe('veggiedent-images')
-    expect(plan('text/vtt', 1024).policy.bucket).toBe('veggiedent-captions')
   })
 
   it('recusa tipo não suportado com mensagem no campo do tipo', () => {
@@ -30,11 +29,6 @@ describe('plano de upload', () => {
   it('recusa arquivo acima do limite da sua natureza', () => {
     expect(() => plan('image/png', 10 * MEGABYTE + 1)).toThrow(FieldValidationError)
     expect(() => plan('image/png', 10 * MEGABYTE)).not.toThrow()
-  })
-
-  it('aceita o limite exato, e não um byte a mais', () => {
-    expect(() => plan('text/vtt', MEGABYTE)).not.toThrow()
-    expect(() => plan('text/vtt', MEGABYTE + 1)).toThrow(FieldValidationError)
   })
 
   it('prefixa o caminho com o identificador único, para dois envios do mesmo nome não colidirem', () => {

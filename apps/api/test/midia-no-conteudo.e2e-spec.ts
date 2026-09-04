@@ -49,8 +49,8 @@ function demonstracaoComVideos(quantidade: number): {
   const midias: number[] = []
 
   const videos = (documento.videos as Record<string, unknown>[]).map((item, indice) => {
-    midias.push(indice * 2, indice * 2 + 1)
-    return { ...item, video: mediaId(indice * 2), captions: mediaId(indice * 2 + 1) }
+    midias.push(indice)
+    return { ...item, video: mediaId(indice) }
   })
 
   return { documento: { ...documento, videos }, midias }
@@ -92,14 +92,10 @@ describe('GET /api/content — referências de mídia', () => {
 
     const response = await request(harness.app.getHttpServer()).get('/api/content')
 
-    const videos = response.body.sections.demonstracao.videos as {
-      video: string
-      captions: string
-    }[]
+    const videos = response.body.sections.demonstracao.videos as { video: string }[]
     expect(videos).toHaveLength(3)
     videos.forEach((item, indice) => {
-      expect(item.video).toBe(mediaUrl(indice * 2))
-      expect(item.captions).toBe(mediaUrl(indice * 2 + 1))
+      expect(item.video).toBe(mediaUrl(indice))
     })
   })
 
@@ -173,11 +169,11 @@ describe('GET /api/content — referências de mídia', () => {
   /**
    * RISCO R-05, aplicado à resolução de mídia.
    *
-   * O mesmo conteúdo com 3 e com 30 vídeos — 6 e 60 mídias distintas, uma por
-   * campo de cada item. Se a resolução consultasse por item, a contagem
-   * cresceria junto; ela não cresce, porque os identificadores vão todos em uma
-   * consulta só. As URLs conferidas item a item mostram que a consulta única de
-   * fato resolve cada mídia, e não uma só repetida.
+   * O mesmo conteúdo com 3 e com 30 vídeos — 3 e 30 mídias distintas, uma por
+   * item. Se a resolução consultasse por item, a contagem cresceria junto;
+   * ela não cresce, porque os identificadores vão todos em uma consulta só.
+   * As URLs conferidas item a item mostram que a consulta única de fato
+   * resolve cada mídia, e não uma só repetida.
    */
   it('não acrescenta uma consulta por item de mídia', async () => {
     const consultasCom = async (quantidadeDeVideos: number): Promise<number> => {
@@ -191,7 +187,7 @@ describe('GET /api/content — referências de mídia', () => {
       const videos = response.body.sections.demonstracao.videos as { video: string }[]
       expect(videos).toHaveLength(quantidadeDeVideos)
       videos.forEach((item, indice) => {
-        expect(item.video).toBe(mediaUrl(indice * 2))
+        expect(item.video).toBe(mediaUrl(indice))
       })
       return harness.database.calls.length
     }

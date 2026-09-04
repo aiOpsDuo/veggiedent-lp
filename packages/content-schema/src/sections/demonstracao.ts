@@ -10,7 +10,7 @@ import { optionalDecorativeImage } from '../fields'
  * cadastrado (ver `apps/lp/src/sections/Demonstracao/first-frame.ts`).
  *
  * O que permanece por item de video e o que o operador entende e possui:
- * titulo, arquivo de video e arquivo de legendas.
+ * titulo e arquivo de video.
  */
 export const demonstracaoSchema = {
   key: 'demonstracao',
@@ -91,13 +91,6 @@ export const demonstracaoSchema = {
           label: 'Arquivo de vídeo',
           help: 'Vídeo reproduzido nesta posição da seção.',
           required: true,
-        },
-        {
-          name: 'captions',
-          type: 'legenda',
-          label: 'Arquivo de legendas',
-          help: 'Legendas em português exibidas durante a reprodução do vídeo.',
-          required: false,
         },
       ],
     },

@@ -60,13 +60,6 @@ export const UPLOAD_POLICIES: Readonly<Record<MediaFieldType, UploadPolicy>> = {
     acceptedMimeTypes: ['video/mp4', 'video/webm'],
     acceptedFormats: 'MP4 ou WebM',
   },
-  legenda: {
-    bucket: 'veggiedent-captions',
-    label: 'legenda',
-    bucketMaxBytes: 1 * MEGABYTE,
-    acceptedMimeTypes: ['text/vtt'],
-    acceptedFormats: 'VTT',
-  },
 }
 
 export function policyOf(fieldType: MediaFieldType): UploadPolicy {

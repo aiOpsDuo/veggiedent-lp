@@ -1,5 +1,5 @@
 /**
- * As três naturezas de mídia e a política de armazenamento de cada uma
+ * As duas naturezas de mídia e a política de armazenamento de cada uma
  * (SDD § "Modelo de dados" — `media_assets.kind` — e § D-05).
  *
  * Um bucket por natureza, com limite de tamanho e lista de tipos próprios. Quem
@@ -14,7 +14,7 @@
  * `media-kind.spec.ts` reconstrói esse estado e falha se ele divergir daqui.
  */
 
-export const MEDIA_KINDS = ['image', 'video', 'caption'] as const
+export const MEDIA_KINDS = ['image', 'video'] as const
 
 export type MediaKind = (typeof MEDIA_KINDS)[number]
 
@@ -51,13 +51,6 @@ export const MEDIA_KIND_POLICIES: Readonly<Record<MediaKind, MediaKindPolicy>> =
     label: 'vídeo',
     maxBytes: 500 * MEGABYTE,
     acceptedMimeTypes: ['video/mp4', 'video/webm'],
-  },
-  caption: {
-    kind: 'caption',
-    bucket: 'veggiedent-captions',
-    label: 'legenda',
-    maxBytes: 1 * MEGABYTE,
-    acceptedMimeTypes: ['text/vtt'],
   },
 }
 

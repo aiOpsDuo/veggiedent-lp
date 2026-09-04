@@ -65,16 +65,6 @@ const PREVIEWS: Readonly<Record<MediaFieldType, (media: RegisteredMedia) => JSX.
       className="max-h-40 rounded border border-slate-200 bg-slate-900"
     />
   ),
-  legenda: (media) => (
-    <a
-      href={media.publicUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="text-sm text-slate-700 underline"
-    >
-      {`Abrir ${media.originalFilename}`}
-    </a>
-  ),
 }
 
 const SELECT_CLASS =
