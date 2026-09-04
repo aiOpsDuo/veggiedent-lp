@@ -327,7 +327,13 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T14
 - Execução: sequencial — altera esquema, painel e LP.
 - Toca documentação: sim — README, no que o operador vê nesse tipo de campo e no que é permitido no HTML.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-03, branch `feat/T22-texto-rico` (6 commits, sem merge). Verificação do orquestrador: typecheck 0 erros, **662 testes** (313 API + 198 painel + 34 LP + 117 content-schema), build limpo.
+- **Injeção real testada por mim, pela API, com 5 vetores** — `<script>`, `<img onerror>`, `<a href="javascript:">`, `<iframe>` e `<strong onclick>`. O que foi gravado e servido publicamente: `"Titulolink"`. Nenhum `script`, `onerror`, `javascript:`, `iframe` ou `onclick` sobreviveu. O heading original foi restaurado e conferido, e o banco terminou com 12 seções, 24 mídias e só o operador do usuário.
+- **O subagente foi além do que pedi, e para melhor:** não há `dangerouslySetInnerHTML` em lugar nenhum — a LP **reconstrói elementos React** percorrendo o DOM já sanitizado, e o renderizador só sabe emitir `strong`, `em`, `br` e texto. São duas barreiras independentes: mesmo que a sanitização falhasse, não existe caminho para uma tag ou atributo virar nó. Provado por três experimentos: removendo só a sanitização, 11 testes passam; removendo só o renderizador seguro, 11 passam; **removendo as duas, 5 falham** com `<a>`, `<iframe>`, `<svg>` e `<img>` reais no DOM.
+- Sanitização nas duas pontas, com justificativa aceita: na **escrita** (antes de validar, para que um título feito só de `<script>` seja recusado como "Campo obrigatório" em vez de gravado em branco, e para manter banco e instantâneo limpos) e na **leitura** (a barreira que protege o visitante de qualquer HTML gravado por outro caminho).
+- Honestidade que vale registrar: o subagente declarou que a sanitização na **entrada do editor** não é provada por mutação — removida, o teste segue verde, porque o importador do Lexical já ignora marcação desconhecida. Manteve por explicitude e disse que é redundante, em vez de apresentá-la como barreira.
+- Defeito corrigido de passagem, que existia no JSX original: com a quebra escondida no celular, "dos" e "médicos-veterinários," ficavam colados. A seção passou a desenhar um espaço só-mobile.
+- Peso: painel de 494 KB para **853 KB** com o Lexical. O subagente declarou não ter medido o baseline da LP antes da mudança, em vez de afirmar um delta que não mediu.
 
 ### T24 — Mídia do banner: vídeo ou imagem, com pré-carregamento derivado
 - Descrição: o banner da seção Demonstração passa a aceitar **vídeo ou imagem**, à escolha do operador. **Não existe campo de imagem de pré-carregamento** — é conceito de quem constrói a página, não de quem escreve conteúdo. Quando a mídia for vídeo, a imagem exibida antes do carregamento vem do **primeiro quadro do próprio arquivo**, derivada automaticamente.
