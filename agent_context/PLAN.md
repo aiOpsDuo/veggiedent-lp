@@ -443,7 +443,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Esta tarefa não implementa nada.** Produz uma lista priorizada de problemas encontrados e, para cada um, uma proposta de correção com o esforço estimado (pequeno/médio/grande). O orquestrador leva a lista ao usuário para decidir o que vira tarefa nova no plano.
 - Critério de "pronto": documento de achados entregue ao orquestrador, cada item com: onde está (tela/componente), o que é ruim e por quê (referenciando o critério de usabilidade do PRD que ele viola), evidência real (não suposição), e proposta objetiva.
 - Dependências: nenhuma
-- **Execução: em worktree isolado**, sem tocar código — trabalho de leitura e navegação, não de escrita, então pode rodar em paralelo com T28 e T29 sem risco de conflito de arquivo mesmo que compartilhe alguma leitura de tela com a T29.
+- **Execução: em worktree isolado, com instância própria em portas alternativas** (não 5173/5174/3000, que são as do ambiente principal do usuário) — mesmo não escrevendo código, rodar contra a instância principal arriscaria falso positivo se T28 precisar derrubar e subir serviços durante a auditoria. Sem risco de conflito de arquivo com T28/T29 por não escrever nada no repositório.
 - Toca documentação: não — o resultado é uma proposta para o usuário decidir, não um artefato de processo definitivo ainda.
 - Status: pendente
 
