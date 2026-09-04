@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AuthContext, type AuthState, type AuthContextValue } from './auth-context'
-import type { AuthGateway } from './auth-gateway'
+import type { ActivationTokens, AuthGateway } from './auth-gateway'
+import type { OperatorCredentials } from './operator-session'
 
 interface AuthProviderProps {
   readonly gateway: AuthGateway
@@ -26,13 +27,30 @@ export function AuthProvider({ gateway, children }: AuthProviderProps): JSX.Elem
     [gateway],
   )
 
+  /**
+   * As quatro ações vivem em `useCallback`, presas só ao `gateway`, para que a
+   * identidade delas não mude a cada transição de `state` — a rota de ativação
+   * (SDD § D-09) depende de `activate` num `useEffect`, e uma referência nova a
+   * cada aviso de sessão faria esse efeito rodar de novo no meio de uma
+   * ativação em curso, perdendo o resultado da chamada anterior.
+   */
+  const signIn = useCallback(
+    (credentials: OperatorCredentials) => gateway.signIn(credentials),
+    [gateway],
+  )
+  const signOut = useCallback(() => gateway.signOut(), [gateway])
+  const activate = useCallback(
+    (tokens: ActivationTokens) => gateway.activate(tokens),
+    [gateway],
+  )
+  const setPassword = useCallback(
+    (password: string) => gateway.setPassword(password),
+    [gateway],
+  )
+
   const value = useMemo<AuthContextValue>(
-    () => ({
-      state,
-      signIn: (credentials) => gateway.signIn(credentials),
-      signOut: () => gateway.signOut(),
-    }),
-    [state, gateway],
+    () => ({ state, signIn, signOut, activate, setPassword }),
+    [state, signIn, signOut, activate, setPassword],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

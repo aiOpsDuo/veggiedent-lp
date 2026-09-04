@@ -1,9 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
+import { ENVIRONMENT } from '../../../config/environment'
+import type { Environment } from '../../../config/environment.schema'
 import { SUPABASE_CLIENT } from '../../../shared/infrastructure/supabase-client'
 import { SupabaseAuthOperationError } from '../../../shared/infrastructure/supabase-auth-operation.error'
 import type { OperatorAccount } from '../domain/operator-account'
 import type { OperatorDirectory, OperatorInvite } from '../domain/operator-directory.port'
+
+/** Caminho do painel para onde o convite redireciona (SDD § D-09). */
+const ACTIVATION_PATH = '/admin/ativar'
 
 function toOperatorAccount(user: User): OperatorAccount {
   return {
@@ -27,7 +32,10 @@ function toOperatorAccount(user: User): OperatorAccount {
  */
 @Injectable()
 export class SupabaseOperatorDirectory implements OperatorDirectory {
-  constructor(@Inject(SUPABASE_CLIENT) private readonly client: SupabaseClient) {}
+  constructor(
+    @Inject(SUPABASE_CLIENT) private readonly client: SupabaseClient,
+    @Inject(ENVIRONMENT) private readonly environment: Environment,
+  ) {}
 
   async listAll(): Promise<OperatorAccount[]> {
     const { data, error } = await this.client.auth.admin.listUsers()
@@ -37,12 +45,26 @@ export class SupabaseOperatorDirectory implements OperatorDirectory {
     return data.users.map(toOperatorAccount)
   }
 
+  /**
+   * `redirectTo` aponta para a rota de ativação do painel (`ADMIN_APP_URL` +
+   * `/admin/ativar`) em vez de deixar o Supabase usar o `Site URL` padrão do
+   * projeto — que não é o endereço do painel e é resquício de configuração
+   * antiga. É essa rota que deixa o convidado definir a própria senha.
+   */
   async invite(email: string): Promise<OperatorInvite> {
-    const { data, error } = await this.client.auth.admin.generateLink({ type: 'invite', email })
+    const { data, error } = await this.client.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: { redirectTo: this.activationRedirectUrl() },
+    })
     if (error) {
       throw new SupabaseAuthOperationError('convidar operador', error)
     }
     return { email, activationLink: data.properties.action_link }
+  }
+
+  private activationRedirectUrl(): string {
+    return new URL(ACTIVATION_PATH, this.environment.ADMIN_APP_URL).toString()
   }
 
   async remove(id: string): Promise<void> {

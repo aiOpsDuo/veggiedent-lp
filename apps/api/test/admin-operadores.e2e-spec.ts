@@ -117,6 +117,15 @@ describe('rotas administrativas de operadores', () => {
       )
     })
 
+    it('aponta o link de ativação para a rota do painel, não para o Site URL padrão do Supabase', async () => {
+      const response = await convidar('nova.operadora@veggiedent.test')
+
+      const link = new URL(response.body.activationLink)
+      expect(link.searchParams.get('redirect_to')).toBe(
+        `${process.env.ADMIN_APP_URL}/admin/ativar`,
+      )
+    })
+
     it('recusa e-mail malformado com mensagem clara em português', async () => {
       const response = await convidar('nao-e-email')
 

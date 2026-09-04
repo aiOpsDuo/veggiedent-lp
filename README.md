@@ -284,9 +284,11 @@ no código do painel. Isso é verificado por mutação na T11 — ver "Estado ve
 
 ## As telas do painel
 
-O painel tem quatro telas, todas atrás do login. **Nenhuma delas é alcançável sem sessão**: a
+O painel tem cinco telas, todas atrás do login. **Nenhuma delas é alcançável sem sessão**: a
 guarda é uma rota de layout, e toda rota nova nasce dentro dela — expor uma tela exigiria
-declará-la fora da guarda, de propósito.
+declará-la fora da guarda, de propósito. A única rota pública além do login é `/admin/ativar`
+(ver "Como convidar e remover um operador"), porque quem chega até ela ainda não tem sessão —
+é o que o convite existe para lhe dar.
 
 | Tela | Endereço | O que faz |
 |---|---|---|
@@ -294,6 +296,7 @@ declará-la fora da guarda, de propósito.
 | Seções da página | `/admin/secoes` | As 12 seções, na ordem da página, com data da última edição e visibilidade |
 | Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
 | Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
+| Operadores do painel | `/admin/operadores` | Lista, convida por e-mail e remove operadores |
 
 ### Metadados da página
 
@@ -345,6 +348,7 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 | `SUPABASE_SECRET_KEY` | sim | Chave secreta do Supabase. Ignora RLS — jamais no cliente |
 | `SUPABASE_JWKS_URL` | sim | Endpoint JWKS usado para verificar o token dos operadores |
 | `ALLOWED_ORIGINS` | sim | Origens autorizadas a chamar a API, separadas por vírgula |
+| `ADMIN_APP_URL` | sim | Origem do painel (sem caminho) — em desenvolvimento a entrada única, em produção o domínio único. É para onde o link de convite de operador redireciona, na rota `/admin/ativar` (ver "Como convidar e remover um operador") |
 | `NODE_ENV` | não | `development` (padrão), `test` ou `production` |
 | `PORT` | não | Porta HTTP da API. Padrão `3000` |
 
@@ -793,40 +797,51 @@ e saiu idêntico ao que já estava versionado.
 
 A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
-### Como criar um operador do painel
+### Como convidar e remover um operador do painel
 
-O CMS **não tem tela de gestão de usuários** — os operadores são criados no painel do
-Supabase, por decisão registrada no [SDD § D-03](agent_context/SDD.md). A API não guarda
-senhas nem tabela de usuários: ela apenas verifica o token que o Supabase Auth emitiu.
+A T29 trouxe a gestão de operadores para dentro do CMS, revertendo o trade-off original da
+[SDD § D-03](agent_context/SDD.md) (que deixava isso só no painel do Supabase). A API continua
+sem tabela de usuários — o Supabase Auth segue como única fonte —, mas agora é a própria tela
+**Operadores** (`/admin/operadores`) que fala com a Admin API do Supabase em nome de quem
+administra o painel; a chave secreta nunca chega ao navegador.
 
-No painel do Supabase, no projeto do Veggiedent:
+**Convidar:**
 
-1. **Authentication → Users → Add user → Create new user**.
-2. Preencha **Email** e **Password**. A senha é definida aqui e entregue à pessoa por um
-   canal seguro — ela pode trocá-la depois pelo próprio fluxo do Supabase.
-3. Marque **Auto Confirm User**. Sem isso o usuário fica pendente de confirmação por
-   e-mail e o login falha, porque este projeto não tem envio de e-mail configurado.
-4. Confirme em **Add user**. O operador já entra pelo painel do CMS na hora — não há nenhum
-   passo adicional na API, nem reinício, nem lista de permissões a atualizar.
+1. Na tela **Operadores**, preencha o e-mail do novo operador e confirme **Convidar
+   operador**. A API gera um **link de ativação de uso único** (`generateLink({ type: 'invite'
+   })`, nunca `inviteUserByEmail` — SDD § D-09) e o devolve na resposta; nenhum e-mail é
+   enviado automaticamente.
+2. O link aparece na tela **uma única vez** — copie e envie por um canal seu (e-mail,
+   WhatsApp, Slack). Fechar a caixa ou gerar outro convite o esconde de vez.
+3. Quem recebe o link o abre num navegador qualquer e cai em `/admin/ativar`, uma rota
+   **pública** (a única além do login): a tela lê os tokens do fragmento da URL, estabelece a
+   sessão e pede para o convidado **definir a própria senha** — ninguém aqui define senha por
+   outra pessoa. Ao confirmar, o convidado já entra no painel autenticado.
+4. `ADMIN_APP_URL` (ver "Variáveis de ambiente") é o que faz o link apontar para essa rota em
+   vez do `Site URL` padrão do projeto Supabase.
 
-Para **revogar o acesso**, remova (ou banha) o usuário na mesma tela. O token que ele já
-tiver em mãos continua válido até expirar; o Supabase emite tokens de vida curta, e a
-sessão do painel deixa de ser renovável assim que o usuário some.
+**Remover:** na mesma tela, com confirmação em dois passos. A API recusa com `409` remover a
+própria conta ou o único operador restante (SDD § R-10) — as duas formas de travar o próprio
+acesso ao painel —, e a tela já desabilita o botão nesses dois casos, com o motivo visível.
 
 Não há papéis nem permissões: quem entra tem acesso a todo o painel. Gestão de papéis está
 fora de escopo por decisão do PRD.
 
-> **Verificado na T5**, contra o projeto real, com um usuário de teste criado e removido em
-> seguida: o token emitido pelo Supabase Auth é assinado em **ES256** e verificado pela API
-> contra o JWKS do projeto (`SUPABASE_JWKS_URL`), sem que a API guarde nenhum segredo de
-> assinatura. Requisição sem token a um endpoint administrativo responde `401`; com o token
-> do operador, `200`.
+> **Verificado na T5**, contra o projeto real, com um usuário de teste criado direto no painel
+> do Supabase (o fluxo da época) e removido em seguida: o token emitido pelo Supabase Auth é
+> assinado em **ES256** e verificado pela API contra o JWKS do projeto (`SUPABASE_JWKS_URL`),
+> sem que a API guarde nenhum segredo de assinatura. Requisição sem token a um endpoint
+> administrativo responde `401`; com o token do operador, `200`.
 
-> **Verificado de novo na T10**, agora pelo painel, num navegador de verdade e contra o
-> Supabase e a API reais: o operador foi criado por esta mesma Auth Admin API, entrou pela
-> tela de login do painel, e a chamada autenticada a `GET /api/admin/sections` respondeu
-> `200`; a mesma chamada sem token respondeu `401`. O operador foi removido ao final, e o
-> projeto voltou a **0 usuários**.
+> **Verificado de novo na T29**, de ponta a ponta, num navegador de verdade e contra o Supabase
+> e a API reais, pela jornada completa (sem chamada manual à API do Supabase Auth): login como
+> o operador real; convite de um e-mail de teste pela tela; o link copiado, aberto numa aba
+> anônima, clicado e navegado de verdade até `/admin/ativar`; senha definida no formulário
+> novo, com entrada automática no painel já autenticado; saída e login de novo com a conta nova
+> (e-mail e senha), confirmando que a senha valeu; um link sem tokens mostrou a mensagem de erro
+> sem quebrar a tela; de volta como o operador original, a listagem mostrou os dois operadores;
+> o operador de teste foi removido pelo painel e saiu da lista. A Admin API do Supabase
+> confirmou ao final que não sobrou conta órfã — só o operador original permaneceu.
 
 ### Como o painel trata a sessão
 

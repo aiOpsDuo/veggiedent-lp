@@ -66,6 +66,7 @@ export class FakeSupabaseAuthAdmin {
   async generateLink(params: {
     type: string
     email: string
+    options?: { redirectTo?: string }
   }): Promise<{
     data: { properties: { action_link: string }; user: FakeOperator }
     error: null
@@ -73,10 +74,14 @@ export class FakeSupabaseAuthAdmin {
     const existing = [...this.users.values()].find((user) => user.email === params.email)
     const operator = existing ?? this.seed({ id: randomUUID(), email: params.email })
     const token = randomUUID().replace(/-/g, '')
+    const redirectSuffix =
+      params.options?.redirectTo !== undefined
+        ? `&redirect_to=${encodeURIComponent(params.options.redirectTo)}`
+        : ''
     return {
       data: {
         properties: {
-          action_link: `https://fake-supabase.test/auth/v1/verify?type=${params.type}&token=${token}&email=${encodeURIComponent(params.email)}`,
+          action_link: `https://fake-supabase.test/auth/v1/verify?type=${params.type}&token=${token}&email=${encodeURIComponent(params.email)}${redirectSuffix}`,
         },
         user: operator,
       },

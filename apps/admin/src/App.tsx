@@ -9,8 +9,10 @@ import { LeadsScreen } from './leads/LeadsScreen'
 import { ApiMediaProvider } from './media/media-context'
 import { MetadataScreen } from './metadata/MetadataScreen'
 import { OperatorsScreen } from './operators/OperatorsScreen'
+import { ActivateRoute } from './routing/ActivateRoute'
 import { LoginRoute } from './routing/LoginRoute'
 import {
+  ACTIVATE_PATH,
   HOME_PATH,
   LEADS_PATH,
   LOGIN_PATH,
@@ -28,12 +30,13 @@ interface AppProps {
 }
 
 /**
- * O painel inteiro, com uma única rota pública: a de login.
+ * O painel inteiro, com duas rotas públicas: login e ativação de convite.
  *
  * A guarda é uma rota de layout, e não um invólucro repetido em cada tela. É a
  * mesma ideia da guarda global da API (SDD § D-03): proteger não exige lembrar
  * de nada, porque toda rota nova nasce dentro dela; expor exigiria declarar a
- * rota fora da guarda, de propósito.
+ * rota fora da guarda, de propósito. `/ativar` (SDD § D-09) é pública pelo
+ * mesmo motivo que `/login` é: quem chega até ela ainda não tem sessão.
  *
  * Recebe o gateway e o cliente da API prontos para que o teste monte o painel de
  * verdade com dublês no lugar da rede.
@@ -44,6 +47,7 @@ export function App({ authGateway, apiClient }: AppProps): JSX.Element {
       <ApiMediaProvider gateway={apiClient}>
         <Routes>
           <Route path={LOGIN_PATH} element={<LoginRoute />} />
+          <Route path={ACTIVATE_PATH} element={<ActivateRoute />} />
           <Route element={<RequireSession />}>
             <Route element={<AdminLayout />}>
               <Route path={HOME_PATH} element={<HomeScreen apiClient={apiClient} />} />

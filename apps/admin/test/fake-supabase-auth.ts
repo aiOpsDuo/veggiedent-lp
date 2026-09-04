@@ -51,11 +51,22 @@ const WRONG_PASSWORD_ERROR: FakeAuthError = {
   message: 'Invalid login credentials',
 }
 
+/** Os tokens que um convite válido, no dublê, aceita — e para qual operador. */
+export interface FakeActivation {
+  readonly accessToken: string
+  readonly refreshToken: string
+  readonly operator: FakeOperator
+}
+
 export interface FakeSupabaseAuthOptions {
   readonly operators?: readonly FakeOperator[]
   readonly storage?: SessionStorage
   /** Quando presente, toda tentativa de login falha com este erro. */
   readonly signInFailure?: FakeAuthError
+  /** Os tokens que `setSession` aceita, reproduzindo o link de convite. */
+  readonly activation?: FakeActivation
+  /** Quando presente, toda tentativa de salvar senha falha com este erro. */
+  readonly updateUserFailure?: FakeAuthError
 }
 
 export class FakeSupabaseAuth implements SupabaseAuthApi {
@@ -112,6 +123,44 @@ export class FakeSupabaseAuth implements SupabaseAuthApi {
   async signOut(): Promise<{ error: unknown }> {
     this.storage.delete(STORED_SESSION_KEY)
     this.notify('SIGNED_OUT', null)
+    return { error: null }
+  }
+
+  /**
+   * Imita a troca dos tokens do fragmento da URL por uma sessão — o passo que
+   * a tela de ativação chama (SDD § D-09). Só o par exato configurado em
+   * `activation` é aceito, do mesmo jeito que o Supabase real recusa um token
+   * já trocado ou expirado.
+   */
+  async setSession(tokens: {
+    access_token: string
+    refresh_token: string
+  }): Promise<{ error: unknown }> {
+    const activation = this.options.activation
+    if (
+      activation === undefined ||
+      tokens.access_token !== activation.accessToken ||
+      tokens.refresh_token !== activation.refreshToken
+    ) {
+      return { error: { status: 401, message: 'Invalid Refresh Token' } }
+    }
+
+    const session: SupabaseSessionLike = {
+      access_token: tokens.access_token,
+      user: { id: activation.operator.id, email: activation.operator.email },
+    }
+    this.storage.set(STORED_SESSION_KEY, session)
+    this.notify('SIGNED_IN', session)
+    return { error: null }
+  }
+
+  async updateUser(_attributes: { password: string }): Promise<{ error: unknown }> {
+    if (this.options.updateUserFailure !== undefined) {
+      return { error: this.options.updateUserFailure }
+    }
+    if (!this.storage.has(STORED_SESSION_KEY)) {
+      return { error: { status: 401, message: 'Not authenticated' } }
+    }
     return { error: null }
   }
 

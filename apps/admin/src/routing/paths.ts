@@ -6,6 +6,7 @@ import type { SectionKey } from '@veggiedent/content-schema'
  * repitam a mesma string (regra G25).
  */
 export const LOGIN_PATH = '/login'
+export const ACTIVATE_PATH = '/ativar'
 export const HOME_PATH = '/'
 export const SECTIONS_PATH = '/secoes'
 export const METADATA_PATH = '/metadados'
