@@ -13,7 +13,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 | **Documento de seção** | O registro único que guarda todo o conteúdo de uma seção, incluindo suas listas. Uma seção ↔ um documento. |
 | **Esquema de seção** | A definição declarativa dos campos de uma seção: nome, tipo, rótulo em português, obrigatoriedade. É a fonte única que gera ao mesmo tempo a validação na API, o formulário no painel e os tipos consumidos pela LP. |
 | **Item de lista** | Elemento de uma coleção dentro de um documento de seção (um card, um passo, um parceiro, uma pergunta do FAQ, um vídeo, um link). |
-| **Mídia** | Arquivo de imagem, vídeo ou legenda enviado pelo painel e guardado no armazenamento. Referenciada por identificador, nunca por caminho digitado à mão. |
+| **Mídia** | Arquivo de imagem ou vídeo enviado pelo painel e guardado no armazenamento. Referenciada por identificador, nunca por caminho digitado à mão. ~~Legenda~~ — tipo em remoção (T31, pendente em 2026-09-04): nunca teve uso real (0 registros na tabela). |
 | **Publicação** | O ato de salvar. Não há rascunho: salvar torna o conteúdo visível na LP. |
 | **Visibilidade** | Sinalizador que retira uma seção ou um item de lista da LP sem apagar o conteúdo. Substitui os controles hoje em código (`isReadyForProduction`, `isContentReady`, blocos comentados). |
 | **Metadados da página** | Título, descrição e imagem de compartilhamento usados por buscadores e previews de link. |

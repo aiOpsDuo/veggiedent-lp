@@ -456,6 +456,35 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Toca documentação: não — o resultado é uma proposta para o usuário decidir, não um artefato de processo definitivo ainda.
 - Status: pendente
 
+### T31 — Remover os campos "Arquivo de legendas" (tipo de mídia `legenda`)
+
+- Descrição: o usuário decidiu que o campo "Arquivo de legendas" (`captions`, na lista `videos` da seção Demonstração) é desnecessário e deve ser removido inteiramente — não só o campo, o **tipo de mídia inteiro** (`legenda`/`caption`), incluindo o bucket de armazenamento `veggiedent-captions`. Hoje **não há nenhum arquivo de legenda cadastrado** (0 registros com `kind = 'caption'` em `media_assets`, confirmado pelo orquestrador antes de escrever esta tarefa) — a remoção não perde conteúdo de operador nenhum.
+- **Ressalva de acessibilidade, registrada para o usuário decidir com essa informação em mãos, não para bloquear:** o PRD (`agent_context/PRD.md` § "Fluxo de UX & notas de design" / critérios de release) listava legendas de vídeo como parte do requisito de acessibilidade preservada. Como o campo nunca foi usado (0 registros), o custo real desta remoção é baixo hoje, mas ela tira do CMS a capacidade de legendar vídeo se isso vier a ser necessário depois. Documentar essa troca no PRD, não escondê-la.
+- Escopo da remoção (mapeado pelo orquestrador antes de delegar): `packages/content-schema/src/sections/demonstracao.ts` (campo `captions` da lista `videos`), `packages/content-schema/src/contract.ts` (`'legenda'` sai de `MEDIA_FIELD_TYPES`), `packages/content-schema/src/zod.ts` (validador `legenda`), `apps/admin/src/media/{MediaField.tsx,media-gateway.ts,upload-policy.ts,media-transfer.ts}` e `apps/admin/src/content/fields/FieldControl.tsx` (tipo de campo `legenda`/`caption` no painel), `apps/lp/src/sections/Demonstracao/components/VideoPlayer.tsx` (o elemento `<track kind="captions">` e a leitura de `video.captions`), migração SQL removendo o bucket `veggiedent-captions`, e o instantâneo regenerado.
+- Rastreável a: pedido do usuário em 2026-09-04; SDD § "Contrato do esquema de seção" (tipos de campo de mídia), § C-07 (perde a frase "Legendas de cada vídeo também são enviáveis").
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; `grep -ri "legenda\|caption"` em `apps/` e `packages/` não retorna nada de produção relacionado a este tipo de mídia (o "role=status" alheio de `LeadsScreen.tsx` e textos de acessibilidade genéricos não contam); o bucket `veggiedent-captions` é removido do projeto hospedado; o painel não oferece mais o campo em nenhuma tela; `npm run instantaneo` regenerado sem referência a legenda; **verificado em navegador real** que a seção Demonstração renderiza e reproduz vídeo normalmente sem o campo.
+- Dependências: T28 (mesmos arquivos de `content-schema`/painel que T28 tocou — rodar depois, não em paralelo)
+- Execução: sequencial, na árvore principal (ou worktree isolado se T32 estiver rodando ao mesmo tempo — não paralelizar as duas entre si, ver nota abaixo)
+- Toca documentação: sim — README (tipos de mídia aceitos) e PRD (retira a menção a legendas do requisito de acessibilidade, com a ressalva acima registrada).
+- Status: pendente
+
+### T32 — Tirar o Rodapé (Footer) do CMS
+
+- Descrição: o usuário decidiu, mesmo tratamento dado ao Header na T28: o Rodapé sai do CMS e volta a ser fixo em código, **com exatamente os textos de hoje** — logo, `logoAlt`, os três links (`href`/`label`/ordem), o copyright, o texto de fonte da pesquisa (`claimSource`) e o aviso de espécie (`speciesDisclaimer`). Nada inventado nem "melhorado".
+- **Conteúdo atual a copiar literalmente** (capturado pelo orquestrador via `GET /api/content` antes de qualquer alteração, para servir de fonte da verdade e conferência posterior):
+  - `logo`: `https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg`
+  - `logoAlt`: "Veggiedent, por Virbac"
+  - `links` (ordem 0→2): "Política de privacidade" → `/politica-de-privacidade`; "Termos de uso" → `/termos-de-uso`; "Fale conosco" → `/fale-conosco`
+  - `copyright`: "© 2026 Virbac. Todos os direitos reservados."
+  - `claimSource`: "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html"
+  - `speciesDisclaimer`: "Produto indicado exclusivamente para cães."
+- Rastreável a: pedido do usuário em 2026-09-04; mesmo padrão da T28 (SDD § D-03, trade-off de "tudo sob `/admin`" não se aplica aqui — é sobre qual conteúdo vive em código vs. CMS, mesma linha da remoção do Header).
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; `packages/content-schema/src/sections/footer.ts` removido, esquema cai de 10 para **9** seções editáveis; `apps/lp/src/components/layout/Footer/**` (ou onde o componente viver) reescrito sem `connectSection`, com os valores acima; registro `footer` sai da tabela `content_sections` no banco hospedado; instantâneo regenerado; **verificado em navegador real** que o rodapé da LP é visualmente idêntico ao estado atual — comparação campo a campo contra os valores listados acima, não só inspeção visual.
+- Dependências: T28 (mesmos arquivos: `content-schema`, `App.tsx`/montagem de seções, instantâneo, migração, contagem de seções no painel e testes — rodar depois, não em paralelo)
+- Execução: sequencial, mesma árvore que T31 tocaria — **T31 e T32 não devem rodar em paralelo uma da outra** (guardrail de arquivo compartilhado: ambas tocam `content-schema/src/contract.ts`/`index.ts`, `App.tsx`, o instantâneo e a contagem de seções no painel/testes). Rodar uma de cada vez.
+- Toca documentação: sim — README (lista de seções editáveis cai para 9) e PRD (linha "Painel de edição por seção").
+- Status: pendente
+
 ## Ordem de execução
 
 ```

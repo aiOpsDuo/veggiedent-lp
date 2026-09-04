@@ -382,3 +382,17 @@ Proposta avaliada: ao salvar, se a secao tiver **um so campo preenchido** (ou, d
 Esforco estimado: pequeno — a contagem de "quanto foi preenchido" ja existe implicitamente no rascunho do formulario (`section-draft.ts`), e o aviso e so mais um estado de confirmacao na tela de edicao (`SectionEditorScreen.tsx`), no mesmo padrao ja usado para outras confirmacoes do painel. Nao exige mudanca de esquema nem de API. Estimativa: uma tarefa pequena, provavelmente menor que a T27.
 
 Impacto: nenhuma mudanca de codigo feita por esta decisao — registrada para o usuario decidir se vira tarefa nova no PLAN.md.
+
+## 2026-09-04 — Decisao do usuario: remover o campo de legendas de video, e tirar o Rodape do CMS
+
+Documentos afetados: PRD.md, SDD.md, PLAN.md
+
+Motivo: o usuario, ainda navegando o painel enquanto T28/T29/T30 rodavam em paralelo, pediu duas remocoes.
+
+1. **"Arquivo de legendas" e desnecessario, apagar tudo.** Verificado pelo orquestrador antes de escrever a tarefa: `media_assets` tem **0 registros** com `kind = 'caption'` — o campo nunca foi usado de verdade, entao a remocao nao perde conteudo real de nenhum operador. Ressalva registrada, nao para bloquear: o PRD listava legenda de video como parte do requisito de acessibilidade preservada (linha "legendas de video continuem sendo preenchidas"). Como nunca houve uso, o custo de hoje e baixo, mas fica registrado que o CMS perde essa capacidade se vier a ser necessaria depois — o usuario decidiu remover mesmo assim, e a linha do PRD sera ajustada quando a tarefa (T31) for executada.
+
+2. **O Rodape sai do CMS, mesmo tratamento do Header (T28).** O usuario tentou nomear isso duas vezes na conversa — primeiro escreveu "o painel", depois se corrigiu para "o rodape" — entao a leitura final e a segunda mensagem. Antes de escrever a tarefa, o orquestrador confirmou que nao existe nenhum campo ou secao chamada "painel" no esquema (o unico "painel" do projeto e a propria aplicacao administrativa), reforcando que a correcao do usuario era a intencao real.
+
+**Por que as duas nao foram implementadas na hora:** T28 estava em execucao na arvore principal, tocando exatamente os mesmos arquivos compartilhados (`content-schema/contract.ts`, `App.tsx`, o instantaneo, a contagem de secoes no painel) que a remocao do Rodape e do tipo de midia `legenda` tambem precisam tocar. Editar isso ao vivo, com um subagente jah escrevendo nos mesmos arquivos, e exatamente o conflito de arquivo compartilhado que a skill probe evitar. As duas entram no PLAN.md como **T31** (legendas) e **T32** (rodape), dependentes da T28 e sequenciais entre si (nao paralelas uma da outra, pelo mesmo motivo).
+
+Impacto: PRD.md corrigido em duas frentes nesta mesma entrada — a lista de secoes editaveis (linha 11) tirou Header e Ingredientes, que a T28 havia removido sem que o subagente atualizasse o PRD (lacuna do subagente, corrigida agora pelo orquestrador); e a mencao ao poster de video (linha 15), removido desde a T24 mas nunca tirada do PRD. T31 e T32 registradas no PLAN.md, ambas dependentes de T28 e sequenciais entre si.
