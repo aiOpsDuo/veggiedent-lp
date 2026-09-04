@@ -12,7 +12,7 @@ import type { SectionDetail } from './section-view'
  * ver o que está guardado, não o que a LP recebe.
  *
  * Seção conhecida que ainda não foi salva devolve documento vazio, e não `404`:
- * ela existe no conjunto fechado das 10, só não tem conteúdo. `404` fica
+ * ela existe no conjunto fechado das 9, só não tem conteúdo. `404` fica
  * reservado para chave que não é seção nenhuma.
  */
 @Injectable()

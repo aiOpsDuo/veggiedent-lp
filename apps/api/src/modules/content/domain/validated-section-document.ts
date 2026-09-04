@@ -22,7 +22,7 @@ export type ValidatedSectionDocument = Readonly<Record<string, unknown>> & {
 }
 
 /**
- * Converte a chave recebida da requisição em uma das 10 chaves conhecidas.
+ * Converte a chave recebida da requisição em uma das 9 chaves conhecidas.
  * O conjunto é fechado (SDD § "Linguagem ubíqua"): chave fora dele é recurso
  * inexistente, nunca um registro novo.
  */

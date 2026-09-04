@@ -50,7 +50,7 @@ describe('rotas administrativas de seção', () => {
   })
 
   describe('GET /api/admin/sections', () => {
-    it('lista as 10 seções na ordem da página, mesmo com o banco vazio', async () => {
+    it('lista as 9 seções na ordem da página, mesmo com o banco vazio', async () => {
       const response = await comToken(autenticado().get('/api/admin/sections'))
 
       expect(response.status).toBe(HttpStatus.OK)
@@ -74,7 +74,7 @@ describe('rotas administrativas de seção', () => {
       expect(faq).toMatchObject({ isPublished: true, updatedAt: AGORA })
     })
 
-    it('lê as 10 seções em uma única consulta', async () => {
+    it('lê as 9 seções em uma única consulta', async () => {
       harness.database.reset()
 
       await comToken(autenticado().get('/api/admin/sections'))
@@ -109,7 +109,7 @@ describe('rotas administrativas de seção', () => {
       expect(response.body).toMatchObject({ key: 'produto', data: {}, updatedAt: null })
     })
 
-    it('responde 404 para chave fora das 10 conhecidas', async () => {
+    it('responde 404 para chave fora das 9 conhecidas', async () => {
       const response = await comToken(autenticado().get('/api/admin/sections/promocao'))
 
       expect(response.status).toBe(HttpStatus.NOT_FOUND)

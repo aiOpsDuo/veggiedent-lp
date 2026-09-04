@@ -86,7 +86,9 @@ describe('LP com a API de conteúdo indisponível', () => {
     const hero = contentSnapshot.sections.hero!
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(hero.headline)
     expect(screen.getByText(hero.subheadline)).toBeInTheDocument()
-    expect(screen.getByText(contentSnapshot.sections.footer!.copyright)).toBeInTheDocument()
+    // O rodapé saiu do CMS na T32: o copyright é fixo em código, não vem mais
+    // do instantâneo — ver apps/lp/src/components/layout/Footer/Footer.tsx.
+    expect(screen.getByText('© 2026 Virbac. Todos os direitos reservados.')).toBeInTheDocument()
   })
 
   it('renderiza todas as seções publicadas, e não um esqueleto', async () => {
@@ -195,7 +197,7 @@ describe('Alterar a visibilidade de uma seção entre o instantâneo e a API (T2
   })
 
   /**
-   * A partir da T28 nenhuma das 10 seções do CMS nasce despublicada por
+   * A partir da T28 nenhuma das 9 seções do CMS nasce despublicada por
    * padrão (a única que nascia assim, `ingredientes`, foi removida do
    * projeto) — então não existe mais uma seção real para simular "ausente
    * do instantâneo, presente na API" pelo caminho de `<App />` inteiro. O

@@ -29,9 +29,10 @@ const Demonstracao = lazy(() =>
 //
 // O conteudo de todas elas vem de GET /api/content, servido pelo provedor que
 // envolve a pagina (SDD, D-08 e C-10). Uma secao despublicada nao aparece: o
-// proprio componente devolve null quando a API nao a entrega. O Header e a
-// unica excecao: saiu do CMS (decisao do usuario, 2026-09-04) e seu conteudo
-// e fixo em codigo — sempre aparece, nunca depende da API.
+// proprio componente devolve null quando a API nao a entrega. Header e Footer
+// sao a excecao: sairam do CMS (decisao do usuario, 2026-09-04, o header na
+// T28 e o rodape na T32) e seu conteudo e fixo em codigo — sempre aparecem,
+// nunca dependem da API.
 export default function App() {
   const { track } = useTracking()
 

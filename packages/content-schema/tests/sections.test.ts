@@ -82,12 +82,6 @@ const invalidCases: Record<SectionKey, InvalidCase> = {
     errorPath: 'faq.items.0.answer',
     message: MESSAGES.required,
   },
-  footer: {
-    description: 'linha de direitos autorais ausente',
-    document: withoutField('footer', 'copyright'),
-    errorPath: 'footer.copyright',
-    message: MESSAGES.required,
-  },
 }
 
 describe('validação de documento de seção', () => {

@@ -9,7 +9,7 @@ const faqValido = {
 }
 
 describe('ensureSectionKey', () => {
-  it('aceita uma das 10 chaves conhecidas', () => {
+  it('aceita uma das 9 chaves conhecidas', () => {
     expect(ensureSectionKey('faq')).toBe('faq')
   })
 

@@ -23,7 +23,7 @@ import type { PublishedContent } from './section-view'
  * Todo o conteúdo publicado em uma resposta (SDD § "Contratos de dados/API").
  *
  * **Risco R-05.** A rota faz no máximo três consultas, e esse número não depende
- * de quantas seções, itens de lista ou imagens existem: uma varredura das 10
+ * de quantas seções, itens de lista ou imagens existem: uma varredura das 9
  * linhas de `content_sections`, uma leitura do registro único de `site_metadata`
  * e, quando há mídia referenciada, uma leitura de `media_assets` com **todos**
  * os identificadores de uma vez. São três porque são três tabelas — não porque

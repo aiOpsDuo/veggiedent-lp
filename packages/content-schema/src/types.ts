@@ -47,7 +47,6 @@ export type ProvaAutoridadeDocument = SectionDocumentOf<'prova_autoridade'>
 export type CapturaLeadDocument = SectionDocumentOf<'captura_lead'>
 export type OndeComprarDocument = SectionDocumentOf<'onde_comprar'>
 export type FaqDocument = SectionDocumentOf<'faq'>
-export type FooterDocument = SectionDocumentOf<'footer'>
 
 /** Todo o conteúdo publicado, como servido por `GET /api/content`. */
 export type SectionDocuments = { [K in SectionKey]: SectionDocumentOf<K> }

@@ -160,33 +160,6 @@
       ],
       "heading": "Uma rotina simples, no ritmo do seu dia"
     },
-    "footer": {
-      "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg",
-      "links": [
-        {
-          "href": "/politica-de-privacidade",
-          "label": "Política de privacidade",
-          "ordem": 0,
-          "visivel": true
-        },
-        {
-          "href": "/termos-de-uso",
-          "label": "Termos de uso",
-          "ordem": 1,
-          "visivel": true
-        },
-        {
-          "href": "/fale-conosco",
-          "label": "Fale conosco",
-          "ordem": 2,
-          "visivel": true
-        }
-      ],
-      "logoAlt": "Veggiedent, por Virbac",
-      "copyright": "© 2026 Virbac. Todos os direitos reservados.",
-      "claimSource": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
-      "speciesDisclaimer": "Produto indicado exclusivamente para cães."
-    },
     "faq": {
       "items": [
         {

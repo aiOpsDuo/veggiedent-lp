@@ -9,7 +9,6 @@ import { provaAutoridadeSchema } from './prova-autoridade'
 import { capturaLeadSchema } from './captura-lead'
 import { ondeComprarSchema } from './onde-comprar'
 import { faqSchema } from './faq'
-import { footerSchema } from './footer'
 
 export {
   heroSchema,
@@ -21,7 +20,6 @@ export {
   capturaLeadSchema,
   ondeComprarSchema,
   faqSchema,
-  footerSchema,
 }
 
 export const sectionSchemas = {
@@ -34,12 +32,11 @@ export const sectionSchemas = {
   captura_lead: capturaLeadSchema,
   onde_comprar: ondeComprarSchema,
   faq: faqSchema,
-  footer: footerSchema,
 } as const satisfies Record<SectionKey, SectionSchema>
 
 export type SectionSchemas = typeof sectionSchemas
 
-/** As 10 seções na ordem em que aparecem na página. */
+/** As 9 seções na ordem em que aparecem na página. */
 export const orderedSectionSchemas: readonly SectionSchema[] = SECTION_KEYS.map((key) => sectionSchemas[key])
 
 export function getSectionSchema(key: SectionKey): SectionSchema {

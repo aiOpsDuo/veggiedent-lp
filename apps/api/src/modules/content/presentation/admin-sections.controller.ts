@@ -30,7 +30,7 @@ export class AdminSectionsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Lista as 10 seções, na ordem da página.',
+    summary: 'Lista as 9 seções, na ordem da página.',
     description: 'Traz o estado de publicação e a data da última edição de cada seção.',
   })
   async listar(): Promise<{ sections: SectionSummary[] }> {
@@ -40,7 +40,7 @@ export class AdminSectionsController {
   @Get(':key')
   @ApiOperation({
     summary: 'Documento completo de uma seção, publicado ou não.',
-    description: 'Chave fora das 10 conhecidas responde 404.',
+    description: 'Chave fora das 9 conhecidas responde 404.',
   })
   async ler(@Param('key') key: string): Promise<SectionDetail> {
     return this.getSection.execute(key)

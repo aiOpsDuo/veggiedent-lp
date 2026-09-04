@@ -1,5 +1,5 @@
 /**
- * Documentos de exemplo das 10 seções, com o conteúdo que hoje vive nos
+ * Documentos de exemplo das 9 seções, com o conteúdo que hoje vive nos
  * arquivos `*.content.ts` da LP.
  *
  * Cada constante é tipada com o tipo derivado do esquema correspondente. Isso
@@ -12,7 +12,6 @@ import type {
   DemonstracaoDocument,
   EducacaoDocument,
   FaqDocument,
-  FooterDocument,
   HeroDocument,
   OndeComprarDocument,
   ProdutoDocument,
@@ -198,19 +197,6 @@ export const faqDocument: FaqDocument = {
   ],
 }
 
-export const footerDocument: FooterDocument = {
-  logo: mediaId(10),
-  logoAlt: 'Veggiedent, por Virbac',
-  claimSource: '*Pesquisa IPSOS 2026. Realizada com 1.116 veterinários, base de dados Virbac.',
-  speciesDisclaimer: 'Produto indicado exclusivamente para cães.',
-  copyright: '© 2026 Virbac. Todos os direitos reservados.',
-  links: [
-    { visivel: true, ordem: 0, label: 'Política de privacidade', href: '/politica-de-privacidade' },
-    { visivel: true, ordem: 1, label: 'Termos de uso', href: '/termos-de-uso' },
-    { visivel: true, ordem: 2, label: 'Fale conosco', href: '/fale-conosco' },
-  ],
-}
-
 export const validSectionDocuments: SectionDocuments = {
   hero: heroDocument,
   educacao: educacaoDocument,
@@ -221,7 +207,6 @@ export const validSectionDocuments: SectionDocuments = {
   captura_lead: capturaLeadDocument,
   onde_comprar: ondeComprarDocument,
   faq: faqDocument,
-  footer: footerDocument,
 }
 
 export const validSiteMetadata: SiteMetadata = {

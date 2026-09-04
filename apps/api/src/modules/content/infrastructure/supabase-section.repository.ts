@@ -81,7 +81,7 @@ export class SupabaseSectionRepository implements SectionRepository {
 
   /**
    * Substitui o documento e publica: salvar é publicar (SDD § "Linguagem
-   * ubíqua"). `upsert` porque a seção existe no conjunto fechado das 10 desde
+   * ubíqua"). `upsert` porque a seção existe no conjunto fechado das 9 desde
    * sempre — a primeira gravação cria a linha, as seguintes a substituem, e a
    * chave nunca é inventada aqui: quem chega até este método já passou por
    * `ensureSectionKey`.

@@ -202,11 +202,11 @@ describe('GET /api/content — referências de mídia', () => {
   })
 
   /**
-   * O mesmo limite, agora com a página inteira: as 10 seções gravadas, cada uma
+   * O mesmo limite, agora com a página inteira: as 9 seções gravadas, cada uma
    * com o documento que o esquema pede. Três consultas no total — uma por
    * tabela —, não uma por seção nem uma por mídia.
    */
-  it('resolve a mídia das 10 seções em três consultas', async () => {
+  it('resolve a mídia das 9 seções em três consultas', async () => {
     harness.database.seed('media_assets', [mediaRow(1)])
     harness.database.seed(
       'content_sections',

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { SectionKey } from '../src/contract'
 import { MESSAGES } from '../src/messages'
 import { SECTION_ERROR_KEY, validateSectionDocument } from '../src/validation'
 import { buildZodSchema } from '../src/zod'
@@ -24,7 +25,7 @@ describe('formato dos erros', () => {
   })
 
   it('recusa uma chave de seção que não existe', () => {
-    const result = validateSectionDocument('rodape' as 'footer', {})
+    const result = validateSectionDocument('rodape' as SectionKey, {})
 
     expect(result.valid ? {} : result.fields).toEqual({ [SECTION_ERROR_KEY]: MESSAGES.unknownSection })
   })
