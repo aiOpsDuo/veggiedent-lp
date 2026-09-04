@@ -7,7 +7,7 @@ import type { SectionSummary, SectionsGateway } from './sections-gateway'
 import { formatUpdatedAt } from './updated-at'
 
 /**
- * A lista das 12 seções (SDD § C-03).
+ * A lista das 10 seções (SDD § C-03).
  *
  * As linhas saem do **esquema**, na ordem em que as seções aparecem na página;
  * a API preenche o que só ela sabe — se está publicada e quando foi editada. O

@@ -9,7 +9,7 @@ const ROTULOS_NA_ORDEM_DA_PAGINA = orderedSectionSchemas.map(
 )
 
 describe('Lista de seções (SDD § C-03)', () => {
-  it('mostra as 12 seções na ordem da página', async () => {
+  it('mostra as 10 seções na ordem da página', async () => {
     montarTela(<SectionsScreen gateway={new FakeSectionsGateway()} />)
 
     const links = await screen.findAllByRole('link')
