@@ -79,6 +79,29 @@
         }
       ]
     },
+    "demonstracao": {
+      "intro": "Os vídeos abaixo mostram o momento de oferecer o petisco, do desembalar à primeira mordida. Vale assistir antes da estreia do seu cão com o Veggiedent®.",
+      "videos": [
+        {
+          "label": "Do pacote ao petisco",
+          "ordem": 0,
+          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/0f930212-df00-4413-91f5-cea684f9e060/tutorabrindopetiscoecachorrocomendo.mp4",
+          "visivel": true
+        },
+        {
+          "label": "O momento de oferecer",
+          "ordem": 1,
+          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/b5549005-9c37-4257-bee0-380669eb3f49/cachorroganhadopetisco.mp4",
+          "visivel": true
+        }
+      ],
+      "heading": "Como oferecer Veggiedent® ao seu cão",
+      "bannerBody": "Veja como é simples incluir o Veggiedent® no momento do petisco.",
+      "bannerVideo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/0f930212-df00-4413-91f5-cea684f9e060/tutorabrindopetiscoecachorrocomendo.mp4",
+      "bannerCtaLabel": "Quero receber o guia gratuito",
+      "bannerHeadline": "Do pacote à primeira mordida",
+      "bannerOverline": "NA PRÁTICA"
+    },
     "produto": {
       "body": [
         {
@@ -119,31 +142,25 @@
       "packshot": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/31c2b08d-2f9d-454e-8a95-7422d491ba59/veggiedent-packshot.jpg",
       "packshotAlt": "Cachorro segurando na boca a embalagem oficial do Veggiedent Fr3sh, em ambiente doméstico"
     },
-    "demonstracao": {
-      "intro": "Os vídeos abaixo mostram o momento de oferecer o petisco, do desembalar à primeira mordida. Vale assistir antes da estreia do seu cão com o Veggiedent®.",
-      "videos": [
+    "prova_autoridade": {
+      "kit": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/84d9117f-e075-4787-8af2-0fc9fdcf6375/kit-de-imagens.png",
+      "stats": [
         {
-          "label": "Do pacote ao petisco",
+          "stat": "1.116",
+          "label": "Médicos-veterinários entrevistados",
           "ordem": 0,
-          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/0f930212-df00-4413-91f5-cea684f9e060/tutorabrindopetiscoecachorrocomendo.mp4",
-          "poster": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/3bc2e311-9869-43c5-a76f-457764b85c8f/tutor-abrindo-petisco.jpg",
-          "visivel": true,
-          "posterAlt": "Do pacote ao petisco"
+          "visivel": true
         },
         {
-          "label": "O momento de oferecer",
+          "stat": "N.º 1",
+          "label": "Marca mais recomendada no Brasil*",
           "ordem": 1,
-          "video": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-videos/b5549005-9c37-4257-bee0-380669eb3f49/cachorroganhadopetisco.mp4",
-          "poster": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/028e8838-b2b8-4e98-bd57-980124bfa0aa/cachorro-ganhando-petisco.jpg",
-          "visivel": true,
-          "posterAlt": "O momento de oferecer"
+          "visivel": true
         }
       ],
-      "heading": "Como oferecer Veggiedent® ao seu cão",
-      "bannerBody": "Veja como é simples incluir o Veggiedent® no momento do petisco.",
-      "bannerCtaLabel": "Quero receber o guia gratuito",
-      "bannerHeadline": "Do pacote à primeira mordida",
-      "bannerOverline": "NA PRÁTICA"
+      "kitAlt": "Veggiedent, selo número 1 e recomendação veterinária",
+      "source": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
+      "heading": "A recomendação dos<br><strong>médicos-veterinários,</strong> em números"
     },
     "rotina": {
       "intro": "Não existe fórmula pronta. Existe consistência. O médico-veterinário do seu cão ajuda a encontrar a frequência certa para o porte, a idade e o jeito de viver dele.",
@@ -182,26 +199,6 @@
         }
       ],
       "heading": "Uma rotina simples, no ritmo do seu dia"
-    },
-    "prova_autoridade": {
-      "kit": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/84d9117f-e075-4787-8af2-0fc9fdcf6375/kit-de-imagens.png",
-      "stats": [
-        {
-          "stat": "1.116",
-          "label": "Médicos-veterinários entrevistados",
-          "ordem": 0,
-          "visivel": true
-        },
-        {
-          "stat": "N.º 1",
-          "label": "Marca mais recomendada no Brasil*",
-          "ordem": 1,
-          "visivel": true
-        }
-      ],
-      "kitAlt": "Veggiedent, selo número 1 e recomendação veterinária",
-      "source": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
-      "heading": "A recomendação dos<br><strong>médicos-veterinários,</strong> em números"
     },
     "footer": {
       "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg",

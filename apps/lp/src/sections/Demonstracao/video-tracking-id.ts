@@ -1,7 +1,3 @@
-import type { SectionContent } from '../../content/published-content'
-
-type VideoItem = SectionContent<'demonstracao'>['videos'][number]
-
 /**
  * O identificador do vídeo nos eventos de analytics (`video_start`,
  * `video_progress`).
@@ -15,7 +11,7 @@ type VideoItem = SectionContent<'demonstracao'>['videos'][number]
  * Consequência declarada: os identificadores mudaram em relação aos que estavam
  * escritos no código (`tutor-abrindo-petisco` virou o nome do arquivo real).
  */
-export function videoTrackingId(video: VideoItem): string {
-  const nomeDoArquivo = video.video.split('/').pop() ?? video.video
+export function videoTrackingId(videoUrl: string): string {
+  const nomeDoArquivo = videoUrl.split('/').pop() ?? videoUrl
   return decodeURIComponent(nomeDoArquivo).replace(/\.[^.]+$/, '')
 }

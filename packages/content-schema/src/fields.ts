@@ -40,13 +40,13 @@ type ImageFieldPair<N extends string, R extends boolean> = readonly [
   },
 ]
 
-type DecorativeImageField<N extends string> = readonly [
+type DecorativeImageField<N extends string, R extends boolean> = readonly [
   {
     readonly name: N
     readonly type: 'imagem'
     readonly label: string
     readonly help: string
-    readonly required: true
+    readonly required: R
     readonly imageRole: 'decorativa'
   },
 ]
@@ -97,22 +97,39 @@ export function optionalImage<const N extends string>(
  * Esconde-la do leitor de tela e responsabilidade de quem a renderiza, e e o
  * tratamento correto de acessibilidade, nao uma excecao a ela.
  *
- * E sempre obrigatoria: uma imagem decorativa ausente deixa um buraco no
- * layout, que e a unica razao de ela existir.
+ * E obrigatoria por padrao: uma imagem decorativa ausente deixa um buraco no
+ * layout, que e a unica razao de ela existir. A excecao e quando outro campo do
+ * mesmo esquema preenche esse mesmo lugar — e o caso do fundo do banner, que e
+ * um video ou uma imagem, a escolha do operador; ai a imagem e opcional, e quem
+ * cuida do buraco e a alternativa, nao a obrigatoriedade.
  */
-export function decorativeImage<const N extends string>(
+function decorativeImageField<const N extends string, const R extends boolean>(
   input: ImageFieldInput<N>,
-): DecorativeImageField<N> {
+  required: R,
+): DecorativeImageField<N, R> {
   return [
     {
       name: input.name,
       type: 'imagem',
       label: input.label,
       help: input.help,
-      required: true,
+      required,
       imageRole: 'decorativa',
     },
   ] as const
+}
+
+export function decorativeImage<const N extends string>(
+  input: ImageFieldInput<N>,
+): DecorativeImageField<N, true> {
+  return decorativeImageField(input, true)
+}
+
+/** Imagem decorativa que o operador pode nao enviar, por haver alternativa. */
+export function optionalDecorativeImage<const N extends string>(
+  input: ImageFieldInput<N>,
+): DecorativeImageField<N, false> {
+  return decorativeImageField(input, false)
 }
 
 /** Ajuda a manter a declaracao dos esquemas legivel sem perder os tipos literais. */

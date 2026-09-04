@@ -34,6 +34,19 @@ function findImageFields(): ImageFieldLocation[] {
   return found
 }
 
+/**
+ * A única imagem opcional das 12 seções, e por quê: o fundo do banner da
+ * Demonstração é **vídeo ou imagem**, à escolha de quem edita o conteúdo. Exigir
+ * a imagem obrigaria a enviar as duas coisas para usar uma só. Toda outra imagem
+ * do CMS continua obrigatória — sem ela fica um buraco no layout, e é essa a
+ * regra que o teste abaixo prende.
+ */
+const IMAGEM_COM_ALTERNATIVA = 'demonstracao.bannerImage'
+
+function isAlternativeToAnotherField({ section, fields, index }: ImageFieldLocation): boolean {
+  return `${section}.${fields[index].name}` === IMAGEM_COM_ALTERNATIVA
+}
+
 describe('invariantes do esquema de seção', () => {
   it('percorre as 12 seções e não encontra nenhuma violação', () => {
     const violations = SECTION_KEYS.flatMap((key) => checkSchemaInvariants(sectionSchemas[key]))
@@ -77,7 +90,9 @@ describe('invariantes do esquema de seção', () => {
   )
 
   it('toda imagem das 12 seções é obrigatória, e o texto alternativo também', () => {
-    const imagesInSections = findImageFields().filter((location) => location.section !== 'site_metadata')
+    const imagesInSections = findImageFields().filter(
+      (location) => location.section !== 'site_metadata' && !isAlternativeToAnotherField(location),
+    )
 
     for (const { fields, index } of imagesInSections) {
       expect(fields[index].required).toBe(true)
@@ -85,6 +100,15 @@ describe('invariantes do esquema de seção', () => {
         expect(fields[index + 1].required).toBe(true)
       }
     }
+  })
+
+  it('a imagem do banner é a única opcional, porque o vídeo do banner ocupa o mesmo lugar', () => {
+    const opcionais = findImageFields()
+      .filter((location) => location.section !== 'site_metadata')
+      .filter(({ fields, index }) => !fields[index].required)
+      .map(({ section, fields, index }) => `${section}.${fields[index].name}`)
+
+    expect(opcionais).toEqual([IMAGEM_COM_ALTERNATIVA])
   })
 
   it('acusa uma imagem que não escolheu entre informativa e decorativa', () => {

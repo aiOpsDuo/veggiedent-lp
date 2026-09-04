@@ -16,7 +16,7 @@ import { PublishedContentProvider } from './content/PublishedContentProvider'
 
 // Demonstracao e a unica secao com React.lazy — decisao tecnica registrada no
 // relatorio de comparacao v1.0 -> v1.1: e a secao que carrega o VideoPlayer
-// (video.js-like markup + dois elementos <video> com poster/track), o unico
+// (video.js-like markup + dois elementos <video> com faixa de legenda), o unico
 // bloco da pagina com peso real fora do bundle principal. LeadCaptureForm e
 // ClaimsInfographic foram avaliados e mantidos no bundle principal (ver
 // relatorio: o ganho de um chunk separado para eles e irrelevante frente ao

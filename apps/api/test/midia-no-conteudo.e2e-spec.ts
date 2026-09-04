@@ -50,7 +50,7 @@ function demonstracaoComVideos(quantidade: number): {
 
   const videos = (documento.videos as Record<string, unknown>[]).map((item, indice) => {
     midias.push(indice * 2, indice * 2 + 1)
-    return { ...item, video: mediaId(indice * 2), poster: mediaId(indice * 2 + 1) }
+    return { ...item, video: mediaId(indice * 2), captions: mediaId(indice * 2 + 1) }
   })
 
   return { documento: { ...documento, videos }, midias }
@@ -94,12 +94,12 @@ describe('GET /api/content — referências de mídia', () => {
 
     const videos = response.body.sections.demonstracao.videos as {
       video: string
-      poster: string
+      captions: string
     }[]
     expect(videos).toHaveLength(3)
     videos.forEach((item, indice) => {
       expect(item.video).toBe(mediaUrl(indice * 2))
-      expect(item.poster).toBe(mediaUrl(indice * 2 + 1))
+      expect(item.captions).toBe(mediaUrl(indice * 2 + 1))
     })
   })
 

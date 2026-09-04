@@ -12,7 +12,6 @@ import type { SectionContent } from '../../content/published-content'
 export const Demonstracao = connectSection('demonstracao', DemonstracaoVideos)
 
 function DemonstracaoVideos({ content }: { content: SectionContent<'demonstracao'> }) {
-  const [primeiroVideo] = content.videos
   const containerRef = useRef<HTMLDivElement>(null)
   const reducedMotion = useReducedMotion()
 
@@ -60,13 +59,14 @@ function DemonstracaoVideos({ content }: { content: SectionContent<'demonstracao
             headline={content.bannerHeadline}
             body={content.bannerBody}
             ctaLabel={content.bannerCtaLabel}
-            video={primeiroVideo}
+            video={content.bannerVideo}
+            image={content.bannerImage}
           />
         </div>
 
         <div className="demo-content-el mt-8 flex flex-col items-center gap-6 lg:flex-row lg:items-start lg:justify-center">
           {content.videos.map((video) => (
-            <VideoPlayer key={videoTrackingId(video)} video={video} />
+            <VideoPlayer key={videoTrackingId(video.video)} video={video} />
           ))}
         </div>
       </SectionShell>

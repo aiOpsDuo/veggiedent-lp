@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { SECTION_KEYS } from '../src/contract'
 import type { SectionKey } from '../src/contract'
 import { MESSAGES, minimumItemsMessage } from '../src/messages'
+import { demonstracaoSchema } from '../src/sections'
 import { validateSectionDocument, validateSiteMetadata } from '../src/validation'
 import { mediaId, validSectionDocuments, validSiteMetadata } from './fixtures'
 
@@ -122,6 +123,43 @@ describe('validação de documento de seção', () => {
     const result = validateSectionDocument(key, validSectionDocuments[key])
 
     expect(result.valid ? result.data : null).toEqual(validSectionDocuments[key])
+  })
+})
+
+describe('fundo do banner da Demonstração', () => {
+  const { bannerVideo, ...semFundo } = validSectionDocuments.demonstracao
+
+  it('aceita o banner com vídeo, sem nenhuma imagem cadastrada', () => {
+    expect(validateSectionDocument('demonstracao', { ...semFundo, bannerVideo }).valid).toBe(true)
+  })
+
+  it('aceita o banner com imagem, sem pedir descrição — o fundo é decorativo', () => {
+    const result = validateSectionDocument('demonstracao', { ...semFundo, bannerImage: mediaId(11) })
+
+    expect(result.valid ? {} : result.fields).toEqual({})
+    expect(result.valid).toBe(true)
+  })
+
+  it('aceita o banner sem vídeo e sem imagem — os dois campos são opcionais', () => {
+    expect(validateSectionDocument('demonstracao', semFundo).valid).toBe(true)
+  })
+
+  it('recusa a descrição da imagem do banner, que não é campo do esquema', () => {
+    const result = validateSectionDocument('demonstracao', {
+      ...semFundo,
+      bannerImage: mediaId(11),
+      bannerImageAlt: 'Descrição que não deveria existir',
+    })
+
+    expect(result.valid ? {} : result.fields).toEqual({
+      'demonstracao.bannerImageAlt': MESSAGES.unknownField,
+    })
+  })
+
+  it('não tem campo de miniatura em nenhum vídeo da lista', () => {
+    const videos = demonstracaoSchema.lists.find((list) => list.name === 'videos')
+
+    expect(videos?.itemFields.map((field) => field.name)).toEqual(['label', 'video', 'captions'])
   })
 })
 

@@ -55,18 +55,18 @@ describe('imagem decorativa', () => {
 })
 
 describe('imagem dentro de item de lista', () => {
-  const demonstracao = getSectionSchema('demonstracao')
+  const educacao = getSectionSchema('educacao')
 
   it('endereça o erro à posição do item que está sem descrição', () => {
-    const doisVideos = {
-      videos: [
-        { poster: MIDIA, posterAlt: 'Cão escovando', ordem: 0, visivel: true },
-        { poster: MIDIA, ordem: 1, visivel: true },
+    const doisCards = {
+      cards: [
+        { image: MIDIA, imageAlt: 'Cão escovando', ordem: 0, visivel: true },
+        { image: MIDIA, ordem: 1, visivel: true },
       ],
     }
 
-    expect(erros(demonstracao, doisVideos)).toEqual({
-      'videos.1.posterAlt': 'O texto alternativo é obrigatório quando há imagem.',
+    expect(erros(educacao, doisCards)).toEqual({
+      'cards.1.imageAlt': 'O texto alternativo é obrigatório quando há imagem.',
     })
   })
 })

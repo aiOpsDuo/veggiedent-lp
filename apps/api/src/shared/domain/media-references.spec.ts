@@ -7,12 +7,12 @@ import { collectMediaIds, withResolvedMedia } from './media-references'
 
 const IMAGEM = '00000000-0000-4000-8000-00000000000a'
 const VIDEO = '00000000-0000-4000-8000-00000000000b'
-const POSTER = '00000000-0000-4000-8000-00000000000c'
+const LEGENDA = '00000000-0000-4000-8000-00000000000c'
 
 const urls = new Map([
   [IMAGEM, 'https://cdn.exemplo/imagem.png'],
   [VIDEO, 'https://cdn.exemplo/video.mp4'],
-  [POSTER, 'https://cdn.exemplo/poster.png'],
+  [LEGENDA, 'https://cdn.exemplo/legendas.vtt'],
 ])
 
 const heroi = (image: unknown) => ({ headline: 'Hálito fresco', image, imageAlt: 'Cão' })
@@ -34,19 +34,19 @@ describe('collectMediaIds', () => {
   it('reúne também os identificadores dentro dos itens de lista', () => {
     const ids = collectMediaIds(
       demonstracaoSchema,
-      demonstracao([video(0, { video: VIDEO, poster: POSTER })]),
+      demonstracao([video(0, { video: VIDEO, captions: LEGENDA })]),
     )
 
-    expect(ids.sort()).toEqual([VIDEO, POSTER].sort())
+    expect(ids.sort()).toEqual([VIDEO, LEGENDA].sort())
   })
 
   it('não repete a mesma mídia usada em mais de um lugar', () => {
     const ids = collectMediaIds(
       demonstracaoSchema,
-      demonstracao([video(0, { poster: POSTER }), video(1, { poster: POSTER })]),
+      demonstracao([video(0, { captions: LEGENDA }), video(1, { captions: LEGENDA })]),
     )
 
-    expect(ids).toEqual([POSTER])
+    expect(ids).toEqual([LEGENDA])
   })
 
   it('ignora campo de mídia vazio, ausente ou fora de forma', () => {
@@ -74,14 +74,14 @@ describe('withResolvedMedia', () => {
   it('resolve a mídia de cada item de lista, não só a do topo', () => {
     const resolvido = withResolvedMedia(
       demonstracaoSchema,
-      demonstracao([video(0, { video: VIDEO, poster: POSTER })]),
+      demonstracao([video(0, { video: VIDEO, captions: LEGENDA })]),
       urls,
     )
 
     expect(resolvido.videos).toEqual([
       video(0, {
         video: 'https://cdn.exemplo/video.mp4',
-        poster: 'https://cdn.exemplo/poster.png',
+        captions: 'https://cdn.exemplo/legendas.vtt',
       }),
     ])
   })
@@ -109,7 +109,7 @@ describe('withResolvedMedia', () => {
   it('preserva item de lista fora de forma', () => {
     const resolvido = withResolvedMedia(
       demonstracaoSchema,
-      demonstracao([null, 42, video(0, { poster: POSTER })]),
+      demonstracao([null, 42, video(0, { captions: LEGENDA })]),
       urls,
     )
 
@@ -118,7 +118,7 @@ describe('withResolvedMedia', () => {
   })
 
   it('não altera o documento recebido', () => {
-    const original = demonstracao([video(0, { video: VIDEO, poster: POSTER })])
+    const original = demonstracao([video(0, { video: VIDEO, captions: LEGENDA })])
     const copia = JSON.parse(JSON.stringify(original)) as unknown
 
     withResolvedMedia(demonstracaoSchema, original, urls)

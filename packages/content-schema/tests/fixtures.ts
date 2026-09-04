@@ -111,14 +111,13 @@ export const demonstracaoDocument: DemonstracaoDocument = {
   bannerHeadline: 'Do pacote à primeira mordida',
   bannerBody: 'Veja como é simples incluir o Veggiedent® no momento do petisco.',
   bannerCtaLabel: 'Quero receber o guia gratuito',
+  bannerVideo: mediaId(7),
   videos: [
     {
       visivel: true,
       ordem: 0,
       label: 'Do pacote ao petisco',
       video: mediaId(6),
-      poster: mediaId(7),
-      posterAlt: 'Tutor abrindo o pacote de Veggiedent diante do cão',
       captions: mediaId(8),
     },
   ],

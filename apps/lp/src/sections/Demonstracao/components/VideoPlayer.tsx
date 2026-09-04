@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react'
 import { useVideoTracking } from '../hooks/useVideoTracking'
+import { comPrimeiroQuadro } from '../first-frame'
 import { videoTrackingId } from '../video-tracking-id'
 import type { SectionContent } from '../../../content/published-content'
 
@@ -9,14 +10,19 @@ interface VideoPlayerProps {
 }
 
 // Video/Player — Design System v1.2, secao 9.8. Estados: idle/loading/playing/ended.
-// Autoplay desabilitado. O arquivo, a miniatura e as legendas vem do CMS; as
-// legendas sao opcionais no esquema, entao a faixa de legenda so e declarada
-// quando existe arquivo cadastrado (Especificacao Funcional, 6.6).
+// Autoplay desabilitado. O arquivo e as legendas vem do CMS; as legendas sao
+// opcionais no esquema, entao a faixa de legenda so e declarada quando existe
+// arquivo cadastrado (Especificacao Funcional, 6.6).
+//
+// Nao existe miniatura cadastrada, e por isso nao ha atributo `poster`: a
+// imagem exibida antes do play e o primeiro quadro do proprio arquivo (ver
+// `first-frame.ts`). O fundo escuro do bloco cobre o instante entre a montagem
+// e a decodificacao desse quadro.
 export function VideoPlayer({ video }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'playing' | 'ended'>('idle')
   const [isMuted, setIsMuted] = useState(true)
-  const { handlePlay, handleTimeUpdate, reset } = useVideoTracking(videoTrackingId(video))
+  const { handlePlay, handleTimeUpdate, reset } = useVideoTracking(videoTrackingId(video.video))
 
   function togglePlay() {
     const el = videoRef.current
@@ -42,10 +48,10 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
       <video
         ref={videoRef}
         className="aspect-video w-full"
+        src={comPrimeiroQuadro(video.video)}
         preload="metadata"
         playsInline
         muted={isMuted}
-        poster={video.poster}
         onPlay={() => {
           setStatus('playing')
           handlePlay()
@@ -58,7 +64,6 @@ export function VideoPlayer({ video }: VideoPlayerProps) {
         onTimeUpdate={handleTimeUpdate}
         onCanPlay={() => setStatus((current) => (current === 'loading' ? 'playing' : current))}
       >
-        <source src={video.video} type="video/mp4" />
         {video.captions !== undefined && (
           <track kind="captions" srcLang="pt-BR" label="Português" src={video.captions} />
         )}

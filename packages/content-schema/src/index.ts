@@ -21,7 +21,7 @@ export type {
   SectionSchema,
 } from './contract'
 
-export { decorativeImage, optionalImage, requiredImage } from './fields'
+export { decorativeImage, optionalDecorativeImage, optionalImage, requiredImage } from './fields'
 
 export {
   RICH_TEXT_ALLOWED_ATTRIBUTES,

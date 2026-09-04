@@ -7,7 +7,7 @@
  */
 import { z } from 'zod'
 import type { FieldSpec, FieldType, ListSpec } from './contract'
-import { altTextFieldName } from './contract'
+import { altTextFieldName, isDecorativeImage } from './contract'
 import { MESSAGES, minimumItemsMessage } from './messages'
 import { isBlankRichText } from './rich-text'
 
@@ -111,6 +111,10 @@ function isFilled(value: unknown): boolean {
  * Quando a imagem é opcional, seu texto alternativo também é — mas passa a ser
  * exigido assim que a imagem é preenchida. É o que mantém a invariante de
  * acessibilidade válida também nos campos de imagem opcionais.
+ *
+ * Imagem **decorativa** fica de fora, e não por descuido: ela não tem campo de
+ * descrição no esquema, então exigir um seria pedir o preenchimento de um campo
+ * que não existe — e que a validação recusaria como desconhecido se viesse.
  */
 function requireAltWhenImageIsFilled(
   document: Record<string, unknown>,
@@ -118,7 +122,7 @@ function requireAltWhenImageIsFilled(
   ctx: z.RefinementCtx,
 ): void {
   for (const field of fields) {
-    if (field.type !== 'imagem' || field.required) continue
+    if (field.type !== 'imagem' || field.required || isDecorativeImage(field)) continue
     const altName = altTextFieldName(field.name)
     if (isFilled(document[field.name]) && !isFilled(document[altName])) {
       ctx.addIssue({ code: 'custom', message: MESSAGES.altRequiredWithImage, path: [altName] })

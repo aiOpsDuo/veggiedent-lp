@@ -1,6 +1,17 @@
 import type { SectionSchema } from '../contract'
-import { requiredImage } from '../fields'
+import { optionalDecorativeImage } from '../fields'
 
+/**
+ * Nenhum video desta secao — nem o do banner, nem os da lista — pede imagem de
+ * pre-carregamento, e isso e decisao de produto, nao esquecimento: "imagem
+ * exibida antes de o video tocar" e conceito de quem constroi a pagina, e o
+ * operador nao tem como saber de onde tirar esse arquivo. A imagem de espera e
+ * o **primeiro quadro do proprio video**, que a LP obtem do arquivo ja
+ * cadastrado (ver `apps/lp/src/sections/Demonstracao/first-frame.ts`).
+ *
+ * O que permanece por item de video e o que o operador entende e possui:
+ * titulo, arquivo de video e arquivo de legendas.
+ */
 export const demonstracaoSchema = {
   key: 'demonstracao',
   label: 'Demonstração em vídeo',
@@ -47,6 +58,18 @@ export const demonstracaoSchema = {
       help: 'Botão do banner, que leva ao formulário do guia.',
       required: true,
     },
+    {
+      name: 'bannerVideo',
+      type: 'video',
+      label: 'Vídeo do banner',
+      help: 'Fundo do banner. Envie um vídeo ou uma imagem; com os dois enviados, o vídeo é o que aparece.',
+      required: false,
+    },
+    ...optionalDecorativeImage({
+      name: 'bannerImage',
+      label: 'Imagem do banner',
+      help: 'Fundo do banner quando não há vídeo enviado.',
+    }),
   ],
   lists: [
     {
@@ -69,13 +92,6 @@ export const demonstracaoSchema = {
           help: 'Vídeo reproduzido nesta posição da seção.',
           required: true,
         },
-        ...requiredImage({
-          name: 'poster',
-          label: 'Miniatura do vídeo',
-          help: 'Imagem exibida antes de o vídeo começar a tocar.',
-          altLabel: 'Texto alternativo da miniatura',
-          altHelp: 'Descrição lida por leitores de tela no lugar da miniatura do vídeo.',
-        }),
         {
           name: 'captions',
           type: 'legenda',
