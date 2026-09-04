@@ -20,7 +20,7 @@
  *   2. Cada uma das quatro tabelas nega a leitura com a chave publicavel?
  *      Esta e a exigencia dura do PLAN.md. Falhar aqui reprova a execucao.
  *
- *   3. Os tres buckets existem com a politica pretendida — leitura publica dos
+ *   3. Os dois buckets existem com a politica pretendida — leitura publica dos
  *      arquivos, escrita apenas com a credencial de servidor?
  *      Verificado pelo comportamento, nao pela configuracao declarada: o script
  *      envia um arquivo de sonda com a chave secreta, le esse arquivo SEM
@@ -74,12 +74,6 @@ const BUCKETS = [
     // Cabecalho `ftyp` minimo de um MP4.
     probeBody: () =>
       Buffer.from('0000001c667479706d703432000000006d70343269736f6d', 'hex'),
-  },
-  {
-    id: 'veggiedent-captions',
-    probeExtension: 'vtt',
-    contentType: 'text/vtt',
-    probeBody: () => Buffer.from('WEBVTT\n\n', 'utf8'),
   },
 ];
 
