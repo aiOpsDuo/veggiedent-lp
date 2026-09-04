@@ -75,7 +75,7 @@ apps/admin/src/
 ├── api/                # cliente da API do CMS (token no cabeçalho, como a guarda da API espera)
 ├── content/
 │   ├── sections-gateway.ts   # a porta das seções: listar, ler, gravar, ligar/desligar
-│   ├── SectionsScreen.tsx    # a lista das 10 seções, na ordem da página
+│   ├── SectionsScreen.tsx    # a lista das 9 seções, na ordem da página
 │   ├── SectionEditorScreen.tsx  # a tela de edição de uma seção
 │   ├── SectionForm.tsx       # o formulário, percorrendo o esquema
 │   ├── ListEditor.tsx        # itens de lista: adicionar, remover, reordenar, ligar/desligar
@@ -291,7 +291,7 @@ declará-la fora da guarda, de propósito.
 | Tela | Endereço | O que faz |
 |---|---|---|
 | Início | `/admin/` | Caminhos para as demais e a confirmação de que a API aceitou a sessão |
-| Seções da página | `/admin/secoes` | As 10 seções, na ordem da página, com data da última edição e visibilidade |
+| Seções da página | `/admin/secoes` | As 9 seções, na ordem da página, com data da última edição e visibilidade |
 | Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
 | Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
 
@@ -474,7 +474,7 @@ desenvolvimento as mesmas rotas respondem em `http://localhost:5173/api/…`. A 
 
 | Método e rota | O que faz |
 |---|---|
-| `GET /api/admin/sections` | Lista as **10** seções na ordem da página, com `isPublished` e `updatedAt`. Aparecem todas mesmo antes de existir documento salvo (`updatedAt: null`). |
+| `GET /api/admin/sections` | Lista as **9** seções na ordem da página, com `isPublished` e `updatedAt`. Aparecem todas mesmo antes de existir documento salvo (`updatedAt: null`). |
 | `GET /api/admin/sections/:key` | Documento completo da seção, publicado ou não. |
 | `PUT /api/admin/sections/:key` | Substitui o documento. Valida contra `packages/content-schema`; **salvar publica**. |
 | `PATCH /api/admin/sections/:key/visibility` | Corpo `{ "isPublished": true \| false }`. Liga ou desliga a seção sem apagar o conteúdo. |
@@ -492,7 +492,7 @@ O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](agent_
 
 Comportamentos que valem para todas as rotas administrativas de conteúdo:
 
-- **Chave de seção fora das 10 conhecidas responde `404` e nunca cria registro.** O conjunto é fechado: o CMS edita seções existentes, nunca cria tipos novos. Uma chave inválida não chega sequer a tocar o banco.
+- **Chave de seção fora das 9 conhecidas responde `404` e nunca cria registro.** O conjunto é fechado: o CMS edita seções existentes, nunca cria tipos novos. Uma chave inválida não chega sequer a tocar o banco.
 - **Nenhuma gravação escapa da validação de esquema** (risco R-03 do SDD). Documento inválido responde `422` com erro por campo, no caminho do campo:
   ```json
   { "statusCode": 422, "error": "Dados inválidos.",
@@ -661,6 +661,7 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 | `20260903130000_drop_aceite_lgpd_from_leads.sql` | Remove a coluna `aceite_lgpd` de `leads` — o consentimento é condição de envio, não dado do registro (T18) |
 | `20260903140000_drop_rdstation_from_leads.sql` | Remove `rdstation_status` e `rdstation_error` de `leads` — a integração foi descontinuada e o lead não tem destino externo (T26) |
 | `20260904150000_remove_header_and_ingredientes_sections.sql` | Apaga as linhas `header` e `ingredientes` de `content_sections` e estreita o `check` de 12 para as **10** chaves restantes — o cabeçalho saiu do CMS e a seção Ingredientes saiu do projeto (T28) |
+| `20260904170000_remove_footer_section.sql` | Apaga a linha `footer` de `content_sections` e estreita o `check` de 10 para as **9** chaves restantes — o rodapé saiu do CMS, mesmo tratamento do cabeçalho na T28 (T32) |
 | `20260904160000_remove_captions_media_kind.sql` | Restringe a policy de leitura pública de `storage.objects` aos dois buckets restantes e estreita o `check` de `media_assets.kind` de `('image', 'video', 'caption')` para `('image', 'video')` — o campo "Arquivo de legendas" saiu do esquema inteiro (T31). O bucket `veggiedent-captions` em si foi removido pela Storage API, fora desta migração: o projeto hospedado recusa `delete` direto em `storage.buckets` |
 
 **Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
@@ -969,7 +970,7 @@ O que a carga inicial produziu, e que segue valendo:
 |---|---|
 | FAQ, *"A partir de que idade…"* | Item não publicado, com o texto guardado para o operador substituir |
 | FAQ, *"Onde posso comprar Veggiedent?"* | Item não publicado, na posição em que o autor o deixou |
-| `Footer.legalData` e `capturaLead.ebookTitle` | Ausentes do documento: a Virbac não entregou o dado, e campo sem valor real é omitido, nunca preenchido |
+| `capturaLead.ebookTitle` | Ausente do documento: a Virbac não entregou o dado, e campo sem valor real é omitido, nunca preenchido |
 | **Kit de imagens** (prova de autoridade) | Campo de imagem informativa, com texto alternativo obrigatório |
 | **Fotos do mosaico** (captura de lead) | Lista de 6 imagens **decorativas**: sem campo de descrição, exibidas com texto alternativo vazio e escondidas de leitores de tela, como a página sempre fez |
 
