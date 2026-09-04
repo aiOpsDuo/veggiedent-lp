@@ -1,18 +1,17 @@
 import { FieldValidationError } from '../../../shared/domain/field-validation.error'
 
 /**
- * O envio do formulário da LP, já validado (SDD § D-07 e § C-11).
+ * O envio do formulário da LP, já validado (SDD § C-11).
  *
- * As regras aqui são as mesmas do relay serverless que esta tarefa aposenta
- * (`serverless/rdstation-lead/handler.ts`): nome não vazio, e-mail com forma de
- * e-mail, consentimento LGPD marcado e porte dentro da lista. O comportamento
- * externo foi preservado, inclusive as chaves de `fields` na resposta de erro,
- * que continuam em `snake_case` porque é assim que o formulário as envia.
+ * As regras são as que o relay serverless aposentado já aplicava: nome não
+ * vazio, e-mail com forma de e-mail, consentimento LGPD marcado e porte dentro
+ * da lista. O comportamento externo foi preservado, inclusive as chaves de
+ * `fields` na resposta de erro, que continuam em `snake_case` porque é assim que
+ * o formulário as envia.
  *
- * O que **muda** em relação ao relay são os três campos do fim: `conheceVirbac`,
- * `usaProdutoVirbac` e `qualProdutoVirbac`. O formulário já os coleta hoje e o
- * relay os descarta — é o risco R-01 do SDD, o defeito de produção que esta
- * tarefa conserta.
+ * O que **mudou** em relação a ele são os três campos do fim: `conheceVirbac`,
+ * `usaProdutoVirbac` e `qualProdutoVirbac`, que o relay descartava — o risco
+ * R-01 do SDD.
  *
  * **O consentimento LGPD é condição de envio, não campo do lead.** Ele chega em
  * `RawLeadSubmission`, é exigido aqui e some: `LeadSubmission` não o carrega e o
@@ -69,8 +68,8 @@ const MENSAGENS = {
 /**
  * Campo invisível no formulário real: quem preenche é um robô.
  *
- * Quem aciona o honeypot recebe **sucesso**, e nada é gravado nem repassado —
- * responder com erro ensinaria ao robô que o campo existe.
+ * Quem aciona o honeypot recebe **sucesso** e nada é gravado — responder com
+ * erro ensinaria ao robô que o campo existe.
  */
 export function isHoneypotTriggered(website: string | undefined): boolean {
   return typeof website === 'string' && website.trim().length > 0

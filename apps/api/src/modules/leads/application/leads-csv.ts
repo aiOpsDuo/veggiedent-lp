@@ -28,6 +28,11 @@ import type { Lead } from '../domain/lead'
  * da linha já não prove (ver `agent_context/CHANGELOG.md`, 2026-09-02). A
  * validação que exige o consentimento continua onde estava; o que sai é apenas
  * a coluna.
+ *
+ * Desde que o repasse a sistema externo foi descontinuado (2026-09-03) este
+ * arquivo é o **mecanismo de saída** do lead, não uma conveniência: o banco do
+ * CMS é o único lugar onde o dado existe, e o CSV é a única forma de tirá-lo
+ * de lá.
  */
 
 const BOM = '\uFEFF'
@@ -50,8 +55,6 @@ const COLUMNS: readonly { readonly header: string; readonly value: (lead: Lead) 
   { header: 'Qual produto Virbac', value: (lead) => lead.qualProdutoVirbac ?? '' },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => lead.origem ?? '' },
-  { header: 'Status RD Station', value: (lead) => lead.rdstationStatus },
-  { header: 'Erro RD Station', value: (lead) => lead.rdstationError ?? '' },
 ]
 
 export interface CsvFile {

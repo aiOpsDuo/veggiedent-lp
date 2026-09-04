@@ -6,10 +6,9 @@ import {
 } from './lead-submission'
 
 /**
- * A validação migrada do relay serverless (SDD § D-07: comportamento externo
- * preservado). Cada caso aqui é uma linha do `validate()` de
- * `serverless/rdstation-lead/handler.ts`, mais os três campos que o relay
- * descartava (risco R-01).
+ * A validação herdada do relay serverless aposentado, com o comportamento
+ * externo preservado: cada caso aqui é uma linha do `validate()` dele, mais os
+ * três campos que ele descartava (risco R-01).
  *
  * As mensagens ganharam acentuação, que o relay não tinha; as **chaves** de
  * `fields` continuam idênticas, porque é por elas que o formulário da LP

@@ -23,8 +23,6 @@ const LEAD: Lead = {
   qualProdutoVirbac: null,
   aceiteComunicacoes: false,
   origem: 'lp-veggiedent',
-  rdstationStatus: 'nao_enviado',
-  rdstationError: 'Credencial ausente.',
   createdAt: '2026-09-02T13:45:07.123Z',
 }
 
@@ -55,8 +53,6 @@ describe('Colunas do CSV (regra de negócio RN-01)', () => {
       'Qual produto Virbac',
       'Aceite de comunicações',
       'Origem',
-      'Status RD Station',
-      'Erro RD Station',
     ])
   })
 

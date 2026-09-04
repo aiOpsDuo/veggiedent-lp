@@ -8,17 +8,12 @@ import type { LeadPeriod } from '../domain/lead-period'
 import type { LeadQuery } from '../domain/lead-query'
 import type { LeadRepository, LeadsPage } from '../domain/lead-repository.port'
 import type { PorteDeCachorro } from '../domain/lead-submission'
-import {
-  RDSTATION_STATUSES,
-  type RdStationOutcome,
-  type RdStationStatus,
-} from '../domain/rdstation-outcome'
 
 const TABLE = 'leads'
 const COLUMNS =
   'id,nome,email,telefone,nome_cachorro,porte_cachorro,cidade_estado,' +
   'conhece_virbac,usa_produto_virbac,qual_produto_virbac,' +
-  'aceite_comunicacoes,origem,rdstation_status,rdstation_error,created_at'
+  'aceite_comunicacoes,origem,created_at'
 
 const CREATED_AT = 'created_at'
 
@@ -35,15 +30,7 @@ interface LeadRow {
   qual_produto_virbac: string | null
   aceite_comunicacoes: boolean
   origem: string | null
-  rdstation_status: string
-  rdstation_error: string | null
   created_at: string
-}
-
-function toRdStationStatus(candidate: string): RdStationStatus {
-  return (RDSTATION_STATUSES as readonly string[]).includes(candidate)
-    ? (candidate as RdStationStatus)
-    : 'nao_enviado'
 }
 
 function toLead(row: LeadRow): Lead {
@@ -60,8 +47,6 @@ function toLead(row: LeadRow): Lead {
     qualProdutoVirbac: row.qual_produto_virbac,
     aceiteComunicacoes: row.aceite_comunicacoes,
     origem: row.origem,
-    rdstationStatus: toRdStationStatus(row.rdstation_status),
-    rdstationError: row.rdstation_error,
     createdAt: row.created_at,
   }
 }
@@ -82,9 +67,10 @@ export class SupabaseLeadRepository implements LeadIntake, LeadRepository {
   ) {}
 
   /**
-   * A gravação que precede o repasse. O lead nasce como `nao_enviado`: é a
-   * verdade no instante em que a linha existe, e é o que sobra registrado se o
-   * processo morrer antes de o RD Station ser chamado.
+   * A gravação do lead. Desde que o repasse a sistema externo foi descontinuado
+   * (2026-09-03) esta tabela é o **único** lugar onde o lead passa a existir: se
+   * este `insert` falhar, `unwrap` lança e o visitante vê erro, porque não há
+   * segundo destino de onde recuperá-lo.
    */
   async record(lead: NewLead): Promise<void> {
     unwrap(
@@ -102,19 +88,7 @@ export class SupabaseLeadRepository implements LeadIntake, LeadRepository {
         qual_produto_virbac: lead.qualProdutoVirbac,
         aceite_comunicacoes: lead.aceiteComunicacoes,
         origem: lead.origem,
-        rdstation_status: 'nao_enviado',
-        rdstation_error: null,
       }),
-    )
-  }
-
-  async recordRelayOutcome(id: string, outcome: RdStationOutcome): Promise<void> {
-    unwrap(
-      'registrar resultado do repasse',
-      await this.supabase
-        .from(TABLE)
-        .update({ rdstation_status: outcome.status, rdstation_error: outcome.error })
-        .eq('id', id),
     )
   }
 

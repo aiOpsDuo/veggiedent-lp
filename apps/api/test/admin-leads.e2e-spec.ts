@@ -33,8 +33,6 @@ function lead(id: string, createdAt: string, overrides: Row = {}): Row {
     qual_produto_virbac: null,
     aceite_comunicacoes: true,
     origem: 'lp-veggiedent',
-    rdstation_status: 'ok',
-    rdstation_error: null,
     created_at: createdAt,
     ...overrides,
   }

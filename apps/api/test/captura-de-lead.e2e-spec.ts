@@ -1,26 +1,24 @@
 import { HttpStatus } from '@nestjs/common'
 import request from 'supertest'
-import { LEAD_RELAY } from '../src/modules/leads/domain/lead-relay.port'
-import {
-  relayFailed,
-  relayNotAttempted,
-} from '../src/modules/leads/domain/rdstation-outcome'
 import { startContentHarness, type ContentHarness } from './content-harness'
-import { FakeLeadRelay } from './fake-lead-relay'
 import type { Row } from './fake-supabase'
 
 /**
- * `POST /api/leads` (T8; SDD § D-07, § C-11, § R-01 e § R-08).
+ * `POST /api/leads` (SDD § C-11, § R-01 e § "Endpoints públicos").
  *
  * O que esta suíte prende, em ordem de importância:
  *
- * 1. **O lead sobrevive ao RD Station.** Recusa, exceção ou credencial ausente:
- *    a linha está gravada e o visitante vê sucesso. É a razão de a tarefa
- *    existir — hoje, em produção, uma falha do relay perde o lead.
- * 2. **Os três campos que hoje são descartados** chegam à tabela (risco R-01).
- * 3. **A ordem é gravar e só então repassar**, não o contrário.
- * 4. **O honeypot não grava nem repassa**, e responde sucesso.
- * 5. **A validação é a mesma do relay** que esta tarefa aposenta.
+ * 1. **A gravação é a única barreira entre o envio e a perda do dado.** Desde
+ *    que o repasse a sistema externo foi descontinuado (2026-09-03), o banco do
+ *    CMS é o único lugar onde o lead existe. Se a gravação falha, o visitante
+ *    **precisa** ver erro: responder sucesso ali perderia o lead em silêncio,
+ *    sem nenhum segundo sistema de onde recuperá-lo.
+ * 2. **O honeypot não grava e responde sucesso.**
+ * 3. **O consentimento continua sendo condição de envio** — sem ele, `422` e
+ *    nenhuma linha.
+ * 4. **Os três campos que o relay antigo descartava** chegam à tabela (R-01).
+ *
+ * Nenhum caso fala com a rede: o banco é o dublê em memória do harness.
  */
 
 const ENVIO_COMPLETO = {
@@ -40,11 +38,9 @@ const ENVIO_COMPLETO = {
 
 describe('captura de lead', () => {
   let harness: ContentHarness
-  let relay: FakeLeadRelay
 
   beforeEach(async () => {
-    relay = new FakeLeadRelay()
-    harness = await startContentHarness([{ provide: LEAD_RELAY, useValue: relay }])
+    harness = await startContentHarness()
   })
 
   afterEach(async () => {
@@ -79,93 +75,57 @@ describe('captura de lead', () => {
       })
     })
 
-    it('repassa os três campos ao RD Station', async () => {
-      await enviar(ENVIO_COMPLETO)
-
-      expect(relay.forwarded[0]).toMatchObject({
-        conheceVirbac: 'sim',
-        usaProdutoVirbac: 'sim',
-        qualProdutoVirbac: 'Veggiedent Fresh',
-      })
-    })
-
-    it('marca o repasse como ok, sem mensagem de erro', async () => {
-      await enviar(ENVIO_COMPLETO)
-
-      expect(unicoLead()).toMatchObject({ rdstation_status: 'ok', rdstation_error: null })
-    })
-
     it('preserva a acentuação do que o visitante digitou', async () => {
       await enviar(ENVIO_COMPLETO)
 
       expect(unicoLead()).toMatchObject({ cidade_estado: 'São Paulo/SP' })
     })
 
-    it('grava o lead antes de tentar o RD Station', async () => {
-      const gravadosNoInstanteDoRepasse: number[] = []
-      relay.observe(() => gravadosNoInstanteDoRepasse.push(leadsGravados().length))
-
+    it('grava uma única vez, e não repassa o lead a lugar nenhum', async () => {
       await enviar(ENVIO_COMPLETO)
 
-      expect(gravadosNoInstanteDoRepasse).toEqual([1])
-      expect(harness.database.callsTo('leads').map((call) => call.operation)).toEqual([
-        'insert',
-        'update',
-      ])
+      expect(harness.database.callsTo('leads').map((call) => call.operation)).toEqual(['insert'])
     })
   })
 
-  describe('quando o RD Station não aceita', () => {
-    it('recusa do RD Station: lead gravado, visitante vê sucesso, falha registrada', async () => {
-      relay.respondWith(relayFailed('RD Station recusou a conversão (status 401).'))
-
-      const resposta = await enviar(ENVIO_COMPLETO)
-
-      expect(resposta.status).toBe(HttpStatus.OK)
-      expect(resposta.body).toEqual({ success: true })
-      expect(unicoLead()).toMatchObject({
-        email: 'ana@exemplo.com',
-        rdstation_status: 'falhou',
-        rdstation_error: 'RD Station recusou a conversão (status 401).',
-      })
+  /**
+   * A regra que a saída do destino externo tornou crítica: não há mais uma
+   * segunda cópia do lead, então a falha de gravação **tem** que chegar ao
+   * visitante. Um `catch` silencioso aqui devolveria `{ success: true }` para um
+   * lead que não existe em lugar nenhum.
+   */
+  describe('quando o banco falha, o visitante vê erro', () => {
+    beforeEach(() => {
+      harness.database.failOn('leads')
     })
 
-    it('exceção no repasse não vaza para o visitante nem perde o lead', async () => {
-      relay.throwOnForward(new Error('getaddrinfo ENOTFOUND api.rd.services'))
-
+    it('responde 500, e não sucesso', async () => {
       const resposta = await enviar(ENVIO_COMPLETO)
 
-      expect(resposta.status).toBe(HttpStatus.OK)
-      expect(leadsGravados()).toHaveLength(1)
-      expect(unicoLead()).toMatchObject({ rdstation_status: 'falhou' })
+      expect(resposta.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR)
+      expect(resposta.body).not.toEqual({ success: true })
     })
 
-    it('a mensagem guardada não repete o detalhe interno da exceção', async () => {
-      relay.throwOnForward(new Error('api_key=segredo-que-nao-pode-vazar'))
-
+    it('não deixa lead nenhum gravado', async () => {
       await enviar(ENVIO_COMPLETO)
 
-      expect(String(unicoLead().rdstation_error)).not.toContain('segredo-que-nao-pode-vazar')
-    })
-
-    it('credencial ausente vira nao_enviado, sem derrubar a gravação', async () => {
-      relay.respondWith(relayNotAttempted('RDSTATION_API_TOKEN não configurado.'))
-
-      const resposta = await enviar(ENVIO_COMPLETO)
-
-      expect(resposta.status).toBe(HttpStatus.OK)
-      expect(unicoLead()).toMatchObject({ rdstation_status: 'nao_enviado' })
+      expect(leadsGravados()).toHaveLength(0)
     })
   })
 
   describe('honeypot', () => {
-    it('preenchido: responde sucesso, não grava e não repassa', async () => {
+    it('preenchido: responde sucesso e não grava', async () => {
       const resposta = await enviar({ ...ENVIO_COMPLETO, website: 'http://spam.exemplo' })
 
       expect(resposta.status).toBe(HttpStatus.OK)
       expect(resposta.body).toEqual({ success: true })
       expect(leadsGravados()).toHaveLength(0)
-      expect(relay.forwarded).toHaveLength(0)
+    })
+
+    it('preenchido, o banco nem chega a ser tocado', async () => {
+      await enviar({ ...ENVIO_COMPLETO, website: 'http://spam.exemplo' })
+
+      expect(harness.database.callsTo('leads')).toHaveLength(0)
     })
 
     it('preenchido junto de dados inválidos, ainda responde sucesso', async () => {
@@ -177,11 +137,9 @@ describe('captura de lead', () => {
   })
 
   /**
-   * O consentimento com a Política de Privacidade não é mais gravado — a coluna
+   * O consentimento com a Política de Privacidade não é gravado — a coluna
    * `aceite_lgpd` saiu da tabela na T18 —, mas continua sendo **condição de
-   * envio**. Estes dois casos são a guarda de que remover a persistência não
-   * afrouxou a regra: sem o consentimento nenhum lead nasce e nada é repassado
-   * (SDD § "Modelo de dados"; PLAN.md § T18).
+   * envio** (SDD § "Modelo de dados"; PLAN.md § T18).
    */
   describe('o consentimento continua sendo condição de envio', () => {
     const semOConsentimento = (): Record<string, unknown> => {
@@ -197,11 +155,10 @@ describe('captura de lead', () => {
       expect(resposta.body.fields).toHaveProperty('aceite_lgpd')
     })
 
-    it('ausente, não grava lead nenhum nem chama o RD Station', async () => {
+    it('ausente, não grava lead nenhum', async () => {
       await enviar(semOConsentimento())
 
       expect(leadsGravados()).toHaveLength(0)
-      expect(relay.forwarded).toHaveLength(0)
     })
 
     it('recusado explicitamente, responde 422', async () => {
@@ -219,17 +176,13 @@ describe('captura de lead', () => {
     })
   })
 
-  describe('validação, a mesma do relay que esta tarefa aposenta', () => {
+  describe('validação, a mesma do relay que esta tarefa aposentou', () => {
     it('sem nome, e-mail e consentimento responde 422 com os erros por campo', async () => {
       const resposta = await enviar({ nome: '  ', email: 'ana', aceite_lgpd: false })
 
       expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(resposta.body.error).toBe('Dados inválidos.')
-      expect(Object.keys(resposta.body.fields).sort()).toEqual([
-        'aceite_lgpd',
-        'email',
-        'nome',
-      ])
+      expect(Object.keys(resposta.body.fields).sort()).toEqual(['aceite_lgpd', 'email', 'nome'])
     })
 
     it('porte fora da lista responde 422', async () => {
@@ -239,71 +192,35 @@ describe('captura de lead', () => {
       expect(resposta.body.fields).toHaveProperty('porte_cachorro')
     })
 
-    it('recusa não grava nem repassa nada', async () => {
+    it('recusa não grava nada', async () => {
       await enviar({ nome: '', email: '', aceite_lgpd: false })
 
       expect(leadsGravados()).toHaveLength(0)
-      expect(relay.forwarded).toHaveLength(0)
     })
   })
 
-  describe('quando o banco falha', () => {
-    it('aí sim o visitante vê erro, porque o lead se perderia', async () => {
-      harness.database.failOn('leads')
+  /**
+   * A suíte não fala com a rede, e o código de produção também não deve: com o
+   * destino externo fora, um envio não pode gerar nenhuma chamada de saída.
+   */
+  it('um envio completo não faz nenhuma chamada de rede', async () => {
+    const fetchOriginal = global.fetch
+    const fetchEspiao = jest.fn()
+    global.fetch = fetchEspiao as unknown as typeof fetch
 
+    try {
       const resposta = await enviar(ENVIO_COMPLETO)
 
-      expect(resposta.status).toBe(HttpStatus.INTERNAL_SERVER_ERROR)
-      expect(relay.forwarded).toHaveLength(0)
-    })
+      expect(resposta.status).toBe(HttpStatus.OK)
+      expect(fetchEspiao).not.toHaveBeenCalled()
+    } finally {
+      global.fetch = fetchOriginal
+    }
   })
 
   it('é rota pública: envia sem token nenhum', async () => {
     const resposta = await enviar(ENVIO_COMPLETO)
 
     expect(resposta.status).toBe(HttpStatus.OK)
-  })
-})
-
-/**
- * O estado real de hoje: `RDSTATION_API_TOKEN` e `RDSTATION_CONVERSION_IDENTIFIER`
- * estão vazios em `apps/api/.env`, porque a conta da Virbac ainda não foi
- * confirmada (SDD § R-08). Aqui o adaptador **verdadeiro** entra em cena — não
- * há dublê de repasse — e o teste exige que isso não custe um lead, não derrube
- * a resposta e não gere nenhuma chamada de rede.
- */
-describe('captura de lead com o RD Station de verdade e sem credencial', () => {
-  let harness: ContentHarness
-  let fetchOriginal: typeof fetch
-  let fetchEspiao: jest.Mock
-
-  beforeEach(async () => {
-    fetchOriginal = global.fetch
-    fetchEspiao = jest.fn()
-    harness = await startContentHarness()
-    global.fetch = fetchEspiao as unknown as typeof fetch
-  })
-
-  afterEach(async () => {
-    global.fetch = fetchOriginal
-    await harness.close()
-  })
-
-  it('grava o lead, responde sucesso e marca nao_enviado, sem tocar na rede', async () => {
-    const resposta = await request(harness.app.getHttpServer())
-      .post('/api/leads')
-      .send(ENVIO_COMPLETO)
-
-    expect(resposta.status).toBe(HttpStatus.OK)
-    expect(resposta.body).toEqual({ success: true })
-
-    const lead = harness.database.rows('leads')[0] as Row
-    expect(lead).toMatchObject({
-      email: 'ana@exemplo.com',
-      conhece_virbac: 'sim',
-      rdstation_status: 'nao_enviado',
-    })
-    expect(String(lead.rdstation_error)).toContain('RDSTATION_API_TOKEN')
-    expect(fetchEspiao).not.toHaveBeenCalled()
   })
 })

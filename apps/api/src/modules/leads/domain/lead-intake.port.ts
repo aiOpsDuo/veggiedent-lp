@@ -1,5 +1,4 @@
 import type { NewLead } from './lead'
-import type { RdStationOutcome } from './rdstation-outcome'
 
 /** Token de injeção da porta. O domínio declara; a infraestrutura implementa. */
 export const LEAD_INTAKE = Symbol('LeadIntake')
@@ -13,11 +12,11 @@ export const LEAD_INTAKE = Symbol('LeadIntake')
  * também `list`, `findById` e `delete`, capacidades que ele nunca usa e que
  * ninguém deveria alcançar sem token.
  *
- * `record` e `recordRelayOutcome` são dois passos porque a ordem é regra de
- * negócio: o lead é gravado **antes** de o RD Station ser tentado, e o
- * resultado do repasse chega depois (SDD § "Endpoints públicos" e § C-11).
+ * `record` é o **único** destino do lead. O repasse a sistema externo de
+ * marketing foi descontinuado em 2026-09-03 e não há mais cópia em lugar nenhum:
+ * o que esta porta não gravar está perdido, e é por isso que uma falha dela
+ * precisa chegar ao visitante como erro (SDD § C-11).
  */
 export interface LeadIntake {
   record(lead: NewLead): Promise<void>
-  recordRelayOutcome(id: string, outcome: RdStationOutcome): Promise<void>
 }

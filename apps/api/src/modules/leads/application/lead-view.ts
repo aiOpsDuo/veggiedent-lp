@@ -1,5 +1,4 @@
 import type { Lead } from '../domain/lead'
-import type { RdStationStatus } from '../domain/rdstation-outcome'
 
 /**
  * O que as rotas de lead devolvem. Formas de saída, sem regra de negócio: a
@@ -9,7 +8,7 @@ import type { RdStationStatus } from '../domain/rdstation-outcome'
  * o consentimento é condição de envio e não é gravado (SDD § "Modelo de dados").
  */
 
-/** Resposta de `POST /api/leads` — a mesma que o relay antigo devolvia. */
+/** Resposta de `POST /api/leads`. */
 export interface LeadSubmissionResult {
   readonly success: true
 }
@@ -27,8 +26,6 @@ export interface LeadView {
   readonly qualProdutoVirbac: string | null
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
-  readonly rdstationStatus: RdStationStatus
-  readonly rdstationError: string | null
   readonly createdAt: string
 }
 

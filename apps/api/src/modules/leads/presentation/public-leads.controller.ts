@@ -22,11 +22,11 @@ export class PublicLeadsController {
   @Post()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Recebe o formulário: valida, grava o lead e repassa ao RD Station.',
+    summary: 'Recebe o formulário: valida e grava o lead.',
     description:
-      'O lead é gravado antes de o RD Station ser tentado. Uma falha do repasse não muda esta resposta: ' +
-      'o resultado fica em rdstation_status. O honeypot preenchido responde sucesso sem gravar nem repassar. ' +
-      'Dados inválidos respondem 422 com os erros por campo.',
+      'A gravação no banco do CMS é o único destino do lead — não há repasse a sistema externo. ' +
+      'O honeypot preenchido responde sucesso sem gravar. Dados inválidos respondem 422 com os erros ' +
+      'por campo. Uma falha de gravação responde 500, porque o lead se perderia.',
   })
   @ApiOkResponse({
     description: 'Lead recebido.',

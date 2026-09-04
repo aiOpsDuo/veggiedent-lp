@@ -78,8 +78,4 @@ describe('parseEnvironment', () => {
     expect(() => parseEnvironment({})).toThrow(/SUPABASE_JWKS_URL/)
     expect(() => parseEnvironment({})).toThrow(/ALLOWED_ORIGINS/)
   })
-
-  it('aceita o ambiente sem as variáveis do RD Station, que só a T8 exige', () => {
-    expect(() => parseEnvironment({ ...validEnvironment })).not.toThrow()
-  })
 })
