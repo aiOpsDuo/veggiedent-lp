@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { ClaimIpsosBR } from "./components/ClaimIpsosBR";
 import { ClaimsInfographic } from "./components/ClaimsInfographic";
+import { RichText } from "../../components/ui/RichText";
 import { SectionShell } from "../../components/ui/SectionShell";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { gsap, useGSAP } from "../../lib/gsap";
@@ -8,6 +9,18 @@ import { connectSection } from "../../content/connect-section";
 import type { SectionContent } from "../../content/published-content";
 
 export const ProvaAutoridade = connectSection("prova_autoridade", ProvaAutoridadeSecao);
+
+/**
+ * A quebra do título vale só a partir de `lg`, como antes de o título vir do
+ * CMS: em tela estreita ele flui em uma linha só. O espaço ao lado existe
+ * porque, com a quebra escondida, as duas palavras encostariam uma na outra.
+ */
+const QUEBRA_SO_NO_DESKTOP = (
+  <>
+    <span className="lg:hidden">{" "}</span>
+    <br className="hidden lg:block" />
+  </>
+);
 
 function ProvaAutoridadeSecao({ content }: { content: SectionContent<"prova_autoridade"> }) {
   const reducedMotion = useReducedMotion();
@@ -75,7 +88,11 @@ function ProvaAutoridadeSecao({ content }: { content: SectionContent<"prova_auto
                 id="prova-autoridade-heading"
                 className="title-el text-2xl sm:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-bold leading-tight text-ink-900 mt-2 tracking-tight"
               >
-                {content.heading}
+                <RichText
+                  html={content.heading}
+                  emphasisClassName="text-brand-primary-hover font-extrabold"
+                  lineBreak={QUEBRA_SO_NO_DESKTOP}
+                />
               </h2>
 
               {/* Claim Text */}

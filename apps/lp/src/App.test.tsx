@@ -97,6 +97,24 @@ describe('LP com a API de conteúdo indisponível', () => {
     expect(semEndereco).toHaveLength(0)
     expect(screen.getByAltText(contentSnapshot.sections.hero!.imageAlt)).toBeInTheDocument()
   })
+
+  /**
+   * O título da Prova de Autoridade é campo de texto rico (T22): a quebra e o
+   * destaque saem do HTML que o operador escreve, e não mais de JSX na página.
+   */
+  it('exibe o título da Prova de Autoridade com a quebra e o destaque em turquesa', async () => {
+    vi.stubGlobal('fetch', apiForaDoAr())
+
+    await renderizarPagina()
+
+    const titulo = document.getElementById('prova-autoridade-heading')
+    expect(titulo?.querySelector('br')).toHaveClass('hidden', 'lg:block')
+
+    const destaque = titulo?.querySelector('strong')
+    expect(destaque).toHaveClass('text-brand-primary-hover', 'font-extrabold')
+    expect(destaque?.textContent).toBe('médicos-veterinários,')
+    expect(titulo?.textContent).toBe('A recomendação dos médicos-veterinários, em números')
+  })
 })
 
 describe('LP com a API de conteúdo respondendo', () => {
