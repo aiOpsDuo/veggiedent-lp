@@ -3,14 +3,30 @@ import { Menu, X } from "lucide-react";
 import { MobileMenu } from "./components/MobileMenu";
 import { Button } from "../../ui/Button";
 import { useTracking } from "../../../hooks/useTracking";
-import { connectSection } from "../../../content/connect-section";
-import type { SectionContent } from "../../../content/published-content";
 
 // Header/Sticky — Design System v1.2, secao 9.1.
-// Todo texto e o logo vem de GET /api/content (SDD, C-10).
-export const Header = connectSection("header", HeaderBar);
+//
+// O cabecalho saiu do CMS (decisao do usuario, 2026-09-04): logo, links de
+// navegacao, rotulos de botao e textos de acessibilidade agora sao fixos em
+// codigo, com exatamente os valores que estavam publicados no painel no
+// momento da remocao — nada foi reescrito.
+const LOGO_SRC =
+  "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg";
+const LOGO_ALT = "Veggiedent, por Virbac";
+const CTA_DESKTOP_LABEL = "Baixar o guia de cuidados diários";
+const CTA_MOBILE_LABEL = "Baixar o guia de cuidados diários";
+const MAIN_NAV_ARIA_LABEL = "Menu principal";
+const MENU_BUTTON_ARIA_LABEL = "Abrir menu";
 
-function HeaderBar({ content }: { content: SectionContent<"header"> }) {
+const NAV_LINKS = [
+  { href: "#educacao", label: "Saúde oral" },
+  { href: "#rotina", label: "Rotina de cuidado" },
+  { href: "#produto", label: "Produto" },
+  { href: "#onde-comprar", label: "Onde comprar" },
+  { href: "#faq", label: "Perguntas frequentes" },
+] as const;
+
+export function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -42,7 +58,7 @@ function HeaderBar({ content }: { content: SectionContent<"header"> }) {
 
   function handleCtaClick(location: string) {
     track("cta_click", {
-      cta_label: content.ctaDesktopLabel,
+      cta_label: CTA_DESKTOP_LABEL,
       cta_location: location,
     });
   }
@@ -55,18 +71,14 @@ function HeaderBar({ content }: { content: SectionContent<"header"> }) {
     >
       <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-4 py-3 sm:px-8">
         <a href="#main-content" className="flex items-center gap-2">
-          <img
-            src={content.logo}
-            alt={content.logoAlt}
-            className="h-10 w-auto"
-          />
+          <img src={LOGO_SRC} alt={LOGO_ALT} className="h-10 w-auto" />
         </a>
 
         <nav
-          aria-label={content.mainNavAriaLabel}
+          aria-label={MAIN_NAV_ARIA_LABEL}
           className="hidden items-center gap-6 md:flex"
         >
-          {content.navLinks.map((link) => (
+          {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
@@ -83,7 +95,7 @@ function HeaderBar({ content }: { content: SectionContent<"header"> }) {
             variant="primary"
             onClick={() => handleCtaClick("header")}
           >
-            {content.ctaDesktopLabel}
+            {CTA_DESKTOP_LABEL}
           </Button>
         </div>
 
@@ -93,12 +105,12 @@ function HeaderBar({ content }: { content: SectionContent<"header"> }) {
             onClick={() => handleCtaClick("header_mobile")}
             className="inline-flex h-11 items-center justify-center rounded-md bg-brand-primary px-3 text-sm font-semibold text-ink-900"
           >
-            {content.ctaMobileLabel}
+            {CTA_MOBILE_LABEL}
           </a>
           <button
             ref={menuButtonRef}
             type="button"
-            aria-label={content.menuButtonAriaLabel}
+            aria-label={MENU_BUTTON_ARIA_LABEL}
             aria-expanded={isMenuOpen}
             aria-controls="mobile-menu"
             onClick={() => setIsMenuOpen((open) => !open)}
@@ -113,8 +125,8 @@ function HeaderBar({ content }: { content: SectionContent<"header"> }) {
         <MobileMenu
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
-          navLinks={content.navLinks}
-          ctaLabel={content.ctaMobileLabel}
+          navLinks={NAV_LINKS}
+          ctaLabel={CTA_MOBILE_LABEL}
           triggerRef={menuButtonRef}
         />
       </div>

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import App from './App'
 import { contentSnapshot } from './content/content-snapshot'
+import { PublishedContentProvider, useSection } from './content/PublishedContentProvider'
 import type { PublishedContent } from './content/published-content'
+import type { SectionKey } from '@veggiedent/content-schema'
 
 /**
  * A LP inteira, montada como o navegador a monta (SDD § C-10).
@@ -152,14 +154,14 @@ describe('LP com a API de conteúdo respondendo', () => {
   })
 
   it('não renderiza seção que a API não entrega', async () => {
-    vi.stubGlobal('fetch', apiRespondendo(contentSnapshot))
+    const semOndeComprar = structuredClone(contentSnapshot) as PublishedContent
+    delete semOndeComprar.sections.onde_comprar
+
+    vi.stubGlobal('fetch', apiRespondendo(semOndeComprar))
 
     await renderizarPagina()
 
-    // `ingredientes` está despublicada de propósito: sem conteúdo aprovado, ela
-    // não pode aparecer nem como título solto.
-    expect(contentSnapshot.sections.ingredientes).toBeUndefined()
-    expect(document.getElementById('ingredientes')).toBeNull()
+    expect(document.getElementById('onde-comprar')).toBeNull()
   })
 })
 
@@ -192,20 +194,35 @@ describe('Alterar a visibilidade de uma seção entre o instantâneo e a API (T2
     })
   })
 
-  it('mostra na página uma seção que o instantâneo não tinha e a API passou a entregar (religar)', async () => {
-    // `ingredientes` está despublicada no instantâneo embutido de propósito.
-    expect(contentSnapshot.sections.ingredientes).toBeUndefined()
+  /**
+   * A partir da T28 nenhuma das 10 seções do CMS nasce despublicada por
+   * padrão (a única que nascia assim, `ingredientes`, foi removida do
+   * projeto) — então não existe mais uma seção real para simular "ausente
+   * do instantâneo, presente na API" pelo caminho de `<App />` inteiro. O
+   * teste abaixo prova o mesmo mecanismo (T27: a resposta da API substitui
+   * por completo o que o instantâneo embutido tinha, inclusive acrescentando
+   * uma seção que o instantâneo não tinha) direto no provedor, com um
+   * instantâneo sintético em vez de depender da composição atual do banco.
+   */
+  it('mostra uma seção que o instantâneo (`fallback`) não tinha e a API passou a entregar (religar)', async () => {
+    function Consumidor({ chave }: { chave: SectionKey }) {
+      const secao = useSection(chave)
+      return <div data-testid="presenca">{secao === undefined ? 'ausente' : 'presente'}</div>
+    }
 
-    const comIngredientes = structuredClone(contentSnapshot) as PublishedContent
-    comIngredientes.sections.ingredientes = { heading: 'Título vindo só da API' }
+    const semFaq = structuredClone(contentSnapshot) as PublishedContent
+    delete semFaq.sections.faq
 
-    vi.stubGlobal('fetch', apiRespondendo(comIngredientes))
+    render(
+      <PublishedContentProvider fallback={semFaq} load={() => Promise.resolve(contentSnapshot)}>
+        <Consumidor chave="faq" />
+      </PublishedContentProvider>,
+    )
 
-    await renderizarPagina()
+    expect(screen.getByTestId('presenca')).toHaveTextContent('ausente')
 
     await waitFor(() => {
-      expect(document.getElementById('ingredientes')).not.toBeNull()
+      expect(screen.getByTestId('presenca')).toHaveTextContent('presente')
     })
-    expect(screen.getByText('Título vindo só da API')).toBeInTheDocument()
   })
 })

@@ -1,45 +1,5 @@
 {
   "sections": {
-    "header": {
-      "logo": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg",
-      "logoAlt": "Veggiedent, por Virbac",
-      "navLinks": [
-        {
-          "href": "#educacao",
-          "label": "Saúde oral",
-          "ordem": 0,
-          "visivel": true
-        },
-        {
-          "href": "#rotina",
-          "label": "Rotina de cuidado",
-          "ordem": 1,
-          "visivel": true
-        },
-        {
-          "href": "#produto",
-          "label": "Produto",
-          "ordem": 2,
-          "visivel": true
-        },
-        {
-          "href": "#onde-comprar",
-          "label": "Onde comprar",
-          "ordem": 3,
-          "visivel": true
-        },
-        {
-          "href": "#faq",
-          "label": "Perguntas frequentes",
-          "ordem": 4,
-          "visivel": true
-        }
-      ],
-      "ctaMobileLabel": "Baixar o guia de cuidados diários",
-      "ctaDesktopLabel": "Baixar o guia de cuidados diários",
-      "mainNavAriaLabel": "Menu principal",
-      "menuButtonAriaLabel": "Abrir menu"
-    },
     "hero": {
       "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/53c77460-f784-4705-b485-2c6237fca02e/virbac-kv-hero.png",
       "headline": "A marca mais recomendada pelos médicos veterinários entrevistados.",

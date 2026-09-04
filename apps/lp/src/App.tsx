@@ -6,7 +6,6 @@ import { Hero } from './sections/Hero'
 import { Educacao } from './sections/Educacao'
 import { RotinaCuidado } from './sections/RotinaCuidado'
 import { Produto } from './sections/Produto'
-import { Ingredientes } from './sections/Ingredientes'
 import { ProvaAutoridade } from './sections/ProvaAutoridade'
 import { CapturaLead } from './sections/CapturaLead'
 import { OndeComprar } from './sections/OndeComprar'
@@ -30,7 +29,9 @@ const Demonstracao = lazy(() =>
 //
 // O conteudo de todas elas vem de GET /api/content, servido pelo provedor que
 // envolve a pagina (SDD, D-08 e C-10). Uma secao despublicada nao aparece: o
-// proprio componente devolve null quando a API nao a entrega.
+// proprio componente devolve null quando a API nao a entrega. O Header e a
+// unica excecao: saiu do CMS (decisao do usuario, 2026-09-04) e seu conteudo
+// e fixo em codigo — sempre aparece, nunca depende da API.
 export default function App() {
   const { track } = useTracking()
 
@@ -51,7 +52,6 @@ export default function App() {
         <Suspense fallback={<div className="mx-auto max-w-content px-4 py-12 sm:px-8 lg:py-24" aria-hidden="true" />}>
           <Demonstracao />
         </Suspense>
-        <Ingredientes />
         <ProvaAutoridade />
         <CapturaLead />
         <OndeComprar />
