@@ -17,9 +17,9 @@ Quatro peças em um domínio único:
 | Peça | Papel | Stack |
 |---|---|---|
 | `apps/lp` | Landing page pública, servida estaticamente por CDN | React 18, Vite 5, TypeScript 5, Tailwind 3 |
-| `apps/admin` | Painel de administração, servido em `/admin` atrás de login | React 18, Vite 5, TypeScript 5, React Router 6, Tailwind 3 |
+| `apps/admin` | Painel de administração, servido em `/admin` atrás de login | React 18, Vite 5, TypeScript 5, React Router 6, Tailwind 3, Lexical (editor de texto rico) |
 | `apps/api` | API do CMS: conteúdo, mídia, metadados e leads | NestJS 11, Node 20+ |
-| `packages/content-schema` | Esquemas das seções — fonte única de validação, formulário e tipos | TypeScript 5, Zod |
+| `packages/content-schema` | Esquemas das seções — fonte única de validação, formulário e tipos | TypeScript 5, Zod, DOMPurify |
 
 Padrão arquitetural, camadas, modelo de dados, decisões técnicas com trade-offs e os diagramas C4 estão em [`agent_context/SDD.md`](agent_context/SDD.md) — não duplicados aqui.
 
@@ -81,6 +81,7 @@ apps/admin/src/
 │   ├── SectionForm.tsx       # o formulário, percorrendo o esquema
 │   ├── ListEditor.tsx        # itens de lista: adicionar, remover, reordenar, ligar/desligar
 │   ├── fields/FieldControl.tsx  # um controle por tipo de campo do esquema
+│   ├── fields/rich-text/     # o editor de texto rico (Lexical): negrito e quebra de linha
 │   ├── section-draft.ts      # rascunho e documento: funções puras, sem React
 │   ├── editor-state.ts       # as transições da tela de edição
 │   └── field-errors.ts       # caminhos de erro da API → campos do formulário
@@ -91,6 +92,17 @@ apps/admin/src/
 **A guarda é uma rota de layout, não um invólucro repetido em cada tela** — a mesma ideia da guarda global da API: uma rota nova nasce dentro dela, e expor exigiria declará-la fora, de propósito. A sessão tem três estados, e o terceiro (`verificando`) existe para que não haja instante em que tela administrativa apareça antes de a sessão ser confirmada: sem ele, o painel teria de tratar "ainda não sei" como "tem sessão" (e piscaria conteúdo protegido) ou como "não tem" (e expulsaria quem acabou de recarregar a página).
 
 **Como a API consome `packages/content-schema`:** o pacote é a fonte única de validação (SDD § D-02), mas a API compila para CommonJS e o pacote é lido como TypeScript pelo Vite. Para servir aos dois, ele passou a ter um build próprio (`npm run build -w packages/content-schema`, saída em `packages/content-schema/dist/`): a API resolve o pacote pelo build CommonJS, e Vite e Vitest continuam lendo `src/`. Os scripts `build`, `typecheck` e `test` de `apps/api` reconstroem o pacote antes de rodar, então não existe passo manual a lembrar nem risco de compilar contra uma versão velha do esquema.
+
+**Peso do que vai para o navegador:** o pacote do painel passou de 494 KB para **853 KB**
+(253 KB comprimidos) com o editor de texto rico — o Lexical é a maior dependência dele. O da
+LP fica em **357 KB** (125 KB comprimidos): a LP não carrega o editor, só o sanitizador
+(o `purify.min.js` do DOMPurify tem 29 KB).
+
+**Bibliotecas de terceiros que vão para o navegador, e suas licenças:** o código é entregue a
+cliente, então a licença de quem viaja junto importa. O editor de texto rico é o **Lexical**
+(MIT) — o CKEditor 5, cogitado antes, é GPL na versão aberta. A sanitização do texto rico é do
+**DOMPurify** (MPL-2.0 ou Apache-2.0, à escolha de quem usa), a mesma biblioteca que a API usa
+do lado do servidor, ali com o **jsdom** (MIT) fornecendo o DOM que o Node não tem.
 
 **Serviços externos:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) e RD Station Marketing (destino de marketing dos leads).
 
@@ -116,6 +128,7 @@ pedaço da tela sai de uma propriedade do esquema:
 |---|---|---|
 | `texto-curto` | uma linha de texto | |
 | `texto-longo` | uma área de texto de 4 linhas | |
+| `texto-rico` | uma área de edição com dois botões, **Negrito** e **Quebra de linha** | guarda HTML; ver **Texto rico: o que o operador vê e o que o HTML pode ter** logo abaixo |
 | `lista-de-textos` | uma linha por valor, com **Adicionar linha** e **Remover a linha N** | é um grupo (`fieldset`/`legend`), porque um rótulo serve a um controle só |
 | `link` | uma linha de texto | quem julga o endereço é a API: `#secao`, `/pagina`, `https://…`, `mailto:` e `tel:` |
 | `booleano` | uma caixa de seleção | |
@@ -135,6 +148,53 @@ vai para **o campo que a causou** — o painel tira o prefixo da seção do cami
 devolve (`faq.items.1.question` → a pergunta do segundo item) e pendura a mensagem ali, com
 `aria-invalid` no controle. Uma mensagem cujo caminho não corresponde a nenhum campo da tela
 não é descartada: aparece em uma lista de avisos acima do formulário.
+
+#### Texto rico: o que o operador vê e o que o HTML pode ter
+
+Alguns textos precisam de mais do que uma linha corrida — o título da Prova de Autoridade, por
+exemplo, quebra em duas linhas no desktop e traz um trecho destacado em turquesa. Esses campos
+são do tipo `texto-rico` e guardam **HTML**.
+
+**O que o operador vê.** Uma área de edição com o texto já formatado — nunca marcação escrita
+por extenso — e dois botões:
+
+- **Negrito**, que marca o trecho selecionado. O botão fica pressionado (`aria-pressed`) quando
+  o cursor está dentro de um trecho já marcado;
+- **Quebra de linha**, que quebra a linha na posição do cursor. A tecla **Enter** faz o mesmo:
+  o campo é um título, e não cria parágrafos.
+
+**O negrito é o destaque.** Não existe controle de cor, de tamanho nem de fonte, e não há
+marcação própria de "destaque" para o operador aprender: ele marca em negrito e a página
+desenha aquele trecho com o destaque da seção — no título da Prova de Autoridade, turquesa e
+extra-bold. Onde o trecho aparece destacado é decisão da página, não de quem escreve.
+
+**O que sobrevive no HTML, e por que o resto é removido.** Um campo de conteúdo que guarda HTML
+e é renderizado na página pública é caminho de injeção de script: bastaria um operador com
+acesso comprometido colar `<script>` ou `<img src=x onerror=…>` para que o código rodasse no
+navegador de todo visitante. Por isso a lista de permissão é fechada e mora em um só lugar
+(`packages/content-schema/src/rich-text.ts`):
+
+| Sobrevive | Vira | Observação |
+|---|---|---|
+| `<strong>`, `<b>` | `<strong>` | é o destaque da página |
+| `<em>`, `<i>` | `<em>` | itálico |
+| `<br>` | `<br>` | quebra de linha |
+| texto | texto | acentuação preservada |
+
+Tudo o mais é removido, **inclusive todo e qualquer atributo** — sem atributo não existe
+`onerror`, `onclick` nem `href="javascript:"`. Tag proibida perde a marcação mas **mantém o
+texto** que estava dentro dela (a exceção é `<script>` e `<style>`, cujo conteúdo também vai
+embora). Um campo obrigatório que só tinha marcação proibida fica vazio depois da limpeza e é
+recusado com "Campo obrigatório." — em vez de ser gravado em branco.
+
+**A limpeza acontece nas duas pontas**, com a mesma política:
+
+- **na escrita**, na API, antes de validar e gravar (`SaveSectionUseCase`), para que nem o banco
+  nem o instantâneo versionado da LP guardem uma carga de injeção;
+- **na leitura**, na LP, ao renderizar (`apps/lp/src/components/ui/RichText.tsx`). Esta é a
+  barreira que protege o visitante, e ela é dupla: o componente sanitiza e depois **reconstrói
+  o conteúdo em elementos React**, sem `dangerouslySetInnerHTML` em lugar nenhum — só
+  `<strong>`, `<em>`, `<br>` e texto conseguem virar nó na página.
 
 #### Como o operador envia um arquivo pelo painel
 
@@ -678,6 +738,29 @@ Na **T12** os campos de mídia foram exercitados num **navegador de verdade** (C
 
 **A verificação foi completada na T14**, quando a LP passou a consumir `GET /api/content`: as imagens do CMS aparecem na página renderizada, conferidas em navegador real (ver "De onde a LP tira o conteúdo").
 
+Na **T22** o campo de texto rico foi exercitado num **navegador de verdade** (Chromium via
+Playwright), pela entrada única, contra a API e o Supabase reais. Na **página pública**, o
+título da Prova de Autoridade voltou a quebrar em duas linhas no desktop (`br` com
+`display: block` em 1440 px) e a exibir "médicos-veterinários," em **turquesa
+`rgb(30, 143, 136)` com peso 800**; em 390 px a quebra fica escondida (`display: none`), o
+título flui em uma linha e o texto lido é `A recomendação dos médicos-veterinários, em
+números`, sem palavras coladas. Nenhuma tag proibida no `<h2>` e nenhum erro novo no console.
+
+No **painel**, com um operador de verificação: o campo abriu com o texto já formatado (nunca
+com marcação escrita por extenso); selecionar "números" e clicar em **Negrito** marcou o
+trecho, salvar respondeu `200` e a página pública passou a exibir **dois** trechos em turquesa
+extra-bold; desfazer o negrito e salvar devolveu o título ao valor pretendido. Também
+verificados no editor: o botão **Quebra de linha** e a tecla **Enter** inserem `<br>` sem criar
+parágrafo (o editor terminou com **1** parágrafo e 4 quebras), e um `<script>alert(1)</script>`
+digitado pelo operador vira **texto literal**, nunca elemento. Nada disso foi salvo.
+
+O único campo que mudou no banco foi o `heading` da Prova de Autoridade, que passou do texto
+corrido para a mesma frase com marcação (`A recomendação dos<br><strong>médicos-veterinários,</strong> em números`)
+— conferido campo a campo contra o documento anterior. As contagens ficaram onde estavam:
+**12 seções, 24 mídias, 1 registro de metadados, 0 leads**; o operador de verificação foi
+removido e restou apenas o do usuário. O instantâneo foi regenerado por `npm run instantaneo`
+e saiu idêntico ao que já estava versionado.
+
 A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
 ### Como criar um operador do painel
@@ -762,6 +845,12 @@ O endereço é relativo (`/api/content`), porque LP e API compartilham domínio:
 página e `/api/*` alcança a API, tanto na entrada única de desenvolvimento quanto em
 produção. `VITE_CONTENT_ENDPOINT` troca o endereço quando for preciso apontar para outra
 API.
+
+**Campo de texto rico na página.** O título da Prova de Autoridade vem do CMS como HTML e é
+desenhado por `components/ui/RichText.tsx`, que sanitiza e reconstrói o conteúdo em elementos
+React — o trecho marcado em negrito recebe o destaque da seção, e a seção decide como a quebra
+de linha é desenhada (no título da Prova de Autoridade, só a partir de `lg`). Ver **Texto rico:
+o que o operador vê e o que o HTML pode ter**.
 
 **Uma seção despublicada some da página.** É assim que a seção de Ingredientes fica fora do
 ar hoje: nada de `isContentReady` no código, ela está despublicada no painel. Publicá-la é o
@@ -865,6 +954,7 @@ O que a carga inicial produziu, e que segue valendo:
 - **Telas de metadados e de leads (T13):** verificadas em navegador de verdade, contra a API e o Supabase reais, com três leads criados por `POST /api/leads` e apagados ao final. Abrir `/admin/leads` ou `/admin/metadados` sem sessão levou ao login **sem a área administrativa chegar ao DOM**; a listagem saiu do mais recente ao mais antigo, com as datas em horário de Brasília; o filtro `02/09` a `02/09` trouxe **só** o lead recebido às 23h30 de 2 de setembro em Brasília (3 de setembro em UTC) — recortar em UTC o teria deixado de fora, que é justamente o defeito que o critério C-12 proíbe; o CSV baixado começou com os bytes `ef bb bf`, usou `;` (13 separadores, 14 colunas, nenhuma vírgula), abriu com a acentuação intacta e **sem coluna de aceite LGPD**, e respeitou o filtro aplicado (1 linha filtrada contra 3 sem filtro); a exclusão pela tela não apagou nada no primeiro clique e só apagou depois da confirmação. A gravação dos metadados foi exercitada e **os valores originais foram devolvidos e conferidos campo a campo**.
 - **Proteção de rota do painel:** os testes do painel não tocam a rede — o dublê entra no lugar do cliente do Supabase, e adaptador, provedor, guarda, roteador e telas exercitados são os de produção. A guarda é provada por mutação, não por leitura: removê-la derruba as 9 provas de rota e sessão, e removê-la **apenas** no estado `verificando` — o caso em que o painel piscaria conteúdo protegido e só depois redirigiria — ainda derruba 3, porque três testes registram cada nó inserido no documento e falham se a área administrativa chegou a existir, ainda que por um quadro. Uma verificação feita depois de a tela assentar não pegaria isso.
 - **LP consumindo a API (T14):** verificada em navegador real, pela entrada única `http://localhost:5173/`, comparando a página antes e depois da troca. O **texto de todas as seções é idêntico** ao de antes, seção por seção, incluindo cabeçalho e rodapé, e as 24 imagens que a página exibe carregam do armazenamento público (`200`/`206`, nenhuma falha). Com a **API derrubada** (`/api/content` respondendo `500`), a página renderiza inteira a partir do instantâneo — mesmas 24 chamadas de imagem, mesmo texto, CSS aplicado. E a página de fato usa a resposta da API, não só o instantâneo: trocando o corpo de `/api/content` no caminho, sem tocar no banco, o `<h1>` e o título do FAQ mudaram junto. O conteúdo do CMS foi conferido campo a campo antes e depois e **não se moveu**: 11 seções publicadas, 3 metadados.
+- **Campo de texto rico (T22):** a sanitização é coberta por testes que **tentam injetar de verdade** — `<script>`, `onerror`/`onclick` em atributo, `href="javascript:"`, `<iframe>`, `<svg onload>`, `<style>`, `<form>` e marcação mal formada —, e cada um deles monta o HTML resultante e verifica o **DOM que sobrou**, não o texto devolvido. Eles existem nas três pontas: na política (`packages/content-schema/tests/rich-text.test.ts`), na gravação da API (`apps/api/test/texto-rico.e2e-spec.ts`) e na página (`apps/lp/src/components/ui/RichText.test.tsx`). A proteção da página é **dupla e foi medida como tal**: removida só a sanitização, os testes continuam passando, porque o renderizador só sabe criar `strong`, `em`, `br` e texto; trocado só o renderizador por um que aceita qualquer tag, eles também continuam passando, porque a sanitização já removeu o perigo; **removidas as duas**, 5 testes falham com `<a>`, `<iframe>`, `<svg>` e `<img>` de verdade no DOM. Na API, remover a sanitização da gravação derruba **8 dos 9** casos do arquivo.
 - **Ambientes publicados:** **[PENDENTE]** — preencher na T16 com as URLs reais de LP, painel e API.
 
 ## Atualização e monitoramento
