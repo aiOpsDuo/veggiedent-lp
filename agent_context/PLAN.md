@@ -155,7 +155,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: **concluída e ACEITA** em 2026-09-02, branch `feat/T8-leads-module` (4 commits, sem merge). Verificação do orquestrador: `npm run typecheck` (0 erros), `npm run test` (**420 testes**: 286 API + 5 LP + 129 content-schema), `npm run build` ok.
 - Verificado por mim contra o Supabase real, com a API na 3000: `POST /api/leads` respondeu `200 {"success":true}` e o banco guardou **`conhece_virbac`, `usa_produto_virbac` e `qual_produto_virbac`** — os três campos do risco R-01 que hoje se perdem em produção — com acentuação intacta (`Ana Conceição`, `São Paulo, SP`) e `rdstation_status = nao_enviado`, com a razão registrada em `rdstation_error`. Honeypot preenchido respondeu `200` **sem gravar** (a tabela continuou com 1 lead). `GET /api/admin/leads` sem token respondeu `401`. Banco devolvido a zero.
 - Prova por mutação, feita pelo subagente e considerada sólida: o teste decisivo não checa a ordem das chamadas ao banco (isso sobrevivia à mutação) — ele instala um observador na porta do RD Station e **conta as linhas gravadas no instante do repasse**, exigindo `[1]`. Inverter a ordem derruba 2 testes; remover as três colunas do R-01 derruba 2; mover o honeypot para depois da validação derruba 1; remover o BOM ou trocar `;` derruba 3; marcar o controller admin como público derruba 7.
-- **Ressalva importante:** o defeito **continua ativo em produção** até a T16. A LP ainda chama `serverless/rdstation-lead/` e não envia os três campos; a correção existe na API, mas o dado só para de se perder quando a LP migrar. Não foi antecipado porque a fiação é escopo declarado da T16.
+- **Ressalva, atualizada em 2026-09-03:** quando esta nota foi escrita, o defeito dos três campos seguia ativo porque a LP ainda chamava `serverless/rdstation-lead/`. A T14 religou a LP à API e a T26 removeu o relay e o diretório `serverless/` inteiro. **O estado atual precisa ser reverificado pelo orquestrador ao aceitar a T26** — não afirmar sem medir, porque a árvore estava sendo alterada por um subagente no momento em que esta atualização foi escrita.
 - Decisões do subagente declaradas e aceitas: defesa contra injeção de fórmula no CSV (célula iniciada por `=`, `+`, `-`, `@` recebe apóstrofo) — além do escopo literal, mas correta, já que o conteúdo vem de desconhecido e o arquivo abre na máquina do time; `pageSize` máx. 200 e exportação limitada a 10.000 linhas, por o CSV ser montado em memória; `RDSTATION_*` seguem opcionais, porque exigi-las impediria a API de subir e sem API não se grava lead nenhum.
 - **Pendência aberta, precisa de decisão do produto:** o filtro `from`/`to` usa dias em **UTC**, e o operador está em UTC−3 — um lead enviado depois das 21h de Brasília cai no dia seguinte para o filtro. O SDD não fixou o fuso do produto. Documentado no README e comentado no código.
 
@@ -247,13 +247,15 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Toca documentação: sim — README descreve o injetor e como trocar de plataforma.
 - Status: pendente
 
-### T16 — Publicação: rotas, variáveis e aposentadoria do relay antigo
-- Descrição: configurar o domínio único — LP na raiz, painel em `/admin`, `/api/*` encaminhado à API — declarar as variáveis de ambiente de cada ambiente, e remover `serverless/rdstation-lead/` junto com o serviço `submitLeadToRDStation` que aponta para ele, agora substituídos pela API.
-- Rastreável a: SDD § D-04, D-07, § "Dependências externas"
-- Critério de "pronto": `npm run build` passa; no ambiente publicado, `/` serve a LP, `/admin` exige login e `/api/health` responde `200`, todos no mesmo domínio; um envio real do formulário grava o lead e chega ao RD Station; `serverless/` não existe mais e nenhuma referência a ele resta no código.
-- Dependências: T14, T15, T13
+### T16 — Publicação
+- Descrição: publicar o produto num ambiente real, servindo o **mesmo mapa de caminhos** que o desenvolvimento já usa desde a T20 e que a T21 empacota: `/` a LP, `/admin` o painel, `/api/*` a API — tudo em um domínio.
+- **Reescrita em 2026-09-03.** A versão original desta tarefa dizia "rotas, variáveis e aposentadoria do relay antigo" e pressupunha encaixar o CMS na hospedagem existente. Duas coisas a tornaram obsoleta: (a) o usuário informou que **a hospedagem atual é apenas de teste e será descontinuada**, então não há o que encaixar; (b) a aposentadoria do relay saiu do escopo dela — a T26 removeu o RD Station inteiro, incluindo o diretório `serverless/`.
+- Rastreável a: SDD § D-04, § D-06, § "Visão de tiers"; `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre entrada única.
+- **Pré-requisito de decisão do usuário, ainda em aberto:** onde publicar. A escolha nunca foi feita neste projeto — o repositório nunca teve configuração de deploy, e o README da função serverless declarava a plataforma como indefinida desde antes do CMS. A T21 (Docker + proxy reverso) reduz muito o custo dessa escolha, porque entrega o produto empacotado e independente de provedor; **levar a decisão ao usuário faz parte desta tarefa**, com as opções e os trade-offs, não presumi-la.
+- Critério de "pronto": no ambiente publicado, `/` serve a LP com o CSS aplicado (conferir o **conteúdo**, não só o código HTTP), `/admin` e `/admin/` exigem login, `/api/health` responde `200`, e `/admin` **sem barra final** funciona — o defeito que a T10 encontrou; um envio real do formulário grava o lead e ele aparece na tela e na exportação; os metadados chegam no HTML inicial, verificável sem executar JavaScript; nenhuma credencial de servidor aparece nos artefatos de navegador.
+- Dependências: T21, T15, T17 não — T17 é a revisão final e vem depois.
 - Execução: sequencial
-- Toca documentação: sim — README ganha a seção de publicação e a lista completa de variáveis por ambiente.
+- Toca documentação: sim — README ganha a seção de publicação, o procedimento e as variáveis por ambiente.
 - Status: pendente
 
 ### T17 — Revisão final: documentação e vazamento de credenciais
@@ -347,7 +349,12 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T22
 - Execução: sequencial — altera esquema, painel e LP, os mesmos artefatos da T22.
 - Toca documentação: sim — README, no que o operador pode enviar para o banner.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-03, branch `feat/T24-midia-de-video` (3 commits, sem merge). Verificação do orquestrador: typecheck 0 erros, **668 testes**, build limpo, **zero ocorrências de `poster` no esquema**, e `GET /api/content` devolvendo `bannerVideo` resolvido com os vídeos tendo apenas `label`, `ordem`, `video`, `visivel` — nenhum pôster. `captions` continua no esquema; não aparece na resposta apenas por estar vazio, já que os arquivos `.vtt` nunca existiram. Banco intacto: 12 seções, 24 mídias, 1 metadados, 0 leads, só o operador do usuário.
+- Mecanismo escolhido para o primeiro quadro, com justificativa aceita: **sem processamento** — vídeo sem atributo de pôster, com `preload="metadata"` e o fragmento de mídia `#t=0.001`. A alternativa (capturar o quadro no envio) criaria um ativo novo por vídeo, um caminho de falha no upload e código de canvas, para produzir a imagem que o navegador já sabe extrair. O fragmento é o que transforma "provavelmente aparece" em "o navegador precisa buscar e decodificar esse quadro". **Ressalva declarada:** provado em Chromium; iOS Safari não é testável neste ambiente.
+- **Dois defeitos que a suíte verde não pegava, ambos achados no navegador:** (a) a validação recusava salvar imagem decorativa opcional, porque exigia texto alternativo de qualquer imagem preenchida — inclusive das que não têm esse campo no esquema; (b) movimento reduzido não parava o banner, porque o código trocava o elemento de vídeo por imagem e a troca matava a reprodução. **É o quarto e o quinto defeito do projeto invisíveis em teste automatizado.**
+- Regra do escoteiro em arquivo já tocado: o player tinha `<source type="video/mp4">` fixo, que descartaria um **WebM** — formato que o esquema aceita desde sempre.
+- **As duas miniaturas ficaram órfãs, como previsto, e não foram apagadas:** 24 mídias registradas, 22 referenciadas. `tutor-abrindo-petisco.jpg` e `cachorro-ganhando-petisco.jpg` intactas. Remoção é decisão à parte.
+- O subagente apontou que o critério **C-07 do SDD** ficara desatualizado ("Miniatura e legendas de cada vídeo também são enviáveis") e **não o alterou**, por ser documento de processo. Corrigido pelo orquestrador.
 
 ### T23 — Recriar a migração de conteúdo a partir do instantâneo
 - Descrição: restaurar a capacidade de popular um ambiente novo, que a T14 removeu junto com `apps/api/src/migration/`. O módulo volta lendo `apps/lp/src/content/content-snapshot.json` em vez dos `*.content.ts` apagados — sem duplicar conteúdo, porque o instantâneo já é a cópia versionada do que está publicado.
@@ -356,6 +363,30 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T22, T24 — precisa semear conteúdo já no formato final do esquema.
 - Execução: sequencial
 - Toca documentação: sim — README, no procedimento de popular um ambiente novo.
+- Status: pendente
+
+### T26 — Remover o RD Station do projeto
+- Descrição: a integração foi **descontinuada** (decisão do usuário em 2026-09-03). Sai tudo o que se refere a ela; permanece **apenas a exportação dos leads em CSV**. Alcance medido: **33 arquivos**, as colunas `rdstation_status` e `rdstation_error` da tabela `leads`, duas colunas do CSV ("Status RD Station" e "Erro RD Station"), as variáveis `RDSTATION_API_TOKEN` e `RDSTATION_CONVERSION_IDENTIFIER`, e o diretório `serverless/rdstation-lead/` inteiro.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; PRD § "Premissas, restrições e dependências"; SDD § D-07 (agora histórica), § R-08 (extinto), § C-11.
+- **O que NÃO pode ser removido junto:** a validação do envio (nome, e-mail, consentimento, porte), o **honeypot**, a gravação do lead, a listagem, o filtro por período em horário de Brasília, a exclusão por pedido do titular, e a exportação em CSV conforme a RN-01.
+- **Consequência que eleva a criticidade:** o banco do CMS passa a ser o **único** lugar onde o lead existe. Não há mais cópia em outro sistema. Qualquer migração que toque `leads` precisa desse cuidado, e a exportação em CSV deixa de ser conveniência para virar o mecanismo de saída do dado.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; migração removendo as duas colunas aplicada no projeto hospedado, com `verify-isolation.mjs` em exit 0; `grep -ri "rdstation\|rd station"` em `apps/`, `packages/` e `serverless/` não retorna nada; o CSV mantém as 12 colunas restantes conforme RN-01; **teste de regressão obrigatório** provando que `POST /api/leads` sem consentimento continua respondendo `422` e que o honeypot continua descartando silenciosamente — provados por mutação.
+- Dependências: T24
+- Execução: sequencial
+- Toca documentação: sim — README, em variáveis de ambiente, colunas do CSV e endpoints.
+- Status: pendente
+
+### T25 — Remover do painel os campos que só fazem sentido para quem constrói a página
+- Descrição: quatro grupos de campos violam o princípio declarado pelo usuário e saem do painel (decisão de 2026-09-03, detalhada no CHANGELOG):
+  1. **`captura_lead.porteOptions[].value` e `simNaoOptions[].value`** — o "Código da opção" sai; o **rótulo** de cada opção permanece editável, porque é texto visível. O valor passa a viver em código, coerente com a linha do PRD que mantém a **estrutura** do formulário em código e deixa apenas os **textos** no CMS. Editar o valor corrompia a série de dados em silêncio.
+  2. **`header.menuButtonAriaLabel`, `header.mainNavAriaLabel`, `captura_lead.successModalCloseAriaLabel`** — rótulos de acessibilidade de controles de interface, não de conteúdo.
+  3. **`captura_lead.successModalEmailModeMessage`** — o operador não controla o modo de entrega e não tem como saber quando aquilo aparece. **Ressalva registrada:** diferente dos outros, este é texto visível ao visitante; removê-lo significa que alterá-lo passa a exigir deploy. O usuário decidiu remover mesmo assim.
+  4. **`metadata.canonicalUrl`** — SEO técnico; valor errado pode tirar a página do índice.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; PRD § "Fora de escopo" (estrutura do formulário em código).
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; os campos não aparecem mais no painel; **a página continua idêntica** — os textos removidos do CMS passam a viver em código com o **mesmo valor de hoje**, sem inventar nada; verificado em navegador real.
+- Dependências: T26 — a saída do RD Station muda o peso do argumento do item 1, e as duas tarefas tocam o módulo de leads.
+- Execução: sequencial
+- Toca documentação: sim — README, na lista do que é editável.
 - Status: pendente
 
 ## Ordem de execução

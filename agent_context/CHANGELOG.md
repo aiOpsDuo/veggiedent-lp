@@ -263,3 +263,30 @@ Decisao: **`poster` deixa de existir** em todo lugar onde houver video. A imagem
 Consequencia registrada: as duas miniaturas hoje cadastradas (`tutor-abrindo-petisco.jpg` e `cachorro-ganhando-petisco.jpg`) ficam sem referencia. Nao serao apagadas pela T24 — a remocao e decisao a parte, para nao misturar limpeza com mudanca de contrato.
 
 Impacto: T24 passa a alterar o esquema da secao Demonstracao alem do banner, e a T23 (migracao a partir do instantaneo) precisa semear o formato novo. Reforca o criterio de revisao ja registrado na T24: verificar se ha outros campos que so fazem sentido para quem constroi a pagina.
+
+## 2026-09-03 — O RD Station sai do projeto; o CMS passa a ser o unico sistema de registro do lead
+
+Documentos afetados: PRD.md, SDD.md, PLAN.md
+
+Motivo: o usuario informou que a integracao com o RD Station **vai ser descontinuada**. Sai tudo o que se refere a ela no codigo; permanece **apenas a exportacao dos leads em CSV**.
+
+Alcance medido pelo orquestrador: **33 arquivos** com referencia (dominio, aplicacao, infraestrutura, apresentacao, testes, painel, LP e configuracao), as colunas `rdstation_status` e `rdstation_error` da tabela `leads`, duas colunas do CSV exportado ("Status RD Station" e "Erro RD Station"), as variaveis `RDSTATION_API_TOKEN` e `RDSTATION_CONVERSION_IDENTIFIER`, e o diretorio `serverless/rdstation-lead/` inteiro — que a T16 iria aposentar e agora perde a razao de existir antes disso.
+
+**Consequencia que muda a criticidade do sistema, e precisa ficar registrada:** ate aqui o lead tinha dois destinos — o banco do CMS e o RD Station —, e boa parte do desenho existia para que a falha de um nao perdesse o dado (risco R-01, criterio C-11, a ordem "grava antes de repassar"). Com a saida do RD Station, **o banco do CMS passa a ser o unico lugar onde o lead existe**. Nao ha mais copia em outro sistema. Isso eleva o peso de: backup do banco, cuidado em qualquer migracao que toque `leads`, e a propria exportacao em CSV, que deixa de ser conveniencia e passa a ser o mecanismo de saida do dado.
+
+O que **permanece** e nao deve ser removido junto: a validacao do envio (nome, e-mail, consentimento, porte), o **honeypot**, a gravacao do lead, a listagem, o filtro por periodo em horario de Brasilia, a exclusao por pedido do titular, e a exportacao em CSV conforme a regra RN-01.
+
+Impacto: risco **R-08** do SDD (payload do RD Station "a confirmar com a Virbac antes do go-live") deixa de existir. A decisao **D-07** (migrar o repasse da funcao serverless para a API) fica historica: o repasse deixa de existir em qualquer lugar. Os criterios **C-11** e **C-12**, a secao "Dependencias externas", os diagramas C4 e a secao "Modelo de dados" do SDD precisam ser corrigidos, assim como as secoes de features, dependencias, fora de escopo e criterios de release do PRD. Registrado como tarefa **T26**.
+
+## 2026-09-03 — Campos que so faziam sentido para quem constroi a pagina saem do painel
+
+Documentos afetados: SDD.md, PLAN.md
+
+Motivo: a varredura pedida na T24 encontrou quatro grupos de campos que violam o principio declarado pelo usuario ("nao se pede a um operador leigo um dado que ele nao tem como entender"). O usuario decidiu remover **todos**.
+
+1. **`captura_lead.porteOptions[].value` e `simNaoOptions[].value` — "Codigo da opcao".** A propria ajuda dizia "nao deve ser alterado sem aviso a equipe tecnica". E o valor gravado no lead: altera-lo corrompe a serie de dados em silencio. O **rotulo** de cada opcao ("Pequeno", "Medio", "Grande") e texto visivel e **permanece editavel**; o valor passa a viver em codigo, coerente com a linha do PRD que mantem a **estrutura** do formulario em codigo e deixa apenas os **textos** no CMS.
+2. **`header.menuButtonAriaLabel`, `header.mainNavAriaLabel`, `captura_lead.successModalCloseAriaLabel`.** Rotulos de acessibilidade de **controles de interface** (botao de menu, regiao de navegacao, botao de fechar), nao de conteudo. Um valor ruim degrada a acessibilidade sem ninguem perceber.
+3. **`captura_lead.successModalEmailModeMessage`.** Ressalva do orquestrador, declarada ao usuario: diferente dos outros tres, este **e** texto visivel ao visitante — o problema dele e de descoberta (o operador nao controla o modo de entrega e nao tem como saber quando aquilo aparece), nao de ser conceito tecnico. Remove-lo significa que mudar essa frase passa a exigir deploy. O usuario decidiu remover mesmo assim.
+4. **`metadata.canonicalUrl`.** SEO tecnico; valor errado pode tirar a pagina do indice.
+
+Impacto: registrado como tarefa **T25**, executada depois da T26 — a saida do RD Station muda o peso do argumento do item 1 (o valor deixa de alimentar um sistema externo e passa a valer so para o banco e o CSV), e mexer nos dois de uma vez no modulo de leads criaria conflito.

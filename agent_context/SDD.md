@@ -19,7 +19,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 | **Metadados da página** | Título, descrição e imagem de compartilhamento usados por buscadores e previews de link. |
 | **Injetor de SEO** | Componente de borda que insere os metadados no HTML antes de a resposta chegar ao navegador. |
 | **Instantâneo de conteúdo** | Cópia do conteúdo publicado embutida no build da LP, usada como conteúdo de reserva quando a API está indisponível. |
-| **Lead** | Registro de um envio do formulário da LP, com os dados preenchidos pelo visitante e o resultado do repasse ao RD Station. |
+| **Lead** | Registro de um envio do formulário da LP, com os dados preenchidos pelo visitante. O banco do CMS é o **único** lugar onde ele existe (RD Station descontinuado em 2026-09-03). |
 
 ## Porte do projeto
 
@@ -28,7 +28,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 Sinais concretos do PRD que sustentam a classificação — nenhum deles é preferência de arquitetura:
 
 - **Múltiplos domínios de negócio:** o PRD descreve quatro domínios distintos com regras próprias — conteúdo editorial, mídia, metadados de página e leads (este último com exigência de LGPD que os outros não têm).
-- **Integrações externas obrigatórias:** Supabase (banco, armazenamento e autenticação) e RD Station Marketing são dependências declaradas no PRD, não opcionais.
+- **Integração externa obrigatória:** Supabase (banco, armazenamento e autenticação) é dependência declarada no PRD, não opcional. *(O RD Station, que também constava aqui, foi descontinuado em 2026-09-03; a classificação de porte não muda, pois os demais sinais bastam.)*
 - **Mais de um consumidor:** a LP pública e o painel consomem o mesmo conteúdo por caminhos diferentes, com exigências de segurança opostas (leitura anônima do conteúdo publicado × acesso autenticado a leads).
 - **Evolução contínua esperada:** o critério de release exige que "adicionar um campo novo a uma seção existente seja uma tarefa pequena e documentada" — isso é um requisito explícito de manutenibilidade de longo prazo, incompatível com o porte Pequeno (MVP/protótipo).
 
@@ -47,7 +47,7 @@ O porte Pequeno foi descartado por não atender nenhum dos seus critérios: são
 | **T3 — Painel** | Interface de edição sob `/admin`. | React 18 + Vite 5 + TypeScript 5 |
 | **T4 — API do CMS** | Regras de negócio, validação, autorização, repasse de leads. | NestJS 11 (Node 20+) + TypeScript 5 |
 | **T5 — Plataforma de dados** | Banco relacional, armazenamento de arquivos, emissão de identidade. | Supabase (Postgres + Storage + Auth) |
-| **T6 — RD Station** | Destino de marketing dos leads. | Serviço externo |
+
 
 T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço sempre ativo. **A LP é servida pela CDN, não pela API** — é isso que cumpre o requisito do PRD de que a indisponibilidade do CMS não derrube a página pública.
 
@@ -58,7 +58,7 @@ T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço 
 | **Apresentação** | Controllers, DTOs, pipes de validação, guardas de autenticação. Nenhuma regra de negócio. | Aplicação |
 | **Aplicação** | Casos de uso: publicar seção, registrar mídia, receber lead, exportar leads. Orquestra domínio e portas. | Domínio, Portas |
 | **Domínio** | Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework ou de Supabase. | Nada |
-| **Infraestrutura** | Adaptadores que implementam as portas: repositórios Supabase, armazenamento, cliente RD Station, verificador de token. | Domínio (implementa suas portas) |
+| **Infraestrutura** | Adaptadores que implementam as portas: repositórios Supabase, armazenamento, verificador de token. | Domínio (implementa suas portas) |
 
 **Padrão arquitetural:** **Hexagonal (Ports & Adapters)**, com módulos NestJS por domínio (`content`, `media`, `leads`, `auth`, `metadata`). Justificativa ligada ao porte e ao PRD: o PRD impõe duas integrações externas obrigatórias e exige que credenciais e acesso a dados fiquem confinados ao servidor; isolar Supabase e RD Station atrás de portas é o que permite testar as regras de conteúdo e de lead sem tocar em serviço externo, e é o que torna "adicionar um campo novo" uma mudança de esquema em vez de uma mudança espalhada por camadas.
 
@@ -124,8 +124,8 @@ Quatro tabelas em Postgres (Supabase).
 | `conhece_virbac`, `usa_produto_virbac`, `qual_produto_virbac` | `text` | Opcionais — hoje coletados e descartados (ver R-01) |
 | `aceite_comunicacoes` | `boolean` | Opt-in de marketing. Varia de verdade entre `true` e `false`, por isso é guardado |
 | `origem` | `text` | |
-| `rdstation_status` | `text` | `ok` \| `falhou` \| `nao_enviado` |
-| `rdstation_error` | `text` | Nulo quando `ok` |
+
+
 | `created_at` | `timestamptz` | |
 
 **Por que não existe coluna `aceite_lgpd`.** O consentimento com a Política de Privacidade é **condição de envio**: sem ele o formulário é recusado com `422` e nenhum registro nasce. Guardar a coluna significaria gravar a constante `true` em toda linha — informação zero, e uma coluna inútil na exportação. A prova de consentimento é a própria existência do registro somada a `created_at`. Se um dia for preciso provar **a que texto** a pessoa consentiu (por exemplo, depois de a Política de Privacidade mudar), o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre este erro de modelagem.
@@ -143,11 +143,9 @@ C4Context
   Person(operador, "Operador", "Equipe de marketing que edita conteúdo")
   System(cms, "CMS Veggiedent LP", "Landing page pública + painel de administração em /admin")
   System_Ext(supabase, "Supabase", "Banco, armazenamento de arquivos e identidade")
-  System_Ext(rdstation, "RD Station Marketing", "Destino de marketing dos leads")
   Rel(visitante, cms, "Lê a página e envia o formulário", "HTTPS")
   Rel(operador, cms, "Edita conteúdo e consulta leads", "HTTPS")
   Rel(cms, supabase, "Persiste conteúdo, arquivos e leads; valida identidade", "HTTPS")
-  Rel(cms, rdstation, "Repassa o lead", "HTTPS")
 ```
 
 ### Containers
@@ -164,7 +162,6 @@ C4Container
     Container(api, "API do CMS", "NestJS", "Regras de conteúdo, mídia, leads e autorização")
   }
   System_Ext(supabase, "Supabase", "Postgres + Storage + Auth")
-  System_Ext(rdstation, "RD Station Marketing")
   Rel(visitante, seo, "Pede o documento HTML", "HTTPS")
   Rel(seo, lp, "Devolve o HTML com metadados")
   Rel(seo, api, "Lê os metadados publicados", "HTTPS")
@@ -175,7 +172,6 @@ C4Container
   Rel(admin, api, "Lê e grava conteúdo, mídia e leads", "HTTPS + token")
   Rel(admin, supabase, "Envia os bytes do arquivo com credencial temporária", "HTTPS")
   Rel(api, supabase, "Persiste e lê", "HTTPS + chave secreta")
-  Rel(api, rdstation, "Repassa o lead", "HTTPS")
 ```
 
 ## Decisões técnicas e trade-offs
@@ -242,7 +238,9 @@ C4Container
 
 **Isolamento de plataforma:** a implementação específica da CDN fica em um único arquivo. Trocar de provedor é reescrever esse arquivo, não redesenhar o sistema.
 
-### D-07 — O repasse ao RD Station migra da função serverless para a API
+### D-07 — O repasse ao RD Station migra da função serverless para a API *(DECISÃO HISTÓRICA — superada)*
+
+> **Superada em 2026-09-03:** o usuário descontinuou o RD Station. O repasse deixou de existir em qualquer lugar, e `POST /api/leads` apenas valida e grava. O texto abaixo fica como registro de por que a função serverless foi aposentada. Ver `agent_context/CHANGELOG.md`.
 
 **Escolhido:** `POST /api/leads` passa a ser o único endpoint do formulário: valida, grava o lead e repassa ao RD Station. A função em `serverless/rdstation-lead/` é aposentada, com sua lógica de validação, honeypot e mapeamento de campos preservada dentro de um adaptador da camada de Infraestrutura.
 
@@ -278,7 +276,7 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 |---|---|---|
 | `GET /api/content` | Todo o conteúdo publicado, em uma resposta. Seções e itens não publicados são omitidos. | `{ sections: Record<SectionKey, SectionData>, metadata: SiteMetadata }` |
 | `GET /api/seo` | Só os metadados. Consumido pelo injetor de SEO. | `{ title, description, ogImageUrl, canonicalUrl }` |
-| `POST /api/leads` | Recebe o formulário: valida, grava, repassa ao RD Station. | `200 { success: true }` · `422` com `fields` · `200 { success: true }` também quando o honeypot é acionado, sem gravar nem repassar |
+| `POST /api/leads` | Recebe o formulário: valida e grava. | `200 { success: true }` · `422` com `fields` · `200 { success: true }` também quando o honeypot é acionado, sem gravar nem repassar |
 
 `POST /api/leads` grava o lead **antes** de tentar o RD Station e responde sucesso se a gravação deu certo, registrando o resultado do repasse em `rdstation_status`. Uma falha do RD Station nunca faz o visitante ver erro nem faz o lead ser perdido.
 
@@ -357,11 +355,11 @@ Régua usada na Fase 4 para detectar divergência entre o implementado e o prete
 | **C-04** | Edição de campos de texto | Todo texto hoje presente nos 12 arquivos `*.content.ts` é editável pelo painel, incluindo textos alternativos, rótulos de botão, mensagens de erro do formulário e textos do modal de sucesso. Acentuação é preservada na ida e na volta. Salvar um campo obrigatório vazio é recusado com mensagem por campo. |
 | **C-05** | Gestão de itens de lista | Em cada uma das listas (navegação, cards de educação, passos da rotina, textos e benefícios do produto, vídeos, números da prova, parceiros, perguntas do FAQ, links do rodapé) é possível adicionar, editar, remover e reordenar; a ordem definida no painel é a ordem exibida na LP. |
 | **C-06** | Upload de imagens | Enviar uma imagem pelo painel a exibe na LP após salvar. O texto alternativo é obrigatório e acompanha a imagem. Arquivo de tipo não suportado é recusado com mensagem clara. |
-| **C-07** | Upload de vídeos | Um vídeo de porte equivalente aos existentes no projeto é enviado com sucesso, com progresso visível, e passa a ser reproduzido na LP. Miniatura e legendas de cada vídeo também são enviáveis. Os bytes do arquivo não passam pela API. |
+| **C-07** | Upload de vídeos | Um vídeo de porte equivalente aos existentes no projeto é enviado com sucesso, com progresso visível, e passa a ser reproduzido na LP. **Legendas** de cada vídeo também são enviáveis. **Não existe campo de miniatura**: a imagem exibida antes do carregamento vem do primeiro quadro do próprio arquivo, derivada automaticamente — pedir uma "imagem de pré-carregamento" a um operador leigo é pedir um dado que ele não tem como entender (decisão do usuário em 2026-09-03, ver `agent_context/CHANGELOG.md`). Os bytes do arquivo não passam pela API. |
 | **C-08** | Visibilidade | Desligar uma seção a remove da LP sem apagar o conteúdo; religar a traz de volta idêntica. O mesmo vale para um item de lista. Nenhum texto de espaço reservado chega ao visitante. |
 | **C-09** | Metadados de busca e compartilhamento | Após alterar o título no painel, buscar o HTML da LP **sem executar JavaScript** já traz o novo título. Com a API indisponível, o mesmo pedido devolve a página com os metadados padrão, nunca um erro. |
 | **C-10** | Consumo do conteúdo pela LP | Nenhuma seção importa de `*.content.ts`; todas leem da API. A página não apresenta mudança visual perceptível em relação ao estado atual. Com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia ou quebrada. |
-| **C-11** | Registro dos leads | Um envio do formulário cria um registro com todos os campos preenchidos, inclusive os três hoje descartados (R-01). Com o RD Station recusando, o lead ainda é gravado, o visitante ainda vê sucesso e `rdstation_status` registra a falha. O honeypot preenchido não gera registro nem repasse. |
+| **C-11** | Registro dos leads | Um envio do formulário cria um registro com todos os campos preenchidos, inclusive os três que hoje são descartados em produção (R-01). O honeypot preenchido não gera registro. **O banco do CMS é o único lugar onde o lead existe** — não há destino externo desde que o RD Station foi descontinuado (2026-09-03), o que torna a gravação a única barreira entre o envio e a perda do dado. |
 | **C-12** | Consulta e exportação de leads | A tela lista do mais recente ao mais antigo, com filtro por período, recortando o dia em **horário de Brasília (UTC−3)**, não em UTC. A exclusão remove o lead definitivamente. Nenhum lead é acessível sem autenticação. **Exportação (regra de negócio RN-01, abaixo):** o arquivo é `.csv`, traz **todos os dados preenchidos no formulário, um por coluna**, abre no Excel em português com acentuação correta, e respeita os filtros aplicados na tela. |
 
 ### RN-01 — Exportação de leads em CSV
@@ -372,7 +370,7 @@ Deve ser possível exportar, em formato `.csv`, os leads recebidos pelos formul�
 
 - **Uma coluna por campo do formulário**, com cabeçalho em português legível pelo operador — não o nome técnico da coluna do banco.
 - Cobertura obrigatória dos campos que o visitante preenche: nome, e-mail, telefone, nome do cachorro, porte do cachorro, cidade e estado, conhece a Virbac, usa produto Virbac, qual produto Virbac, e o opt-in de comunicações.
-- Colunas operacionais que acompanham cada lead: data de envio (em horário de Brasília), origem, e o resultado do repasse ao RD Station (status e erro).
+- Colunas operacionais que acompanham cada lead: data de envio (em horário de Brasília) e origem.
 - **Não existe coluna de aceite da Política de Privacidade**, pelo motivo registrado em "Modelo de dados": ele é condição de envio, não dado variável.
 - Separador `;` e BOM UTF-8, para o arquivo abrir corretamente no Excel em português.
 - A exportação respeita os filtros de período aplicados na consulta.
@@ -381,7 +379,7 @@ Deve ser possível exportar, em formato `.csv`, os leads recebidos pelos formul�
 ## Dependências externas
 
 - **Supabase** — Postgres, Storage e Auth. Dependência obrigatória declarada no PRD. A chave secreta é usada exclusivamente pela API, a partir de variável de ambiente do servidor; nunca é embarcada em nenhum build de navegador.
-- **RD Station Marketing** — API de Conversões, destino de marketing dos leads. O token vive apenas no ambiente da API.
+- ~~RD Station Marketing~~ — **descontinuado em 2026-09-03.** O lead não tem destino externo; sai do sistema apenas pela exportação em CSV.
 - **Plataforma de CDN com função de borda** — publica LP e painel e hospeda o injetor de SEO. Isolada em um único arquivo (D-06).
 - **Ambiente de execução sempre ativo para a API** — Node 20 ou superior.
 - **Bibliotecas principais:** NestJS 11, `@supabase/supabase-js` 2, `jose` (verificação de token por JWKS), `zod` (esquemas), React 18, Vite 5, Tailwind 3. Versões declaradas apenas no nível major.
@@ -398,8 +396,8 @@ Nenhum outro projeto vinculado: o CMS e a LP vivem neste mesmo repositório e fo
 | **R-04** | Upload interrompido deixa arquivo no armazenamento sem registro em `media_assets` (órfão). | O registro só é criado após confirmação do upload; arquivos sem registro são inertes, pois nada os referencia. O README documenta a limpeza periódica. Nunca corrompe conteúdo publicado, o que atende o critério de confiabilidade do PRD. |
 | **R-05** | Consultas N+1 ao montar a página, se cada seção virar uma consulta. | O desenho de um documento por seção permite ler todas em uma consulta única; `GET /api/content` é explicitamente uma resposta agregada. Verificar na Fase 4 que a rota faz uma consulta, não doze. |
 | **R-06** | Regra de negócio vazando para a apresentação — a armadilha mais comum em arquitetura em camadas. | Regra de dependência estrita declarada; controllers sem lógica; validação e visibilidade decididas no domínio. Verificável em revisão de código. |
-| **R-07** | Mover a LP da raiz para `apps/lp/` quebra caminhos de build, imports de assets e o deploy de uma página que já está em produção. | Migração isolada em uma tarefa própria do plano, cujo critério de pronto é o build e a checagem de tipos passando, e a página renderizando igual. Nenhuma outra tarefa começa antes dela. |
-| **R-08** | O formato de payload do RD Station no handler atual está marcado no próprio código como "CONFIRMAR antes do go-live", e o método de autenticação depende de como a conta da Virbac foi configurada. | Preservar o comportamento atual sem alterá-lo ao migrar (D-07); tratar a confirmação com a Virbac como pendência externa registrada no README, não como decisão técnica deste projeto. |
+| **R-07** | Mover a LP da raiz para `apps/lp/` quebra caminhos de build, imports de assets e o deploy de uma página que já está em produção. | Migração isolada em uma tarefa própria do plano, cujo critério de pronto é o build e a checag| **R-08** | ~~Payload do RD Station a confirmar com a Virbac antes do go-live.~~ **Risco extinto em 2026-09-03**: a integração foi descontinuada e não há mais payload externo a confirmar. |
+ Virbac como pendência externa registrada no README, não como decisão técnica deste projeto. |
 | **R-09** | Credencial do Supabase vazar para um build de navegador, quebrando o requisito de isolamento do PRD. | A chave secreta só é lida no app da API, que não passa pelo Vite. Verificação na Fase 4: buscar por credenciais nos artefatos de build da LP e do painel antes de aceitar a entrega. |
 
 ## Nível de rigor da especificação
