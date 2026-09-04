@@ -129,7 +129,7 @@ export const ingredientesDocument: IngredientesDocument = {
 }
 
 export const provaAutoridadeDocument: ProvaAutoridadeDocument = {
-  heading: 'A recomendação dos médicos-veterinários, em números',
+  heading: 'A recomendação dos<br><strong>médicos-veterinários,</strong> em números',
   source: '*Pesquisa IPSOS 2026. Realizada com 1.116 veterinários, base de dados Virbac.',
   kit: mediaId(11),
   kitAlt: 'Veggiedent, selo número 1 e recomendação veterinária',

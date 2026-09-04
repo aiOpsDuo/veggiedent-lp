@@ -7,9 +7,9 @@ export const provaAutoridadeSchema = {
   fields: [
     {
       name: 'heading',
-      type: 'texto-curto',
+      type: 'texto-rico',
       label: 'Título da seção',
-      help: 'Título no topo da seção com os números da pesquisa.',
+      help: 'Título no topo da seção com os números da pesquisa. O trecho em negrito aparece destacado em turquesa na página.',
       required: true,
     },
     {

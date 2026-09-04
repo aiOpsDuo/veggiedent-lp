@@ -3,7 +3,8 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
-    "lib": ["ES2022"],
+    "esModuleInterop": true,
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "noEmit": false,
     "declaration": true,

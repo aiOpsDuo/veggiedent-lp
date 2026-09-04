@@ -11,6 +11,7 @@
 export const FIELD_TYPES = [
   'texto-curto',
   'texto-longo',
+  'texto-rico',
   'lista-de-textos',
   'imagem',
   'video',

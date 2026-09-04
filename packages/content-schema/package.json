@@ -9,10 +9,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "dompurify": "^3.4.14",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",
+    "jsdom": "^25.0.1",
     "typescript": "^5.4.5",
     "vitest": "^2.1.9"
   },

@@ -9,6 +9,7 @@ import { z } from 'zod'
 import type { FieldSpec, FieldType, ListSpec } from './contract'
 import { altTextFieldName } from './contract'
 import { MESSAGES, minimumItemsMessage } from './messages'
+import { isBlankRichText } from './rich-text'
 
 interface FieldZodBuilder {
   readonly required: () => z.ZodType
@@ -59,6 +60,15 @@ const buildersByFieldType: Record<FieldType, FieldZodBuilder> = {
   },
   'texto-longo': {
     required: () => text().min(1, MESSAGES.required),
+    optional: () => text().optional(),
+  },
+  /**
+   * Texto rico guarda HTML. A sanitizacao nao acontece aqui: a validacao diz se
+   * o campo esta preenchido, e quem grava sanitiza antes de validar (API) e
+   * quem renderiza sanitiza de novo (LP). Ver `rich-text.ts`.
+   */
+  'texto-rico': {
+    required: () => text().min(1, MESSAGES.required).refine((value) => !isBlankRichText(value), MESSAGES.required),
     optional: () => text().optional(),
   },
   'lista-de-textos': {

@@ -24,6 +24,14 @@ export type {
 export { decorativeImage, optionalImage, requiredImage } from './fields'
 
 export {
+  RICH_TEXT_ALLOWED_ATTRIBUTES,
+  RICH_TEXT_ALLOWED_TAGS,
+  createRichTextSanitizer,
+  isBlankRichText,
+} from './rich-text'
+export type { RichTextSanitizer } from './rich-text'
+
+export {
   getSectionSchema,
   orderedSectionSchemas,
   sectionSchemas,
