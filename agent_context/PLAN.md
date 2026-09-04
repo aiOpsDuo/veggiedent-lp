@@ -466,7 +466,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T28 (mesmos arquivos de `content-schema`/painel que T28 tocou — rodar depois, não em paralelo)
 - Execução: sequencial, na árvore principal (ou worktree isolado se T32 estiver rodando ao mesmo tempo — não paralelizar as duas entre si, ver nota abaixo)
 - Toca documentação: sim — README (tipos de mídia aceitos) e PRD (retira a menção a legendas do requisito de acessibilidade, com a ressalva acima registrada).
-- Status: pendente
+- Status: concluída (2026-09-04). Escopo real ficou maior que o mapeado: `apps/api` também tinha o tipo `caption`/`legenda` espalhado (`media-kind.ts`, `register-media.dto.ts`, `media.module.ts`, `public-content.controller.ts` e sete arquivos de teste/spec), corrigido na mesma tarefa. A migração planejada (`delete from storage.buckets`) foi recusada pelo projeto hospedado (`SQLSTATE 42501`, "Direct deletion from storage tables is not allowed. Use the Storage API instead."); o bucket foi removido pela Storage API (`.../empty` + `DELETE .../bucket/veggiedent-captions`) e a migração ficou só com a policy de leitura e o estreitamento do `check` de `media_assets.kind`. `npm run test` (649/649), `npm run typecheck` e `npm run build` verdes nos quatro workspaces. Verificado em navegador real (Chromium via Playwright, operador de verificação criado pela Auth Admin API e removido ao final): a Demonstração renderiza 3 vídeos sem `<track>`, o primeiro reproduz de verdade (`currentTime` avançando); no painel, a tela de edição da seção não mostra a palavra "legenda" em lugar nenhum. Confirmado por tentativa real: inserir `kind = 'caption'` em `media_assets` é recusado com `23514`.
 
 ### T32 — Tirar o Rodapé (Footer) do CMS
 

@@ -131,7 +131,7 @@ pedaço da tela sai de uma propriedade do esquema:
 | `lista-de-textos` | uma linha por valor, com **Adicionar linha** e **Remover a linha N** | é um grupo (`fieldset`/`legend`), porque um rótulo serve a um controle só |
 | `link` | uma linha de texto | quem julga o endereço é a API: `#secao`, `/pagina`, `https://…`, `mailto:` e `tel:` |
 | `booleano` | uma caixa de seleção | |
-| `imagem`, `video`, `legenda` | prévia do arquivo guardado, um seletor de arquivo, o limite escrito ao lado, barra de progresso durante o envio e um botão de remover | ver **Como o operador envia um arquivo** logo abaixo. Não há onde digitar identificador de mídia, de propósito (SDD § "Contrato do esquema de seção") |
+| `imagem`, `video` | prévia do arquivo guardado, um seletor de arquivo, o limite escrito ao lado, barra de progresso durante o envio e um botão de remover | ver **Como o operador envia um arquivo** logo abaixo. Não há onde digitar identificador de mídia, de propósito (SDD § "Contrato do esquema de seção") |
 
 **Listas de itens.** Cada lista do esquema vira um bloco com **Adicionar item**, e cada item
 traz **Subir**, **Descer**, **Remover** e a caixa **Aparece na página**. Não há campo de
@@ -197,10 +197,10 @@ recusado com "Campo obrigatório." — em vez de ser gravado em branco.
 
 #### Como o operador envia um arquivo pelo painel
 
-Abrir a seção, achar o campo de imagem, vídeo ou legenda e **escolher o arquivo**. Não há botão
+Abrir a seção, achar o campo de imagem ou vídeo e **escolher o arquivo**. Não há botão
 de enviar: escolher já envia. Enquanto o arquivo sobe, o campo mostra uma barra de progresso e
-a porcentagem em texto; ao terminar, a prévia do arquivo aparece ali mesmo — a imagem, o vídeo
-com controles de reprodução, ou o link do arquivo de legendas.
+a porcentagem em texto; ao terminar, a prévia do arquivo aparece ali mesmo — a imagem, ou o vídeo
+com controles de reprodução.
 
 **A prévia aparece antes de salvar, e é do arquivo que já está no armazenamento.** O envio e a
 gravação da seção são coisas diferentes: o arquivo já subiu e já foi registrado quando a prévia
@@ -225,7 +225,7 @@ envio para descobrir que o arquivo nunca teve chance.
 arquivo de 23,6 MB vira quatro blocos, e uma queda de conexão faz o envio recomeçar do último
 bloco confirmado, não do início. Retomar **entre recarregamentos da página** não é oferecido: a
 credencial e o caminho de destino são emitidos a cada tentativa, então recarregar começa um
-envio novo. Arquivo pequeno (imagem, legenda) sobe em uma requisição só, também com progresso.
+envio novo. Arquivo pequeno (imagem) sobe em uma requisição só, também com progresso.
 
 **Os bytes nunca passam pela API** (SDD § D-05). O painel pede a credencial, envia o arquivo
 direto ao armazenamento e confirma — os três passos descritos em "Envio de mídia em três
@@ -244,7 +244,7 @@ imagem de espera:
 | Onde | O que enviar | Obrigatório |
 |---|---|---|
 | **Fundo do banner** | Um **vídeo** (*Vídeo do banner*) **ou** uma **imagem** (*Imagem do banner*) — o que fizer mais sentido para a campanha | Nenhum dos dois. Com os dois enviados, o vídeo é o que aparece |
-| **Cada vídeo da lista** | O **arquivo de vídeo** e, opcionalmente, o **arquivo de legendas** (`.vtt`); mais o **título do vídeo**, que é texto | Só o arquivo de vídeo e o título |
+| **Cada vídeo da lista** | O **arquivo de vídeo**; mais o **título do vídeo**, que é texto | Os dois |
 
 **Não existe campo de miniatura em vídeo nenhum, e isso é decisão, não esquecimento.** A imagem
 exibida antes de um vídeo tocar é o **primeiro quadro do próprio arquivo**: o navegador a
@@ -506,7 +506,7 @@ Comportamentos que valem para todas as rotas administrativas de conteúdo:
 
 #### Como as referências de mídia aparecem na resposta
 
-Um campo de imagem, vídeo ou legenda guarda no banco o **identificador** da mídia, nunca um endereço digitado (SDD § "Contrato do esquema de seção"). As duas saídas da API entregam formas diferentes desse mesmo campo, e a diferença é proposital:
+Um campo de imagem ou vídeo guarda no banco o **identificador** da mídia, nunca um endereço digitado (SDD § "Contrato do esquema de seção"). As duas saídas da API entregam formas diferentes desse mesmo campo, e a diferença é proposital:
 
 | Saída | O que o campo de mídia traz | Por quê |
 |---|---|---|
@@ -521,8 +521,7 @@ A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de
     "hero": { "image": "https://…/storage/v1/object/public/imagens/hero.png",
               "imageAlt": "Cão recebendo o petisco" },
     "demonstracao": { "bannerVideo": "https://…/videos/banner.mp4",
-                      "videos": [ { "video": "https://…/videos/demo.mp4",
-                                    "captions": "https://…/legendas/demo.vtt" } ] } },
+                      "videos": [ { "video": "https://…/videos/demo.mp4" } ] } },
   "metadata": { "ogImage": "https://…/imagens/compartilhamento.png" } }
 ```
 
@@ -553,7 +552,7 @@ curl -s -X POST http://localhost:3000/api/admin/media/upload-url \
 
 **2. Enviar os bytes, do navegador direto ao armazenamento.** Dois caminhos, ambos com a credencial acima e **sem** passar pela API:
 
-- *Arquivo pequeno* (imagem, legenda): `PUT` no `signedUrl`, com o `content-type` do arquivo — é o que o `uploadToSignedUrl(path, token, file)` do `@supabase/supabase-js` faz.
+- *Arquivo pequeno* (imagem): `PUT` no `signedUrl`, com o `content-type` do arquivo — é o que o `uploadToSignedUrl(path, token, file)` do `@supabase/supabase-js` faz.
 - *Vídeo*: protocolo retomável (TUS) apontado para `resumableEndpoint`, com o token no cabeçalho **`x-signature`**, blocos de **6 MB** e os metadados `bucketName`, `objectName` e `contentType`. Retomável é o que permite continuar de onde parou depois de uma queda de conexão, e é o que dá o progresso visível que o painel mostra. Quem faz esse papel no painel é o `tus-js-client`, a biblioteca que a própria documentação do Supabase Storage indica; a escolha entre este caminho e o `PUT` acima é feita pela natureza da mídia, em `apps/admin/src/media/media-transfer.ts`.
 
 **3. Confirmar.** Só agora nasce o registro em `media_assets` (risco R-04):
@@ -569,13 +568,12 @@ A API pergunta ao armazenamento se o arquivo está lá; se não estiver, respond
 
 A chave secreta do Supabase **não sai do servidor** em nenhum dos três passos: o navegador recebe apenas uma credencial válida para um caminho, em um bucket, por duas horas.
 
-**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql` e alterados por `20260903120000_allow_svg_in_images_bucket.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste lê as migrações em ordem e compara os dois):
+**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql` e alterados por `20260903120000_allow_svg_in_images_bucket.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste lê as migrações em ordem e compara os dois). O bucket `veggiedent-captions` (natureza `caption`, tipo de campo "legenda") foi removido na T31 — nunca teve arquivo real (0 registros) e o campo saiu do esquema inteiro; ver `20260904160000_remove_captions_media_kind.sql`:
 
 | Natureza | Bucket | Limite | Tipos aceitos |
 |---|---|---|---|
 | `image` | `veggiedent-images` | 10 MB | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`, `image/svg+xml` |
 | `video` | `veggiedent-videos` | 500 MB | `video/mp4`, `video/webm` |
-| `caption` | `veggiedent-captions` | 1 MB | `text/vtt` |
 
 **Por que SVG é aceito.** Ele ficou de fora na criação dos buckets, com a justificativa de que nenhuma seção precisaria dele. A premissa estava errada: a LP usa quatro SVGs reais — o logo Veggiedent, no cabeçalho e no rodapé, e três infográficos da prova de autoridade. Rasterizar o logo custaria 8,7 KB → 35 KB e a escalabilidade de um ativo de marca. SVG continua sendo documento executável, mas aqui o risco é contido por dois fatos: **só operador autenticado envia arquivo** (não existe upload anônimo, e `storage.objects` não tem policy de escrita), e o arquivo é **servido do domínio do Supabase Storage**, não do domínio da LP — um script embutido não alcançaria o DOM da página, seus cookies ou sua sessão, e a LP carrega essas imagens por `<img src>`, contexto em que o navegador já não executa script do SVG.
 
@@ -663,6 +661,7 @@ O esquema do banco vive em `supabase/migrations/`, uma migração por assunto, a
 | `20260903130000_drop_aceite_lgpd_from_leads.sql` | Remove a coluna `aceite_lgpd` de `leads` — o consentimento é condição de envio, não dado do registro (T18) |
 | `20260903140000_drop_rdstation_from_leads.sql` | Remove `rdstation_status` e `rdstation_error` de `leads` — a integração foi descontinuada e o lead não tem destino externo (T26) |
 | `20260904150000_remove_header_and_ingredientes_sections.sql` | Apaga as linhas `header` e `ingredientes` de `content_sections` e estreita o `check` de 12 para as **10** chaves restantes — o cabeçalho saiu do CMS e a seção Ingredientes saiu do projeto (T28) |
+| `20260904160000_remove_captions_media_kind.sql` | Restringe a policy de leitura pública de `storage.objects` aos dois buckets restantes e estreita o `check` de `media_assets.kind` de `('image', 'video', 'caption')` para `('image', 'video')` — o campo "Arquivo de legendas" saiu do esquema inteiro (T31). O bucket `veggiedent-captions` em si foi removido pela Storage API, fora desta migração: o projeto hospedado recusa `delete` direto em `storage.buckets` |
 
 **Por que não há policy nas tabelas.** Uma tabela com RLS habilitada e zero policies nega tudo para `anon` e `authenticated` — é exatamente o comportamento que o SDD exige: nenhum cliente alcança o banco direto, todo acesso passa pela API com `SUPABASE_SECRET_KEY` (papel `service_role`, que ignora RLS). Acrescentar uma policy para esses dois papéis, por mais restrita que pareça, abre um caminho que contorna a API. No armazenamento a regra é a oposta e está explícita: leitura pública (a LP precisa exibir as mídias), escrita só pela credencial do servidor.
 
@@ -999,7 +998,7 @@ O que a carga inicial produziu, e que segue valendo:
 
 - **Adicionar um campo a uma seção:** edite um arquivo só — o esquema da seção em `packages/content-schema/src/sections/<secao>.ts`.
 
-  1. Acrescente o campo ao array `fields` da seção, ou ao `itemFields` da lista quando o campo pertencer a um item (um card, um passo, um parceiro, uma pergunta). Um campo é `{ name, type, label, help, required }`: `label` e `help` são o que o operador lê no painel, em português — `help` diz onde o campo aparece na página, e é opcional só na forma, não na prática. Tipos disponíveis: `texto-curto`, `texto-longo`, `lista-de-textos`, `imagem`, `video`, `legenda`, `link`, `booleano`.
+  1. Acrescente o campo ao array `fields` da seção, ou ao `itemFields` da lista quando o campo pertencer a um item (um card, um passo, um parceiro, uma pergunta). Um campo é `{ name, type, label, help, required }`: `label` e `help` são o que o operador lê no painel, em português — `help` diz onde o campo aparece na página, e é opcional só na forma, não na prática. Tipos disponíveis: `texto-curto`, `texto-longo`, `lista-de-textos`, `imagem`, `video`, `link`, `booleano`.
   2. Se o campo for uma imagem, não o declare à mão — use um dos construtores de `src/fields.ts`, e escolha entre os dois tratamentos de acessibilidade que o esquema admite:
 
      - **Imagem informativa** — `requiredImage({ ... })` ou `optionalImage({ ... })`. Emitem a imagem **e** o campo de texto alternativo obrigatório adjacente de uma vez. É o caso da maioria: a descrição é o que o leitor de tela anuncia no lugar da imagem.
@@ -1060,7 +1059,7 @@ O que a carga inicial produziu, e que segue valendo:
     -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY"
 
   # 2. o que está em cada bucket
-  for b in veggiedent-images veggiedent-videos veggiedent-captions; do
+  for b in veggiedent-images veggiedent-videos; do
     curl -s -X POST "$SUPABASE_URL/storage/v1/object/list/$b" \
       -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY" \
       -H 'content-type: application/json' -d '{"prefix":"","limit":1000}'
@@ -1078,7 +1077,6 @@ O que a carga inicial produziu, e que segue valendo:
 Itens que já eram pendência antes do CMS e continuam abertos:
 
 - **Imagem de compartilhamento social (`og:image`)** ainda não aprovada pela Virbac. Passa a ser editável pelo painel quando chegar. A migração inicial **não** a inventa: `index.html` declara a pendência num comentário e o campo fica vazio no CMS.
-- **Legendas dos vídeos (`.vtt`)** nunca existiram como arquivo. O campo é opcional no esquema e está vazio; a LP só declara a faixa de legenda quando há arquivo cadastrado, então o navegador simplesmente não oferece legenda — o mesmo que a página fazia antes. Enviar um `.vtt` pelo painel passa a oferecê-la, sem mudança de código.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Faixa etária recomendada** no FAQ aguarda material técnico da Virbac; migrada como item não publicado.
 - **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixou de ser imagem própria na T14 e, na T24, deixou de ser campo: o banner passou a ter mídia própria (vídeo ou imagem) e nenhum vídeo pede miniatura. Ver "O que continua importado em código, de propósito".

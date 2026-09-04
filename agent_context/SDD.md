@@ -13,7 +13,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 | **Documento de seção** | O registro único que guarda todo o conteúdo de uma seção, incluindo suas listas. Uma seção ↔ um documento. |
 | **Esquema de seção** | A definição declarativa dos campos de uma seção: nome, tipo, rótulo em português, obrigatoriedade. É a fonte única que gera ao mesmo tempo a validação na API, o formulário no painel e os tipos consumidos pela LP. |
 | **Item de lista** | Elemento de uma coleção dentro de um documento de seção (um card, um passo, um parceiro, uma pergunta do FAQ, um vídeo, um link). |
-| **Mídia** | Arquivo de imagem ou vídeo enviado pelo painel e guardado no armazenamento. Referenciada por identificador, nunca por caminho digitado à mão. ~~Legenda~~ — tipo em remoção (T31, pendente em 2026-09-04): nunca teve uso real (0 registros na tabela). |
+| **Mídia** | Arquivo de imagem ou vídeo enviado pelo painel e guardado no armazenamento. Referenciada por identificador, nunca por caminho digitado à mão. Existiu um terceiro tipo, legenda (`caption`), removido do projeto inteiro na T31 (2026-09-04): nunca teve uso real (0 registros na tabela). |
 | **Publicação** | O ato de salvar. Não há rascunho: salvar torna o conteúdo visível na LP. |
 | **Visibilidade** | Sinalizador que retira uma seção ou um item de lista da LP sem apagar o conteúdo. Substitui os controles hoje em código (`isReadyForProduction`, `isContentReady`, blocos comentados). |
 | **Metadados da página** | Título, descrição e imagem de compartilhamento usados por buscadores e previews de link. |
@@ -107,7 +107,7 @@ Quatro tabelas em Postgres (Supabase).
 | Coluna | Tipo | Nota |
 |---|---|---|
 | `id` | `uuid` PK | Referenciado pelos documentos de seção |
-| `kind` | `text` | `image` \| `video` \| `caption` |
+| `kind` | `text` | `image` \| `video` |
 | `storage_path` | `text` | Caminho no bucket |
 | `public_url` | `text` | URL pública servida ao navegador |
 | `mime_type`, `size_bytes`, `original_filename` | | |
@@ -323,7 +323,7 @@ Cada seção declara seus campos com esta forma:
 ```ts
 type FieldType =
   | 'texto-curto' | 'texto-longo' | 'lista-de-textos'
-  | 'imagem' | 'video' | 'legenda' | 'link' | 'booleano'
+  | 'imagem' | 'video' | 'link' | 'booleano'
 
 interface FieldSpec {
   name: string
@@ -375,7 +375,7 @@ Régua usada na Fase 4 para detectar divergência entre o implementado e o prete
 | **C-04** | Edição de campos de texto | Todo texto hoje presente nos 12 arquivos `*.content.ts` é editável pelo painel, incluindo textos alternativos, rótulos de botão, mensagens de erro do formulário e textos do modal de sucesso. Acentuação é preservada na ida e na volta. Salvar um campo obrigatório vazio é recusado com mensagem por campo. |
 | **C-05** | Gestão de itens de lista | Em cada uma das listas (navegação, cards de educação, passos da rotina, textos e benefícios do produto, vídeos, números da prova, parceiros, perguntas do FAQ, links do rodapé) é possível adicionar, editar, remover e reordenar; a ordem definida no painel é a ordem exibida na LP. |
 | **C-06** | Upload de imagens | Enviar uma imagem pelo painel a exibe na LP após salvar. O texto alternativo é obrigatório e acompanha a imagem. Arquivo de tipo não suportado é recusado com mensagem clara. |
-| **C-07** | Upload de vídeos | Um vídeo de porte equivalente aos existentes no projeto é enviado com sucesso, com progresso visível, e passa a ser reproduzido na LP. **Legendas** de cada vídeo também são enviáveis. **Não existe campo de miniatura**: a imagem exibida antes do carregamento vem do primeiro quadro do próprio arquivo, derivada automaticamente — pedir uma "imagem de pré-carregamento" a um operador leigo é pedir um dado que ele não tem como entender (decisão do usuário em 2026-09-03, ver `agent_context/CHANGELOG.md`). Os bytes do arquivo não passam pela API. |
+| **C-07** | Upload de vídeos | Um vídeo de porte equivalente aos existentes no projeto é enviado com sucesso, com progresso visível, e passa a ser reproduzido na LP. **Não existe campo de miniatura**: a imagem exibida antes do carregamento vem do primeiro quadro do próprio arquivo, derivada automaticamente — pedir uma "imagem de pré-carregamento" a um operador leigo é pedir um dado que ele não tem como entender (decisão do usuário em 2026-09-03, ver `agent_context/CHANGELOG.md`). Os bytes do arquivo não passam pela API. |
 | **C-08** | Visibilidade | Desligar uma seção a remove da LP sem apagar o conteúdo; religar a traz de volta idêntica. O mesmo vale para um item de lista. Nenhum texto de espaço reservado chega ao visitante. |
 | **C-09** | Metadados de busca e compartilhamento | Após alterar o título no painel, buscar o HTML da LP **sem executar JavaScript** já traz o novo título. Com a API indisponível, o mesmo pedido devolve a página com os metadados padrão, nunca um erro. |
 | **C-10** | Consumo do conteúdo pela LP | Nenhuma seção importa de `*.content.ts`; todas leem da API. A página não apresenta mudança visual perceptível em relação ao estado atual. Com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia ou quebrada. |
