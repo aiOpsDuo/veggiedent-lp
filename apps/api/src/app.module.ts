@@ -7,6 +7,7 @@ import { ContentModule } from './modules/content/content.module'
 import { LeadsModule } from './modules/leads/leads.module'
 import { MediaModule } from './modules/media/media.module'
 import { MetadataModule } from './modules/metadata/metadata.module'
+import { OperatorsModule } from './modules/operators/operators.module'
 import { RichTextModule } from './shared/infrastructure/rich-text.module'
 import { SupabaseModule } from './shared/infrastructure/supabase.module'
 import { AllExceptionsFilter } from './shared/presentation/all-exceptions.filter'
@@ -23,6 +24,7 @@ import { createValidationPipe } from './shared/presentation/validation.pipe'
     MetadataModule,
     MediaModule,
     LeadsModule,
+    OperatorsModule,
   ],
   providers: [
     { provide: APP_PIPE, useFactory: createValidationPipe },
