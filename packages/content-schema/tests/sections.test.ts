@@ -25,12 +25,6 @@ function replacingFirstItem(section: SectionKey, list: string, changes: Record<s
 }
 
 const invalidCases: Record<SectionKey, InvalidCase> = {
-  header: {
-    description: 'link de navegação sem destino',
-    document: replacingFirstItem('header', 'navLinks', { href: '' }),
-    errorPath: 'header.navLinks.0.href',
-    message: MESSAGES.required,
-  },
   hero: {
     description: 'título principal ausente',
     document: withoutField('hero', 'headline'),
@@ -60,12 +54,6 @@ const invalidCases: Record<SectionKey, InvalidCase> = {
     document: replacingFirstItem('demonstracao', 'videos', { visivel: undefined }),
     errorPath: 'demonstracao.videos.0.visivel',
     message: MESSAGES.required,
-  },
-  ingredientes: {
-    description: 'campo que não pertence à seção',
-    document: { ...validSectionDocuments.ingredientes, isContentReady: false },
-    errorPath: 'ingredientes.isContentReady',
-    message: MESSAGES.unknownField,
   },
   prova_autoridade: {
     description: 'dois números com a mesma posição de ordenação',

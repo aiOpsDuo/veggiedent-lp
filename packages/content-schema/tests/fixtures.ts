@@ -1,5 +1,5 @@
 /**
- * Documentos de exemplo das 12 seções, com o conteúdo que hoje vive nos
+ * Documentos de exemplo das 10 seções, com o conteúdo que hoje vive nos
  * arquivos `*.content.ts` da LP.
  *
  * Cada constante é tipada com o tipo derivado do esquema correspondente. Isso
@@ -13,9 +13,7 @@ import type {
   EducacaoDocument,
   FaqDocument,
   FooterDocument,
-  HeaderDocument,
   HeroDocument,
-  IngredientesDocument,
   OndeComprarDocument,
   ProdutoDocument,
   ProvaAutoridadeDocument,
@@ -27,22 +25,6 @@ import type {
 /** Identificadores de mídia de exemplo, no formato gravado em `media_assets`. */
 export function mediaId(slot: number): string {
   return `00000000-0000-4000-8000-${String(slot).padStart(12, '0')}`
-}
-
-export const headerDocument: HeaderDocument = {
-  logo: mediaId(1),
-  logoAlt: 'Veggiedent, por Virbac',
-  ctaDesktopLabel: 'Baixar o guia de cuidados diários',
-  ctaMobileLabel: 'Baixar o guia de cuidados diários',
-  menuButtonAriaLabel: 'Abrir menu',
-  mainNavAriaLabel: 'Menu principal',
-  navLinks: [
-    { visivel: true, ordem: 0, label: 'Saúde oral', href: '#educacao' },
-    { visivel: true, ordem: 1, label: 'Rotina de cuidado', href: '#rotina' },
-    { visivel: true, ordem: 2, label: 'Produto', href: '#produto' },
-    { visivel: true, ordem: 3, label: 'Onde comprar', href: '#onde-comprar' },
-    { visivel: true, ordem: 4, label: 'Perguntas frequentes', href: '#faq' },
-  ],
 }
 
 export const heroDocument: HeroDocument = {
@@ -121,10 +103,6 @@ export const demonstracaoDocument: DemonstracaoDocument = {
       captions: mediaId(8),
     },
   ],
-}
-
-export const ingredientesDocument: IngredientesDocument = {
-  heading: 'O que tem no Veggiedent',
 }
 
 export const provaAutoridadeDocument: ProvaAutoridadeDocument = {
@@ -235,13 +213,11 @@ export const footerDocument: FooterDocument = {
 }
 
 export const validSectionDocuments: SectionDocuments = {
-  header: headerDocument,
   hero: heroDocument,
   educacao: educacaoDocument,
   rotina: rotinaDocument,
   produto: produtoDocument,
   demonstracao: demonstracaoDocument,
-  ingredientes: ingredientesDocument,
   prova_autoridade: provaAutoridadeDocument,
   captura_lead: capturaLeadDocument,
   onde_comprar: ondeComprarDocument,

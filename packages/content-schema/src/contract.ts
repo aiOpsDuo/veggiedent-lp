@@ -73,17 +73,19 @@ export interface SectionSchema {
 }
 
 /**
- * As 12 secoes, na ordem em que aparecem na pagina (apps/lp/src/App.tsx).
+ * As 10 secoes, na ordem em que aparecem na pagina (apps/lp/src/App.tsx).
  * O conjunto e fechado: o CMS edita secoes existentes, nunca cria tipos novos.
+ * `header` nao entra: o cabecalho saiu do CMS (dados fixos em codigo, ver
+ * apps/lp/src/components/layout/Header). Uma segunda secao, sem conteudo
+ * aprovado alem do titulo, foi removida do projeto inteiro na mesma decisao
+ * — ver agent_context/CHANGELOG.md, entrada de 2026-09-04.
  */
 export const SECTION_KEYS = [
-  'header',
   'hero',
   'educacao',
   'rotina',
   'produto',
   'demonstracao',
-  'ingredientes',
   'prova_autoridade',
   'captura_lead',
   'onde_comprar',

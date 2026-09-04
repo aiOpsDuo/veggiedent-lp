@@ -38,13 +38,11 @@ export type SectionDocument<S extends SectionSchema> = Prettify<FieldsShape<S['f
 
 export type SectionDocumentOf<K extends SectionKey> = SectionDocument<(typeof sectionSchemas)[K]>
 
-export type HeaderDocument = SectionDocumentOf<'header'>
 export type HeroDocument = SectionDocumentOf<'hero'>
 export type EducacaoDocument = SectionDocumentOf<'educacao'>
 export type RotinaDocument = SectionDocumentOf<'rotina'>
 export type ProdutoDocument = SectionDocumentOf<'produto'>
 export type DemonstracaoDocument = SectionDocumentOf<'demonstracao'>
-export type IngredientesDocument = SectionDocumentOf<'ingredientes'>
 export type ProvaAutoridadeDocument = SectionDocumentOf<'prova_autoridade'>
 export type CapturaLeadDocument = SectionDocumentOf<'captura_lead'>
 export type OndeComprarDocument = SectionDocumentOf<'onde_comprar'>

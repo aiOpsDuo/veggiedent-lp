@@ -35,7 +35,7 @@ function findImageFields(): ImageFieldLocation[] {
 }
 
 /**
- * A única imagem opcional das 12 seções, e por quê: o fundo do banner da
+ * A única imagem opcional das 10 seções, e por quê: o fundo do banner da
  * Demonstração é **vídeo ou imagem**, à escolha de quem edita o conteúdo. Exigir
  * a imagem obrigaria a enviar as duas coisas para usar uma só. Toda outra imagem
  * do CMS continua obrigatória — sem ela fica um buraco no layout, e é essa a
@@ -48,7 +48,7 @@ function isAlternativeToAnotherField({ section, fields, index }: ImageFieldLocat
 }
 
 describe('invariantes do esquema de seção', () => {
-  it('percorre as 12 seções e não encontra nenhuma violação', () => {
+  it('percorre as 10 seções e não encontra nenhuma violação', () => {
     const violations = SECTION_KEYS.flatMap((key) => checkSchemaInvariants(sectionSchemas[key]))
     expect(violations).toEqual([])
   })
@@ -89,7 +89,7 @@ describe('invariantes do esquema de seção', () => {
     },
   )
 
-  it('toda imagem das 12 seções é obrigatória, e o texto alternativo também', () => {
+  it('toda imagem das 10 seções é obrigatória, e o texto alternativo também', () => {
     const imagesInSections = findImageFields().filter(
       (location) => location.section !== 'site_metadata' && !isAlternativeToAnotherField(location),
     )

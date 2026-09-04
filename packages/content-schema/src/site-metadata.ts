@@ -4,7 +4,7 @@ import { optionalImage } from './fields'
 /**
  * Metadados da página: título, descrição e imagem de compartilhamento usados
  * por buscadores e previews de link. Não é uma seção — não tem listas e não
- * entra no conjunto fechado das 12 chaves —, mas é declarado com o mesmo
+ * entra no conjunto fechado das 10 chaves —, mas é declarado com o mesmo
  * contrato de campos, para que o painel gere seu formulário do mesmo jeito.
  */
 export const siteMetadataSchema = {

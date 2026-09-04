@@ -121,16 +121,10 @@ describe('tipos de campo do contrato', () => {
 
 describe('visibilidade e ordenação dos itens de lista', () => {
   it('mantém a ordem em que os itens foram gravados', () => {
-    const result = validateSectionDocument('header', validSectionDocuments.header)
-    const labels = result.valid ? result.data.navLinks.map((link) => link.label) : []
+    const result = validateSectionDocument('captura_lead', validSectionDocuments.captura_lead)
+    const labels = result.valid ? result.data.porteOptions.map((option) => option.label) : []
 
-    expect(labels).toEqual([
-      'Saúde oral',
-      'Rotina de cuidado',
-      'Produto',
-      'Onde comprar',
-      'Perguntas frequentes',
-    ])
+    expect(labels).toEqual(['Pequeno', 'Médio', 'Grande'])
   })
 
   it('aceita um item despublicado sem apagar o conteúdo', () => {
