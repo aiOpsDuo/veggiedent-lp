@@ -9,7 +9,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 | **Landing page (LP)** | A página pública do Veggiedent, hoje em `src/`. Único consumidor público do conteúdo. |
 | **Painel** | A interface de administração, servida sob `/admin`, usada pelos operadores. |
 | **Operador** | Pessoa autenticada que edita conteúdo e consulta leads. Todos os operadores têm o mesmo nível de acesso. |
-| **Seção** | Uma das 12 áreas de conteúdo da LP (`header`, `hero`, `educacao`, `rotina`, `produto`, `ingredientes`, `demonstracao`, `prova_autoridade`, `captura_lead`, `onde_comprar`, `faq`, `footer`). O conjunto é fechado: o CMS edita seções existentes, nunca cria tipos novos. |
+| **Seção** | Uma das **9** áreas de conteúdo da LP editáveis pelo CMS (`hero`, `educacao`, `rotina`, `produto`, `demonstracao`, `prova_autoridade`, `captura_lead`, `onde_comprar`, `faq`). O conjunto é fechado: o CMS edita seções existentes, nunca cria tipos novos. `header`, `ingredientes` e `footer` **não são seções do CMS** — saíram em 2026-09-04 (T28 e T32): `ingredientes` foi removida do projeto, `header` e `footer` viraram conteúdo fixo em código. |
 | **Documento de seção** | O registro único que guarda todo o conteúdo de uma seção, incluindo suas listas. Uma seção ↔ um documento. |
 | **Esquema de seção** | A definição declarativa dos campos de uma seção: nome, tipo, rótulo em português, obrigatoriedade. É a fonte única que gera ao mesmo tempo a validação na API, o formulário no painel e os tipos consumidos pela LP. |
 | **Item de lista** | Elemento de uma coleção dentro de um documento de seção (um card, um passo, um parceiro, uma pergunta do FAQ, um vídeo, um link). |
