@@ -19,6 +19,30 @@ export type SignInResult =
 /** Cancela a observação da sessão. */
 export type Unsubscribe = () => void
 
+/** Os dois tokens que o link de convite entrega no fragmento da URL. */
+export interface ActivationTokens {
+  readonly accessToken: string
+  readonly refreshToken: string
+}
+
+/**
+ * `link-invalido` cobre todo motivo pelo qual o Supabase recusa os tokens do
+ * fragmento — expirado, já usado, malformado. Não há como (nem por que)
+ * distinguir esses casos para quem só está tentando ativar a própria conta.
+ */
+export type ActivationRejection = 'link-invalido'
+
+export type ActivationResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly rejection: ActivationRejection }
+
+/** `indisponivel` é a única recusa possível para quem já está autenticado. */
+export type PasswordUpdateRejection = 'indisponivel'
+
+export type PasswordUpdateResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly rejection: PasswordUpdateRejection }
+
 /**
  * Porta de autenticação (mesma inversão de dependência que a API aplica em
  * `TokenVerifier`): o painel declara o que precisa — entrar, sair e ser avisado
@@ -37,4 +61,20 @@ export interface AuthGateway {
   observeSession(listener: (session: OperatorSession | null) => void): Unsubscribe
   signIn(credentials: OperatorCredentials): Promise<SignInResult>
   signOut(): Promise<void>
+
+  /**
+   * Estabelece a sessão a partir dos tokens que o link de convite entrega no
+   * fragmento da URL (SDD § D-09) — a contraparte, do lado do convidado, de
+   * `SupabaseOperatorDirectory.invite` na API. Sucesso aqui já deixa a sessão
+   * `ativa` (o mesmo aviso de `observeSession` dispara), e é o que permite à
+   * tela de ativação levar o convidado ao painel sem pedir login de novo.
+   */
+  activate(tokens: ActivationTokens): Promise<ActivationResult>
+
+  /**
+   * Define a senha do operador **já autenticado** pela sessão que `activate`
+   * estabeleceu. Não é uma segunda forma de entrar — é o mesmo Supabase Auth,
+   * completando a jornada que o convite começou.
+   */
+  setPassword(password: string): Promise<PasswordUpdateResult>
 }

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { FieldValidationError } from '../domain/field-validation.error'
+import { OperatorRemovalRefusedError } from '../domain/operator-removal-refused.error'
 import { ResourceInUseError } from '../domain/resource-in-use.error'
 import { toErrorResponse } from './error-response.factory'
 import { INTERNAL_ERROR_MESSAGE, INVALID_DATA_MESSAGE } from './error-messages'
@@ -43,6 +44,24 @@ describe('toErrorResponse', () => {
       error: 'Recurso em uso por outro registro.',
     })
     expect(JSON.stringify(response)).not.toContain('Herói')
+  })
+
+  it('traduz recusa de remover a si mesmo para 409 com mensagem clara', () => {
+    const response = toErrorResponse(new OperatorRemovalRefusedError('self'))
+
+    expect(response).toEqual({
+      statusCode: HttpStatus.CONFLICT,
+      error: 'Um operador não pode remover a própria conta.',
+    })
+  })
+
+  it('traduz recusa de remover o último operador para 409 com mensagem clara', () => {
+    const response = toErrorResponse(new OperatorRemovalRefusedError('last-operator'))
+
+    expect(response).toEqual({
+      statusCode: HttpStatus.CONFLICT,
+      error: 'Não é possível remover o último operador restante.',
+    })
   })
 
   it('não expõe detalhe de exceção desconhecida', () => {

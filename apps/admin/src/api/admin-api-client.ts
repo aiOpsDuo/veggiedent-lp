@@ -31,6 +31,14 @@ import type {
   MetadataSaveResult,
   SiteMetadataDetail,
 } from '../metadata/metadata-gateway'
+import type {
+  OperatorInvite,
+  OperatorInviteResult,
+  OperatorRemoveResult,
+  OperatorsGateway,
+  OperatorsListResult,
+  OperatorView,
+} from '../operators/operators-gateway'
 
 /**
  * O que a API respondeu a uma chamada administrativa autenticada.
@@ -45,6 +53,7 @@ export type AdminAccessCheck = 'autorizado' | 'nao-autorizado' | 'indisponivel'
 const UNAUTHORIZED = 401
 const FORBIDDEN = 403
 const UNPROCESSABLE_ENTITY = 422
+const CONFLICT = 409
 
 /**
  * Endpoint usado para conferir se a API aceita o token do operador.
@@ -63,6 +72,8 @@ const METADATA_PATH = '/admin/metadata'
 
 const LEADS_PATH = '/admin/leads'
 const LEADS_EXPORT_PATH = `${LEADS_PATH}/export`
+
+const OPERATORS_PATH = '/admin/operators'
 
 /** Nome usado quando a resposta da exportação não traz o dela. */
 const FALLBACK_EXPORT_FILENAME = 'leads.csv'
@@ -136,7 +147,9 @@ function readErrorMessage(body: ApiErrorBody, status: number): string {
  * Supabase é usado exclusivamente para autenticar. O token vai em cada
  * requisição, no mesmo cabeçalho que a guarda da API já lê.
  */
-export class AdminApiClient implements SectionsGateway, MediaGateway, MetadataGateway, LeadsGateway {
+export class AdminApiClient
+  implements SectionsGateway, MediaGateway, MetadataGateway, LeadsGateway, OperatorsGateway
+{
   private readonly baseUrl: string
 
   constructor(
@@ -312,6 +325,44 @@ export class AdminApiClient implements SectionsGateway, MediaGateway, MetadataGa
     return outcome.kind === 'ok'
       ? { status: 'excluido' }
       : { status: 'falha', message: messageOf(outcome) }
+  }
+
+  async listOperators(accessToken: string): Promise<OperatorsListResult> {
+    const outcome = await this.request(accessToken, OPERATORS_PATH)
+    if (outcome.kind !== 'ok') {
+      return { status: 'falha', message: messageOf(outcome) }
+    }
+    return { status: 'ok', value: Array.isArray(outcome.body) ? (outcome.body as OperatorView[]) : [] }
+  }
+
+  async inviteOperator(accessToken: string, email: string): Promise<OperatorInviteResult> {
+    const outcome = await this.request(accessToken, OPERATORS_PATH, {
+      method: 'POST',
+      body: { email },
+    })
+    if (outcome.kind === 'ok') {
+      return isRecord(outcome.body)
+        ? { status: 'convidado', value: outcome.body as unknown as OperatorInvite }
+        : { status: 'falha', message: UNREADABLE_MESSAGE }
+    }
+    if (outcome.kind === 'recusado' && outcome.status === UNPROCESSABLE_ENTITY) {
+      const fieldMessage = Object.values(outcome.fields ?? {})[0]
+      return { status: 'invalido', message: fieldMessage ?? messageOf(outcome) }
+    }
+    return { status: 'falha', message: messageOf(outcome) }
+  }
+
+  async removeOperator(accessToken: string, id: string): Promise<OperatorRemoveResult> {
+    const outcome = await this.request(accessToken, `${OPERATORS_PATH}/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    })
+    if (outcome.kind === 'ok') {
+      return { status: 'removido' }
+    }
+    if (outcome.kind === 'recusado' && outcome.status === CONFLICT) {
+      return { status: 'recusado', message: outcome.message }
+    }
+    return { status: 'falha', message: messageOf(outcome) }
   }
 
   private async request(

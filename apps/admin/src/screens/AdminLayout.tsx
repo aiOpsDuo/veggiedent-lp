@@ -1,12 +1,13 @@
 import { Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/auth-context'
-import { LEADS_PATH, METADATA_PATH, SECTIONS_PATH } from '../routing/paths'
+import { LEADS_PATH, METADATA_PATH, OPERATORS_PATH, SECTIONS_PATH } from '../routing/paths'
 
 /** As áreas do painel, na ordem em que o operador costuma percorrê-las. */
 const AREAS: readonly { readonly path: string; readonly label: string }[] = [
   { path: SECTIONS_PATH, label: 'Seções da página' },
   { path: METADATA_PATH, label: 'Metadados da página' },
   { path: LEADS_PATH, label: 'Leads recebidos' },
+  { path: OPERATORS_PATH, label: 'Operadores' },
 ]
 
 /**
