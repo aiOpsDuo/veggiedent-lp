@@ -162,3 +162,50 @@ describe('LP com a API de conteúdo respondendo', () => {
     expect(document.getElementById('ingredientes')).toBeNull()
   })
 })
+
+/**
+ * Regressão da T27 — o usuário relatou que desligar uma seção no painel não a
+ * tira da página (ligar, segundo ele, funciona).
+ *
+ * A API e o painel foram verificados à parte (SDD § C-08; CHANGELOG de
+ * 2026-09-04) e estão corretos. O que estes dois testes cobrem é a ponta que
+ * faltava medir: o caminho **instantâneo → API** do lado da LP — a mesma
+ * garantia que a suíte acima já prova para "API fora do ar" e "API
+ * respondendo", agora aplicada especificamente a uma seção que muda de estado
+ * entre o instantâneo embutido e a resposta da API, nas duas direções.
+ */
+describe('Alterar a visibilidade de uma seção entre o instantâneo e a API (T27)', () => {
+  it('some da página uma seção que o instantâneo tinha e a API deixou de entregar (desligar)', async () => {
+    // `faq` está publicada no instantâneo embutido — é o que o navegador
+    // mostra no primeiro quadro, antes de qualquer resposta de rede.
+    expect(contentSnapshot.sections.faq).toBeDefined()
+
+    const semFaq = structuredClone(contentSnapshot) as PublishedContent
+    delete semFaq.sections.faq
+
+    vi.stubGlobal('fetch', apiRespondendo(semFaq))
+
+    await renderizarPagina()
+
+    await waitFor(() => {
+      expect(document.getElementById('faq')).toBeNull()
+    })
+  })
+
+  it('mostra na página uma seção que o instantâneo não tinha e a API passou a entregar (religar)', async () => {
+    // `ingredientes` está despublicada no instantâneo embutido de propósito.
+    expect(contentSnapshot.sections.ingredientes).toBeUndefined()
+
+    const comIngredientes = structuredClone(contentSnapshot) as PublishedContent
+    comIngredientes.sections.ingredientes = { heading: 'Título vindo só da API' }
+
+    vi.stubGlobal('fetch', apiRespondendo(comIngredientes))
+
+    await renderizarPagina()
+
+    await waitFor(() => {
+      expect(document.getElementById('ingredientes')).not.toBeNull()
+    })
+    expect(screen.getByText('Título vindo só da API')).toBeInTheDocument()
+  })
+})
