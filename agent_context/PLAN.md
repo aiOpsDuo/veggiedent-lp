@@ -310,7 +310,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T10
 - Execução: sequencial
 - Toca documentação: sim — README passa a documentar **um** endereço de desenvolvimento; as portas individuais viram detalhe interno.
-- Status: pendente
+- Status: **concluída e ACEITA.** A nota de aceitação não havia sido escrita; corrigido nesta retomada, após verificar tudo de novo. `apps/lp/vite.config.ts` implementa o proxy da entrada única (`/admin` → 5174 com `ws: true` para o HMR do painel, `/api` → 3000), com comentário citando a própria T20. Verificado pelo orquestrador, com os três processos já em pé: `http://localhost:5173/` devolve a LP (`<title>Veggiedent — Rotina de cuidado bucal para cachorros | Virbac</title>`); `http://localhost:5173/admin/` devolve o painel (`<title>Painel — Veggiedent</title>`) e `/admin` sem barra redireciona para `/admin/` com `200` ao seguir — o defeito que a T10 havia encontrado não voltou; `http://localhost:5173/api/health` responde `200 {"status":"ok"}`.
 
 ### T21 — Orquestração com Docker e proxy reverso
 - Descrição: subir as três aplicações com um comando, atrás de um proxy reverso que expõe **uma porta única** com o mesmo mapa de caminhos de produção (`/`, `/admin`, `/api/*`). Serve para desenvolvimento e como ambiente de homologação, e é o que a T16 usa como base para publicar em vez de desenhar o roteamento do zero. Alvo declarado pelo usuário em 2026-09-03.
@@ -374,7 +374,10 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T24
 - Execução: sequencial
 - Toca documentação: sim — README, em variáveis de ambiente, colunas do CSV e endpoints.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-04, branch `feat/T26-remove-rdstation` (5 commits, sem merge em `main`). A nota de aceitação não havia sido escrita quando a implementação terminou; corrigido agora, na retomada, reverificando tudo do zero em vez de confiar no resumo herdado (a T8 já registrou o risco de dar algo por encaminhado sem medir).
+- Verificação do orquestrador, rodada nesta retomada: `npm run test` a partir da raiz — **657 testes** (302 API + 198 painel + 34 LP + 123 content-schema), `npm run typecheck` e `npm run build` limpos. `grep -ril "rdstation\|rd station\|rd_station" apps/ packages/ serverless/` não retornou nada; `serverless/` não existe mais.
+- Migração `20260903140000_drop_rdstation_from_leads.sql` aplicada ao projeto hospedado: o esquema PostgREST de `leads` tem hoje **13 colunas**, nenhuma delas `rdstation_status`/`rdstation_error` (nem `aceite_lgpd`, removida na T18). `verify-isolation.mjs` rodado contra o hospedado: **exit 0**, portão da Data API `REFORÇADO`. CSV com **12 colunas**, conforme RN-01.
+- Regressão provada contra a API real, não só lida no código: `POST /api/leads` sem `aceite_lgpd` respondeu `422` com `{"aceite_lgpd":"Consentimento LGPD é obrigatório."}`; `POST` com o campo `website` (honeypot) preenchido respondeu `200 {"success":true}` **sem gravar** — `GET` direto à tabela por `SUPABASE_SECRET_KEY` confirmou **0 leads** após as duas tentativas. Banco seguiu vazio.
 
 ### T25 — Remover do painel os campos que só fazem sentido para quem constrói a página
 - Descrição: quatro grupos de campos violam o princípio declarado pelo usuário e saem do painel (decisão de 2026-09-03, detalhada no CHANGELOG):
@@ -387,6 +390,31 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T26 — a saída do RD Station muda o peso do argumento do item 1, e as duas tarefas tocam o módulo de leads.
 - Execução: sequencial
 - Toca documentação: sim — README, na lista do que é editável.
+- Status: pendente
+
+### T27 — Corrigir o desligar de seção
+- Descrição: o usuário relatou que desligar uma seção não funciona, e que ligar funciona. **Investigar as duas pontas antes de corrigir** — não assumir a hipótese abaixo.
+- **O que o orquestrador já verificou, para não ser refeito:** a **API está correta** — `PATCH /api/admin/sections/:key/visibility` com `false` responde `200`, a seção some de `GET /api/content` e o banco grava `is_published = false`; com `true` ela volta. O caminho no painel (`SectionEditorScreen` → `admin-api-client` → `editor-state`) foi lido e parece correto.
+- **Hipótese principal, sustentada por medição:** o instantâneo embutido na LP tinha **11 seções** enquanto a API devolvia **12**. A LP renderiza o instantâneo primeiro e depois troca pela resposta da API — o que explicaria a assimetria: ligar faz aparecer, desligar não faz sumir, porque a página segue exibindo a cópia antiga. Se for isso, o defeito é de **consumo na LP**, não do painel.
+- Rastreável a: SDD § D-08 (instantâneo de reserva), critério C-08, C-10.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; **teste que prova que desligar uma seção a remove da página**, e que ligar a traz de volta, cobrindo o caminho instantâneo → API; **verificação em navegador real**, desligando e religando uma seção pela interface e conferindo a página. Prove por mutação que o teste novo falha se a correção for desfeita.
+- **Segundo item da tarefa — o risco R-01, que continua vivo:** `apps/lp/src/sections/CapturaLead/services/submitLead.ts` monta o payload com nove campos e **omite `conhece_virbac`, `usa_produto_virbac` e `qual_produto_virbac`**, embora o formulário os colete do visitante e a API os aceite e grave. Verificado pelo orquestrador em 2026-09-04. Corrigir, e o critério precisa ser exercido **pelo caminho do visitante** — preencher e enviar o formulário na página, não um `POST` de linha de comando. Ver a entrada do CHANGELOG de 2026-09-04 sobre o erro de processo que deixou isso passar por dez tarefas.
+- Dependências: T26
+- Execução: sequencial
+- Toca documentação: só se a correção mudar como o instantâneo é usado.
+- Status: pendente
+
+### T28 — Remover a seção Ingredientes e tirar o Header do CMS
+- Descrição: duas remoções decididas pelo usuário em 2026-09-04 (detalhadas no CHANGELOG).
+  1. **A seção `ingredientes` sai do projeto inteiro** — esquema, componente, montagem da página, instantâneo e o registro no banco. Ela nunca teve conteúdo além do título: o material técnico da Virbac que a destravaria nunca chegou.
+  2. **O `header` sai do CMS**, mas **permanece na página**. Todos os seus dados voltam a ser fixos em código, com **exatamente os textos de hoje** — links de navegação, rótulos de botão e textos de acessibilidade. Não inventar nem "melhorar" texto nenhum: copiar os valores atuais do banco.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-04; PRD § Features.
+- Consequência: o conjunto de seções editáveis cai de 12 para **10**. Onde houver contagem ou lista fixa de 12 (esquema, testes, painel, documentação), atualizar.
+- **Achado de produto a resolver junto:** o painel permitiu publicar uma seção vazia sem nenhum aviso, e a página exibiu um bloco com só um título. Avaliar se cabe um aviso ao operador ao publicar seção sem conteúdo além do título — **proponha, não implemente por conta própria**, e relate.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; `grep -ri "ingredientes"` em `apps/` e `packages/` não retorna nada de produção; o painel lista **10** seções; o cabeçalho da página continua **visualmente idêntico**, verificado em navegador real contra o estado atual; o instantâneo é regenerado e o registro de `ingredientes` sai do banco.
+- Dependências: T27
+- Execução: sequencial
+- Toca documentação: sim — README e a lista de seções editáveis.
 - Status: pendente
 
 ## Ordem de execução

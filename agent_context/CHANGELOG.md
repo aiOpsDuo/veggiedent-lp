@@ -290,3 +290,37 @@ Motivo: a varredura pedida na T24 encontrou quatro grupos de campos que violam o
 4. **`metadata.canonicalUrl`.** SEO tecnico; valor errado pode tirar a pagina do indice.
 
 Impacto: registrado como tarefa **T25**, executada depois da T26 — a saida do RD Station muda o peso do argumento do item 1 (o valor deixa de alimentar um sistema externo e passa a valer so para o banco e o CSV), e mexer nos dois de uma vez no modulo de leads criaria conflito.
+
+## 2026-09-04 — A secao Ingredientes sai do projeto; o Header sai do CMS
+
+Documentos afetados: PRD.md, SDD.md, PLAN.md
+
+Motivo: o usuario, testando o painel, levantou tres pontos.
+
+**1. A secao "Ingredientes" e removida do projeto.** Ela nunca foi finalizada: o codigo original a marcava `[BLOQUEADO]` — "sem conteudo aprovado ate a chegada do material tecnico da Virbac" — e ela tinha **um unico campo**, o titulo "O que tem no Veggiedent", sem lista de ingredientes nem texto. Ficava escondida por um sinalizador em codigo, e o CMS preservou isso migrando-a como nao publicada. Como o material da Virbac nunca chegou, mante-la e manter um espaco vazio permanente. O usuario decidiu remover.
+
+   Registro de um efeito colateral real: ao testar o botao de ativar, o usuario publicou essa secao, e a **landing page passou a exibir um bloco com so um titulo e nada embaixo**. O orquestrador despublicou imediatamente como mitigacao (11 secoes de volta) antes de qualquer tarefa. Isso e evidencia de um problema de produto alem do bug: o painel permite publicar uma secao vazia sem nenhum aviso.
+
+**2. O Header sai do CMS.** O usuario determinou que todos os dados do cabecalho voltem a ser fixos em codigo — links de navegacao, rotulos de botao e textos de acessibilidade. O conteudo atual vai para o codigo **sem alteracao de texto**. Consequencia: o conjunto de secoes editaveis cai de 12 para **10** (saem `header` e `ingredientes`), o que contradiz a linha do PRD que lista as 12 secoes como editaveis — corrigida.
+
+**3. Defeito relatado: desligar uma secao nao funciona (ligar funciona).** Diagnostico do orquestrador, feito antes de delegar:
+   - **A API esta correta.** Verificado por requisicao direta: `PATCH .../visibility` com `false` responde `200`, a secao some de `GET /api/content`, o banco grava `is_published = false`; com `true` ela volta.
+   - O caminho no painel (componente → gateway → reducer) foi lido e **parece correto**: o `onChange` envia `event.target.checked`, o gateway faz o `PATCH`, e o reducer aplica `summaryOf(action.section)`.
+   - **Hipotese principal, sustentada por medicao:** o instantaneo embutido na LP tinha **11 secoes** enquanto a API devolvia **12**. A LP renderiza o instantaneo primeiro e so depois troca pela resposta da API. Isso explica a assimetria relatada — **ativar** faz a secao aparecer (o instantaneo nao a tem, a API passa a ter), e **desativar** pode nao faze-la sumir se a pagina continuar exibindo a copia antiga. O sintoma "so o ativar funciona" e exatamente o que esse desenho produz.
+   - O usuario nao chegou a informar se o que falhou foi o painel ou a pagina; a tarefa precisa investigar as duas pontas em vez de assumir a hipotese.
+
+Impacto: tarefas **T27** (corrigir o defeito de visibilidade) e **T28** (remover Ingredientes do projeto e o Header do CMS).
+
+## 2026-09-04 — ERRO DO ORQUESTRADOR: dei o risco R-01 como encaminhado sem nunca verificar o caminho completo
+
+Documento afetado: PLAN.md (T8, T14, T16), SDD.md (C-11)
+
+Motivo: o risco **R-01** — o formulario coleta `conheceVirbac`, `usaProdutoVirbac` e `qualProdutoVirbac` e os descarta no envio — foi encontrado por mim na Fase 2 e acompanhado por dez tarefas. Ao aceitar a T8, verifiquei que a **API** grava os tres campos, enviando um `POST /api/leads` direto com eles no corpo, e registrei o risco como resolvido do lado da API, faltando "so a fiacao da LP", que eu atribui primeiro a T16 e depois assumi coberta pela T14.
+
+Verificacao feita hoje, apos a T26: **o defeito continua vivo**. `apps/lp/src/sections/CapturaLead/services/submitLead.ts` monta um payload com nove campos — `nome`, `email`, `telefone`, `nome_cachorro`, `porte_cachorro`, `cidade_estado`, `aceite_lgpd`, `aceite_comunicacoes`, `origem` — e **os tres campos do R-01 nao estao la**, embora `useLeadForm.ts` e `LeadCaptureForm.tsx` os coletem do visitante. A API aceita e grava os tres quando eles chegam (provado hoje por requisicao direta); ninguem os envia.
+
+Onde o raciocinio falhou: **verifiquei o produtor e nao o consumidor** — exatamente o erro que eu venho cobrando dos subagentes desde a T6 e que coloquei como aviso fixo em todas as delegacoes ("teste verde nao prova contrato com o consumidor"). Testei que a API **aceita** os campos; nunca testei que a LP **envia**. O criterio C-11 do SDD dizia "um envio do formulario cria um registro com todos os campos preenchidos", e eu o satisfiz com um envio meu, de linha de comando, em vez de pelo caminho que o visitante usa.
+
+Agravante de processo: nenhuma tarefa teve "a LP envia os tres campos" como criterio explicito. A T8 fechou a API, a T14 religou o **conteudo** da LP e nao o formulario, e a T26 trocou a URL do endpoint sem tocar no payload. O risco atravessou dez tarefas porque cada uma cumpriu o proprio criterio, e o criterio que fecharia o defeito nunca foi escrito.
+
+Impacto: acrescentado como item explicito da **T27**, com criterio verificavel pelo caminho do visitante — nao por requisicao minha. Regra derivada: risco que atravessa camadas precisa de um criterio de "pronto" que exercite **a camada mais externa**, na tarefa que a toca; verificar a camada interna nao encerra o risco, e "sera coberto por uma tarefa futura" precisa virar criterio escrito naquela tarefa, nunca uma nota de acompanhamento.
