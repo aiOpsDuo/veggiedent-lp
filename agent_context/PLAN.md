@@ -424,6 +424,29 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Toca documentação: sim — README e a lista de seções editáveis.
 - Status: pendente
 
+### T29 — Gestão de operadores dentro do painel
+
+- Descrição: o usuário decidiu reverter o trade-off da D-03 (operadores criados só pelo painel do Supabase) e trazer isso para dentro do CMS. Nova tela no painel: listar operadores, convidar um novo por e-mail (gera link de ativação de uso único, mostrado uma vez, sem envio automático — ver D-09 e o motivo de não usar `inviteUserByEmail`), e remover um operador existente. Endpoints novos: `GET/POST /api/admin/operators`, `DELETE /api/admin/operators/:id`, todos atrás da guarda global já existente.
+- Rastreável a: SDD § D-09 (nova), § D-03 (trade-off revisto), § C-13, § R-10; `agent_context/CHANGELOG.md`, entrada de 2026-09-04 sobre a reversão da decisão.
+- **Regras inegociáveis, testadas por mutação:** um operador não pode remover a si mesmo; não é possível remover o último operador restante. As duas travariam o acesso ao próprio painel sem ninguém para reabri-lo.
+- **A chave secreta do Supabase nunca chega ao navegador.** A tela de operadores fala só com a API do CMS; quem fala com a Admin API do Supabase é a API, no servidor.
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; teste de regressão provando (por mutação) que remover a si mesmo e remover o último operador são recusados com `409`; **verificação em navegador real**: convidar um e-mail novo pelo painel, copiar o link mostrado, abri-lo numa aba anônima, definir senha e logar no painel com a conta nova; listar mostra os dois operadores; remover o operador de teste funciona e ele deixa de aparecer na lista; o operador original (`rodrigo.oliveira@duo.studio`) nunca é removido durante o teste.
+- Dependências: nenhuma (independente de T28 — não compartilha arquivo; ver nota de execução)
+- **Execução: em worktree isolado**, paralelo a T28 (decisão do usuário em 2026-09-04) — ambas tocam o painel, mas T28 mexe em `header`/`ingredientes` e T29 numa tela nova; ainda assim, mantidas em árvores de trabalho separadas para não haver risco de concorrência de arquivo, conforme o guardrail do processo.
+- Toca documentação: sim — README ganha a seção de como convidar e remover um operador pelo painel, substituindo a instrução antiga de criar operador direto no Supabase.
+- Status: pendente
+
+### T30 — Revisão de usabilidade do painel administrativo (proposta, sem implementação)
+
+- Descrição: o usuário relatou que a interface do painel "está muito ruim" para facilitar o uso, sem detalhar o quê especificamente. Antes de qualquer mudança de UI, um levantamento: navegar o painel em navegador real, tela por tela (login, lista de seções, edição de cada tipo de campo, mídia, metadados, leads, e a nova tela de operadores da T29 se já existir), contra os critérios de usabilidade já aprovados no PRD (§ "Usabilidade": "um operador de marketing sem conhecimento técnico consegue localizar e alterar um texto específico da página sem treinamento além de uma explicação inicial curta"), e listar problemas concretos com evidência (print ou descrição precisa), não impressão geral.
+- Rastreável a: PRD § "Usabilidade"; `agent_context/CHANGELOG.md`, entrada de 2026-09-04.
+- **Esta tarefa não implementa nada.** Produz uma lista priorizada de problemas encontrados e, para cada um, uma proposta de correção com o esforço estimado (pequeno/médio/grande). O orquestrador leva a lista ao usuário para decidir o que vira tarefa nova no plano.
+- Critério de "pronto": documento de achados entregue ao orquestrador, cada item com: onde está (tela/componente), o que é ruim e por quê (referenciando o critério de usabilidade do PRD que ele viola), evidência real (não suposição), e proposta objetiva.
+- Dependências: nenhuma
+- **Execução: em worktree isolado**, sem tocar código — trabalho de leitura e navegação, não de escrita, então pode rodar em paralelo com T28 e T29 sem risco de conflito de arquivo mesmo que compartilhe alguma leitura de tela com a T29.
+- Toca documentação: não — o resultado é uma proposta para o usuário decidir, não um artefato de processo definitivo ainda.
+- Status: pendente
+
 ## Ordem de execução
 
 ```

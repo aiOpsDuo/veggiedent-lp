@@ -204,7 +204,7 @@ C4Container
 
 **Por quê:** (a) significaria armazenar e rotacionar senhas — responsabilidade de segurança que não precisamos assumir, já que o Supabase é dependência obrigatória do PRD e já resolve isso. A verificação por JWKS foi confirmada na documentação vigente do Supabase e não exige que a API guarde nenhum segredo de assinatura.
 
-**Trade-off aceito:** a criação de operadores acontece no painel do Supabase, não numa tela do CMS. Coerente com o PRD, que deixou gestão de papéis fora de escopo. Fica documentado no README.
+**Trade-off original, revisto em 2026-09-04:** até a T28, a criação de operadores acontecia só no painel do Supabase, não numa tela do CMS. O usuário decidiu trazer isso para dentro do painel — ver D-09. O que continua valendo do PRD é a parte que não mudou: **todos os operadores têm o mesmo nível de acesso**, sem papéis nem permissões diferenciadas.
 
 **Consequência de segurança:** a guarda é global e nega por padrão. Um endpoint só é público se alguém o marcar explicitamente — o esquecimento leva a "bloqueado", nunca a "exposto".
 
@@ -262,6 +262,23 @@ C4Container
 
 **Trade-off aceito:** o instantâneo envelhece entre builds, então uma falha prolongada da API pode exibir conteúdo defasado. Preferível a exibir nada, e a defasagem é visível apenas durante indisponibilidade.
 
+### D-09 — Gestão de operadores dentro do painel, via Admin API do Supabase, sem e-mail transacional
+
+**Escolhido:** o painel ganha uma tela para listar, convidar e remover operadores. A API expõe `/api/admin/operators/*`, atrás da mesma guarda global (D-03), e fala com a **Admin API** do Supabase Auth (`auth.admin.*`) usando a chave secreta — nunca o navegador fala direto com ela. Convidar um operador gera um **link de ativação de uso único** (`admin.generateLink({ type: 'invite', ... })`), devolvido uma única vez à tela para quem está convidando copiar e enviar pelo canal que preferir (e-mail pessoal, WhatsApp, Slack); o convidado abre o link e define a própria senha. Remover um operador chama `admin.deleteUser`.
+
+**Alternativas:** (a) `admin.inviteUserByEmail`, que envia o e-mail automaticamente pelo servidor de e-mail do próprio Supabase; (b) manter como estava — operador criado só pelo painel do Supabase.
+
+**Por quê não (a):** o projeto nunca enviou e-mail transacional antes, e o painel do Supabase deste projeto está no plano gratuito, cujo remetente embutido tem limite baixo de envios por hora e frequentemente cai em spam — descobrir isso na frente do usuário, no primeiro convite de verdade, é pior do que nunca depender disso. Gerar o link e deixar quem convida escolher o canal de envio evita essa dependência nova por completo, sem abrir mão do fluxo padrão do Supabase (o convidado ainda ativa a própria conta pelo link, nunca recebe senha definida por outra pessoa). **Se o usuário preferir o envio automático por e-mail no futuro, é uma troca de uma linha** (`inviteUserByEmail` em vez de `generateLink`), sem mudar contrato nem tela.
+
+**Por quê não (b):** foi a decisão original (D-03), revertida pelo usuário em 2026-09-04 — ver `agent_context/CHANGELOG.md`.
+
+**Trade-off aceito:** quem convida precisa copiar e enviar o link manualmente — um passo a mais do que o envio automático. Acionável porque quem cria um operador já é, por definição, alguém com acesso ao painel, ou seja, tecnicamente confortável o bastante para copiar um link.
+
+**Consequências de segurança, inegociáveis:**
+- A chave secreta do Supabase (`SUPABASE_SECRET_KEY`) já é usada pela API para outras coisas (D-01, D-05) e continua nunca saindo do servidor; nenhuma rota nova a expõe ao navegador.
+- Um operador **não pode remover a si mesmo** nem **remover o último operador restante** — as duas coisas travariam o painel sem ninguém para reabri-lo. Recusado com `409`.
+- O link de convite é de **uso único** e a tela nunca reexibe um link já gerado — se o convite expirar ou se perder, a ação é gerar um novo, não recuperar o antigo.
+
 ## Contratos de dados/API/interfaces
 
 Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
@@ -292,6 +309,9 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 | `POST /api/admin/media/upload-url` | Recebe nome, tipo e tamanho; devolve credencial temporária e caminho de destino |
 | `POST /api/admin/media` | Confirma o upload e registra a mídia; devolve o registro com a URL pública |
 | `GET /api/admin/media/:id` · `DELETE /api/admin/media/:id` | Consulta e remoção. A remoção é recusada com `409` se a mídia estiver referenciada por alguma seção |
+| `GET /api/admin/operators` | Lista os operadores (e-mail, criado em, último login) |
+| `POST /api/admin/operators` | Recebe um e-mail, convida via Admin API (D-09) e devolve o link de ativação de uso único — **só nesta resposta**, nunca mais tarde |
+| `DELETE /api/admin/operators/:id` | Remove um operador. Recusado com `409` se for o próprio operador autenticado, ou o último operador restante |
 | `GET /api/admin/leads` | Lista paginada, mais recente primeiro. Filtros `from` e `to` por data |
 | `GET /api/admin/leads/export` | Exportação em CSV com separador `;` e BOM UTF-8, respeitando os filtros |
 | `DELETE /api/admin/leads/:id` | Exclusão definitiva de um lead, para pedido do titular |
@@ -361,6 +381,7 @@ Régua usada na Fase 4 para detectar divergência entre o implementado e o prete
 | **C-10** | Consumo do conteúdo pela LP | Nenhuma seção importa de `*.content.ts`; todas leem da API. A página não apresenta mudança visual perceptível em relação ao estado atual. Com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia ou quebrada. |
 | **C-11** | Registro dos leads | Um envio do formulário cria um registro com todos os campos preenchidos, inclusive os três que hoje são descartados em produção (R-01). O honeypot preenchido não gera registro. **O banco do CMS é o único lugar onde o lead existe** — não há destino externo desde que o RD Station foi descontinuado (2026-09-03), o que torna a gravação a única barreira entre o envio e a perda do dado. |
 | **C-12** | Consulta e exportação de leads | A tela lista do mais recente ao mais antigo, com filtro por período, recortando o dia em **horário de Brasília (UTC−3)**, não em UTC. A exclusão remove o lead definitivamente. Nenhum lead é acessível sem autenticação. **Exportação (regra de negócio RN-01, abaixo):** o arquivo é `.csv`, traz **todos os dados preenchidos no formulário, um por coluna**, abre no Excel em português com acentuação correta, e respeita os filtros aplicados na tela. |
+| **C-13** | Gestão de operadores (D-09) | A tela lista os operadores existentes. Convidar um e-mail novo gera um link de ativação de uso único, mostrado uma vez; abrir esse link deixa o convidado definir a própria senha e acessar o painel. Remover um operador exige confirmação; é recusado com erro claro ao tentar remover a si mesmo ou o último operador restante. Nenhuma senha é definida ou visível para quem convida. |
 
 ### RN-01 — Exportação de leads em CSV
 
@@ -399,6 +420,7 @@ Nenhum outro projeto vinculado: o CMS e a LP vivem neste mesmo repositório e fo
 | **R-07** | Mover a LP da raiz para `apps/lp/` quebra caminhos de build, imports de assets e o deploy de uma página que já está em produção. | Migração isolada em uma tarefa própria do plano, cujo critério de pronto é o build e a checag| **R-08** | ~~Payload do RD Station a confirmar com a Virbac antes do go-live.~~ **Risco extinto em 2026-09-03**: a integração foi descontinuada e não há mais payload externo a confirmar. |
  Virbac como pendência externa registrada no README, não como decisão técnica deste projeto. |
 | **R-09** | Credencial do Supabase vazar para um build de navegador, quebrando o requisito de isolamento do PRD. | A chave secreta só é lida no app da API, que não passa pelo Vite. Verificação na Fase 4: buscar por credenciais nos artefatos de build da LP e do painel antes de aceitar a entrega. |
+| **R-10** | Gestão de operadores (D-09) mal implementada trava o acesso ao próprio painel — o único lugar de onde dá para corrigir isso é justamente o painel. | Bloqueio explícito, testado por mutação: recusar `409` a remover a si mesmo e a remover o último operador restante. Nenhum outro caminho de exclusão (ex.: direto no banco) é exposto pela API. |
 
 ## Nível de rigor da especificação
 
