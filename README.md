@@ -237,6 +237,28 @@ poucas centenas de bytes, e uma vez com o armazenamento, com o arquivo inteiro.
 mídia continua registrada, porque ela pode estar em uso em outra seção. Apagar de vez é
 `DELETE /api/admin/media/:id`, que recusa com `409` enquanto alguém a referenciar.
 
+#### Vídeo: o que o operador envia, e por que não existe campo de miniatura
+
+Na **Demonstração em vídeo** o operador envia duas coisas diferentes, e nenhuma delas é uma
+imagem de espera:
+
+| Onde | O que enviar | Obrigatório |
+|---|---|---|
+| **Fundo do banner** | Um **vídeo** (*Vídeo do banner*) **ou** uma **imagem** (*Imagem do banner*) — o que fizer mais sentido para a campanha | Nenhum dos dois. Com os dois enviados, o vídeo é o que aparece |
+| **Cada vídeo da lista** | O **arquivo de vídeo** e, opcionalmente, o **arquivo de legendas** (`.vtt`); mais o **título do vídeo**, que é texto | Só o arquivo de vídeo e o título |
+
+**Não existe campo de miniatura em vídeo nenhum, e isso é decisão, não esquecimento.** A imagem
+exibida antes de um vídeo tocar é o **primeiro quadro do próprio arquivo**: o navegador a
+carrega do vídeo que já foi enviado, sem ninguém precisar produzir e enviar uma imagem à parte.
+Pedir uma "imagem de pré-carregamento" seria pedir a quem escreve conteúdo um dado de quem
+constrói a página — o operador não teria como saber o que é, nem de onde tirar o arquivo.
+
+Isso vale igualmente para o banner: quando o fundo é vídeo, o que aparece antes de ele tocar é
+o primeiro quadro dele; quem navega com **menos movimento** (`prefers-reduced-motion`) vê esse
+mesmo quadro parado, sem reprodução automática. Quando o fundo é imagem, ela é tratada como
+**decorativa** — sem campo de descrição, escondida de leitores de tela —, porque o que o banner
+comunica está no título e no texto sobrepostos a ela.
+
 #### Imagem decorativa não tem campo de descrição, e isso é proposital
 
 Todo campo de imagem do esquema declara se a imagem é **informativa** ou **decorativa**
@@ -501,8 +523,9 @@ A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de
 { "sections": {
     "hero": { "image": "https://…/storage/v1/object/public/imagens/hero.png",
               "imageAlt": "Cão recebendo o petisco" },
-    "demonstracao": { "videos": [ { "video": "https://…/videos/demo.mp4",
-                                    "poster": "https://…/imagens/demo.png" } ] } },
+    "demonstracao": { "bannerVideo": "https://…/videos/banner.mp4",
+                      "videos": [ { "video": "https://…/videos/demo.mp4",
+                                    "captions": "https://…/legendas/demo.vtt" } ] } },
   "metadata": { "ogImage": "https://…/imagens/compartilhamento.png" } }
 ```
 
@@ -900,13 +923,15 @@ Quatro imagens não passaram para o CMS, por decisão do usuário registrada em
 | Prova de autoridade | `prova-autoridade/01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg` | São claims de produto, e o texto que os acompanha ("Formato em Z:" e afins) também vive em `ProductDifferentials.tsx`. Torná-los editáveis exigiria campos de imagem **e** de texto |
 
 Tudo o mais que aparece na página — logos, foto da abertura, packshot, cards, passos da
-rotina, kit de imagens, mosaico do formulário, logos dos parceiros, vídeos e miniaturas —
-vem do CMS.
+rotina, kit de imagens, mosaico do formulário, logos dos parceiros e vídeos — vem do CMS.
 
-**O pôster do banner de vídeo deixou de existir como arquivo.** Ele era
-`demonstracao/video-banner-poster.jpg`; hoje o banner usa o **primeiro vídeo da seção** como
-plano de fundo e a **miniatura desse mesmo vídeo** como imagem de espera, que já é um campo
-do esquema. Um ativo a menos, nenhum campo novo (decisão do usuário, 2026-09-03).
+**O pôster do banner de vídeo deixou de existir**, primeiro como arquivo e depois como campo.
+Ele era `demonstracao/video-banner-poster.jpg`; hoje o banner tem **mídia própria no CMS** —
+vídeo ou imagem, à escolha do operador — e **nenhum vídeo do CMS pede miniatura**, porque a
+imagem de espera é o primeiro quadro do próprio arquivo (decisão do usuário, 2026-09-03; ver
+"Vídeo: o que o operador envia"). As duas miniaturas que estavam cadastradas
+(`tutor-abrindo-petisco.jpg` e `cachorro-ganhando-petisco.jpg`) continuam registradas como
+mídia, agora **sem nenhuma referência** — apagá-las é decisão à parte.
 
 **Identificador do vídeo nos eventos de analytics.** O esquema não tem — nem deve ter — um
 campo de identificador técnico. `video_start` e `video_progress` usam o **nome do arquivo**
@@ -1049,5 +1074,5 @@ Itens que já eram pendência antes do CMS e continuam abertos:
 - **Legendas dos vídeos (`.vtt`)** nunca existiram como arquivo. O campo é opcional no esquema e está vazio; a LP só declara a faixa de legenda quando há arquivo cadastrado, então o navegador simplesmente não oferece legenda — o mesmo que a página fazia antes. Enviar um `.vtt` pelo painel passa a oferecê-la, sem mudança de código.
 - **Dados legais da Virbac Brasil** (CNPJ e afins) pendentes no rodapé.
 - **Conteúdo da seção Ingredientes** e a **faixa etária recomendada** no FAQ aguardam material técnico da Virbac; migrados como não publicados.
-- **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixou de ser imagem própria na T14 e passou a derivar da miniatura do primeiro vídeo da seção; o arquivo saiu do repositório. Ver "O que continua importado em código, de propósito".
+- **Imagens que ficam em código, por decisão.** A T2 escopou os esquemas nos 12 `*.content.ts`, e as imagens que os componentes importam direto ficaram fora. O usuário decidiu ponto a ponto em 2026-09-03 (ver `agent_context/CHANGELOG.md`): o `Kit-de-imagens.png` e as seis fotos do mosaico do formulário **passaram ao CMS** na T19; o `grupo-bandeiras.png` do herói e os três infográficos SVG de `ProductDifferentials.tsx` **permanecem em código** — os infográficos trazem junto um copy também escrito no componente, e os quatro são claims e arte de campanha sob controle de quem edita o código. O pôster do banner de vídeo deixou de ser imagem própria na T14 e, na T24, deixou de ser campo: o banner passou a ter mídia própria (vídeo ou imagem) e nenhum vídeo pede miniatura. Ver "O que continua importado em código, de propósito".
 - **Payload do RD Station** marcado no código atual como "confirmar antes do go-live": método de autenticação e nomes dos campos personalizados dependem de como a conta da Virbac foi configurada (risco R-08 do SDD). A T8 migrou o payload para `apps/api/src/modules/leads/infrastructure/rdstation-lead.relay.ts` **sem alterá-lo**, e a pendência continua exatamente onde estava — com a diferença de que, enquanto ela não for resolvida, o lead já não se perde: fica gravado com `rdstation_status = "nao_enviado"`.
