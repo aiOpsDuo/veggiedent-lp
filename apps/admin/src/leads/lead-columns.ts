@@ -1,4 +1,5 @@
 import { formatBrasiliaDateTime } from '../shared/brasilia-time'
+import { porteLabel, simNaoLabel } from './lead-code-labels'
 import type { LeadView } from './leads-gateway'
 
 /**
@@ -28,6 +29,11 @@ function text(value: string | null): string {
   return value === null || value.trim().length === 0 ? EMPTY : value
 }
 
+/** Traduz um código fixo (`medio`, `sim`) para o rótulo em português, sem esconder um valor desconhecido. */
+function label(value: string | null, translate: (code: string) => string): string {
+  return value === null || value.trim().length === 0 ? EMPTY : translate(value)
+}
+
 function simOuNao(value: boolean): string {
   return value ? 'Sim' : 'Não'
 }
@@ -42,10 +48,10 @@ export const LEAD_COLUMNS: readonly LeadColumn[] = [
   { header: 'E-mail', value: (lead) => lead.email },
   { header: 'Telefone', value: (lead) => text(lead.telefone) },
   { header: 'Nome do cachorro', value: (lead) => text(lead.nomeCachorro) },
-  { header: 'Porte do cachorro', value: (lead) => text(lead.porteCachorro) },
+  { header: 'Porte do cachorro', value: (lead) => label(lead.porteCachorro, porteLabel) },
   { header: 'Cidade e estado', value: (lead) => text(lead.cidadeEstado) },
-  { header: 'Conhece a Virbac', value: (lead) => text(lead.conheceVirbac) },
-  { header: 'Usa produto Virbac', value: (lead) => text(lead.usaProdutoVirbac) },
+  { header: 'Conhece a Virbac', value: (lead) => label(lead.conheceVirbac, simNaoLabel) },
+  { header: 'Usa produto Virbac', value: (lead) => label(lead.usaProdutoVirbac, simNaoLabel) },
   { header: 'Qual produto Virbac', value: (lead) => text(lead.qualProdutoVirbac) },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => text(lead.origem) },

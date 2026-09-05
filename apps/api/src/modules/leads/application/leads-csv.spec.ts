@@ -112,10 +112,35 @@ describe('CSV de leads', () => {
     expect(toCsv([{ ...LEAD, createdAt: 'sem data' }]).content).toContain('"sem data"')
   })
 
-  it('diz sim e não em vez de true e false', () => {
-    const linha = linhas(toCsv([LEAD]).content)[1] as string
-    expect(linha).toContain('"sim"')
-    expect(linha).toContain('"não"')
+  it('diz Sim e Não no aceite de comunicações, em vez de true e false', () => {
+    const semAceite = linhas(toCsv([{ ...LEAD, aceiteComunicacoes: false }]).content)[1] as string
+    const comAceite = linhas(toCsv([{ ...LEAD, aceiteComunicacoes: true }]).content)[1] as string
+    expect(semAceite).toContain('"não"')
+    expect(comAceite).toContain('"sim"')
+  })
+
+  /**
+   * T30-e: o CSV mostrava o código bruto (`medio`) em vez do rótulo em
+   * português ("Médio") — tanto no porte do cão quanto nas respostas de
+   * sim/não que também chegam como código, não como booleano.
+   */
+  it('traduz o porte do cão e as respostas de sim/não para o rótulo em português', () => {
+    const linha = linhas(
+      toCsv([{ ...LEAD, porteCachorro: 'medio', conheceVirbac: 'sim', usaProdutoVirbac: 'nao' }])
+        .content,
+    )[1] as string
+    expect(linha).toContain('"Médio"')
+    expect(linha).toContain('"Sim"')
+    expect(linha).toContain('"Não"')
+  })
+
+  it('mantém o valor cru quando o código não é nenhum dos conhecidos', () => {
+    // O envio novo é validado contra `PorteDeCachorro` (lead-submission.ts), mas
+    // um lead já gravado antes dessa validação existir não tem essa garantia —
+    // daí o cast, simulando o dado legado que o CSV ainda precisa exportar.
+    const porteLegado = 'gigante' as Lead['porteCachorro']
+    const linha = linhas(toCsv([{ ...LEAD, porteCachorro: porteLegado }]).content)[1] as string
+    expect(linha).toContain('"gigante"')
   })
 
   it('escapa aspas dentro de uma célula', () => {

@@ -1,5 +1,6 @@
 import { formatBrasiliaDateTime } from '../domain/brasilia-time'
 import type { Lead } from '../domain/lead'
+import { porteLabel, simNaoLabel } from './lead-code-labels'
 
 /**
  * O CSV de leads que o Excel em português abre certo (SDD § C-12).
@@ -48,10 +49,13 @@ const COLUMNS: readonly { readonly header: string; readonly value: (lead: Lead) 
   { header: 'E-mail', value: (lead) => lead.email },
   { header: 'Telefone', value: (lead) => lead.telefone ?? '' },
   { header: 'Nome do cachorro', value: (lead) => lead.nomeCachorro ?? '' },
-  { header: 'Porte do cachorro', value: (lead) => lead.porteCachorro ?? '' },
+  { header: 'Porte do cachorro', value: (lead) => translated(lead.porteCachorro, porteLabel) },
   { header: 'Cidade e estado', value: (lead) => lead.cidadeEstado ?? '' },
-  { header: 'Conhece a Virbac', value: (lead) => lead.conheceVirbac ?? '' },
-  { header: 'Usa produto Virbac', value: (lead) => lead.usaProdutoVirbac ?? '' },
+  { header: 'Conhece a Virbac', value: (lead) => translated(lead.conheceVirbac, simNaoLabel) },
+  {
+    header: 'Usa produto Virbac',
+    value: (lead) => translated(lead.usaProdutoVirbac, simNaoLabel),
+  },
   { header: 'Qual produto Virbac', value: (lead) => lead.qualProdutoVirbac ?? '' },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => lead.origem ?? '' },
@@ -64,6 +68,11 @@ export interface CsvFile {
 
 function simOuNao(value: boolean): string {
   return value ? 'sim' : 'não'
+}
+
+/** Traduz um código fixo (`medio`, `sim`) para o rótulo em português, sem esconder um valor desconhecido. */
+function translated(value: string | null, translate: (code: string) => string): string {
+  return value === null ? '' : translate(value)
 }
 
 /**

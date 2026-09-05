@@ -48,6 +48,47 @@ describe('Colunas da tela (regra de negócio RN-01)', () => {
   })
 })
 
+/**
+ * T30-e: a tela mostrava o código bruto (`medio`) em vez do rótulo em
+ * português ("Médio") — tanto no porte do cão quanto nas respostas de sim/não
+ * que também chegam como código.
+ */
+describe('Tradução de código para rótulo (T30-e)', () => {
+  const valorDe = (header: string, lead: ReturnType<typeof leadDeTeste>): string =>
+    LEAD_COLUMNS.find((coluna) => coluna.header === header)?.value(lead) ?? ''
+
+  it('traduz os três portes conhecidos', () => {
+    expect(valorDe('Porte do cachorro', leadDeTeste({ id: 'p', porteCachorro: 'pequeno' }))).toBe(
+      'Pequeno',
+    )
+    expect(valorDe('Porte do cachorro', leadDeTeste({ id: 'm', porteCachorro: 'medio' }))).toBe(
+      'Médio',
+    )
+    expect(valorDe('Porte do cachorro', leadDeTeste({ id: 'g', porteCachorro: 'grande' }))).toBe(
+      'Grande',
+    )
+  })
+
+  it('traduz sim e não nos campos que vêm como código', () => {
+    expect(valorDe('Conhece a Virbac', leadDeTeste({ id: 'a', conheceVirbac: 'sim' }))).toBe(
+      'Sim',
+    )
+    expect(valorDe('Usa produto Virbac', leadDeTeste({ id: 'b', usaProdutoVirbac: 'nao' }))).toBe(
+      'Não',
+    )
+  })
+
+  it('mostra o valor cru quando o código não é nenhum dos conhecidos', () => {
+    expect(
+      valorDe('Porte do cachorro', leadDeTeste({ id: 'x', porteCachorro: 'gigante' })),
+    ).toBe('gigante')
+  })
+
+  it('não troca o traço do campo vazio por um rótulo', () => {
+    expect(valorDe('Porte do cachorro', leadDeTeste({ id: 'x', porteCachorro: null }))).toBe('—')
+  })
+})
+
 describe('Data de recebimento', () => {
   it('escreve o instante no fuso de Brasília, não em UTC', () => {
     expect(formatReceivedAt('2026-09-03T02:00:00.000Z')).toBe('02/09/2026, 23:00')
