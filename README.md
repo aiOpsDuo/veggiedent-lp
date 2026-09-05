@@ -198,9 +198,17 @@ recusado com "Campo obrigatório." — em vez de ser gravado em branco.
 #### Como o operador envia um arquivo pelo painel
 
 Abrir a seção, achar o campo de imagem ou vídeo e **escolher o arquivo**. Não há botão
-de enviar: escolher já envia. Enquanto o arquivo sobe, o campo mostra uma barra de progresso e
-a porcentagem em texto; ao terminar, a prévia do arquivo aparece ali mesmo — a imagem, ou o vídeo
-com controles de reprodução.
+de enviar: escolher já envia. Ao terminar, a prévia do arquivo aparece ali mesmo — a imagem, ou o
+vídeo com controles de reprodução.
+
+**Campo de imagem é uma área de soltar/enviar (T36).** Um retângulo de largura total com borda
+tracejada: ícone de envio centralizado quando vazio, uma animação de carregamento dentro do
+próprio retângulo enquanto o arquivo sobe, e a imagem enviada preenchendo a área inteira. O botão
+de excluir (só o ícone de lixeira, sem texto) aparece no canto inferior direito **apenas quando há
+imagem** — fundo levemente avermelhado em repouso, vermelho cheio em destaque/hover. Campo de
+vídeo continua com o seletor de arquivo tradicional e a barra de progresso com a porcentagem em
+texto: não há como "ver o conteúdo" de um vídeo antes de tocar, do jeito que uma imagem se vê
+inteira de uma vez.
 
 **A prévia aparece antes de salvar, e é do arquivo que já está no armazenamento.** O envio e a
 gravação da seção são coisas diferentes: o arquivo já subiu e já foi registrado quando a prévia
@@ -281,6 +289,16 @@ declarar uma imagem sem escolher.
 esquema da seção em `packages/content-schema/src/sections/`: ele passa a ser validado pela API,
 a aparecer no formulário do painel e a existir no tipo consumido pela LP, sem nenhuma alteração
 no código do painel. Isso é verificado por mutação na T11 — ver "Estado verificado".
+
+**Um componente de várias imagens num campo só, pronto e não usado ainda (T36).**
+`apps/admin/src/media/MultiImageMediaField.tsx` guarda mais de uma imagem no mesmo campo, com a
+mesma mecânica visual do campo de imagem único — mas nenhuma seção usa esse tipo hoje. O esquema
+não tem um campo "várias imagens direto"; o padrão continua sendo uma lista de itens com campo de
+imagem individual (ex. `captura_lead.mosaico`, com suas seis fotos). Migrar um caso real para o
+componente novo troca o formato do documento gravado — muda o esquema, a validação da API e o
+dado já existente —, o que ficou fora do escopo da T36 (reorganizar a casca visual, não migrar
+esquema). O componente é verificável isoladamente, com sessão ativa, em
+`/verificacao/multi-imagem` (fora do menu lateral — não é uma tela de conteúdo do CMS).
 
 ## As telas do painel
 
