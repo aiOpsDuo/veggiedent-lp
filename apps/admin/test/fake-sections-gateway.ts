@@ -54,7 +54,7 @@ export class FakeSectionsGateway implements SectionsGateway {
     }
   }
 
-  async listSections(): Promise<LoadResult<readonly SectionSummary[]>> {
+  async listSections(_accessToken?: string): Promise<LoadResult<readonly SectionSummary[]>> {
     if (this.options.failWith !== undefined) {
       return { status: 'falha', message: this.options.failWith }
     }
