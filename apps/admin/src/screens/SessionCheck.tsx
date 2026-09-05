@@ -7,8 +7,8 @@
  */
 export function SessionCheck(): JSX.Element {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50">
-      <p role="status" className="text-sm text-slate-500">
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
         Verificando sessão…
       </p>
     </main>

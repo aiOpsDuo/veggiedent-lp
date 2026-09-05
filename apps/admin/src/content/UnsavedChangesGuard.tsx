@@ -35,15 +35,15 @@ export function UnsavedChangesGuard({ when }: UnsavedChangesGuardProps): JSX.Ele
       aria-labelledby={DIALOG_TITLE_ID}
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4"
     >
-      <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-lg">
-        <p id={DIALOG_TITLE_ID} className="text-sm text-slate-800">
+      <div className="w-full max-w-sm space-y-4 rounded-lg bg-white p-6 shadow-lg dark:bg-slate-900">
+        <p id={DIALOG_TITLE_ID} className="text-sm text-slate-800 dark:text-slate-200">
           {CONFIRM_MESSAGE}
         </p>
         <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={() => blocker.reset()}
-            className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+            className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             Continuar editando
           </button>
