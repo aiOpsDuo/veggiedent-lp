@@ -262,17 +262,15 @@ C4Container
 
 **Trade-off aceito:** o instantâneo envelhece entre builds, então uma falha prolongada da API pode exibir conteúdo defasado. Preferível a exibir nada, e a defasagem é visível apenas durante indisponibilidade.
 
-### D-09 — Gestão de operadores dentro do painel, via Admin API do Supabase, sem e-mail transacional
+### D-09 — Gestão de operadores dentro do painel, via Admin API do Supabase
 
-**Escolhido:** o painel ganha uma tela para listar, convidar e remover operadores. A API expõe `/api/admin/operators/*`, atrás da mesma guarda global (D-03), e fala com a **Admin API** do Supabase Auth (`auth.admin.*`) usando a chave secreta — nunca o navegador fala direto com ela. Convidar um operador gera um **link de ativação de uso único** (`admin.generateLink({ type: 'invite', ... })`), devolvido uma única vez à tela para quem está convidando copiar e enviar pelo canal que preferir (e-mail pessoal, WhatsApp, Slack); o convidado abre o link e define a própria senha. Remover um operador chama `admin.deleteUser`.
+**Escolhido:** o painel ganha uma tela para listar, criar e remover operadores. A API expõe `/api/admin/operators/*`, atrás da mesma guarda global (D-03), e fala com a **Admin API** do Supabase Auth (`auth.admin.*`) usando a chave secreta — nunca o navegador fala direto com ela. Remover um operador chama `admin.deleteUser`.
 
-**Alternativas:** (a) `admin.inviteUserByEmail`, que envia o e-mail automaticamente pelo servidor de e-mail do próprio Supabase; (b) manter como estava — operador criado só pelo painel do Supabase.
+**Criação de operador — revisto em 2026-09-04 (T34):** quem cria preenche e-mail, senha e nome do operador novo diretamente na tela; a API chama `admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })` e a conta já nasce pronta para uso, sem link nem e-mail. `email_confirm: true` é necessário porque não há passo de confirmação — sem ele o Supabase esperaria uma confirmação que nunca chega. O nome não tem tabela própria (não existe tabela de operadores no CMS); vive em `user_metadata`, a única extensão de dado que a Admin API do Supabase Auth permite sem outra fonte de verdade.
 
-**Por quê não (a):** o projeto nunca enviou e-mail transacional antes, e o painel do Supabase deste projeto está no plano gratuito, cujo remetente embutido tem limite baixo de envios por hora e frequentemente cai em spam — descobrir isso na frente do usuário, no primeiro convite de verdade, é pior do que nunca depender disso. Gerar o link e deixar quem convida escolher o canal de envio evita essa dependência nova por completo, sem abrir mão do fluxo padrão do Supabase (o convidado ainda ativa a própria conta pelo link, nunca recebe senha definida por outra pessoa). **Se o usuário preferir o envio automático por e-mail no futuro, é uma troca de uma linha** (`inviteUserByEmail` em vez de `generateLink`), sem mudar contrato nem tela.
+~~**Desenho original (T29, superado):** convidar gerava um link de ativação de uso único (`generateLink({ type: 'invite' })`), devolvido à tela para quem convida enviar por fora, e o convidado definia a própria senha ao abrir o link — a rota `/admin/ativar` e as telas associadas foram construídas para isso. O usuário decidiu trocar pelo fluxo direto acima; ver `agent_context/CHANGELOG.md`, entrada de 2026-09-04.~~
 
-**Por quê não (b):** foi a decisão original (D-03), revertida pelo usuário em 2026-09-04 — ver `agent_context/CHANGELOG.md`.
-
-**Trade-off aceito:** quem convida precisa copiar e enviar o link manualmente — um passo a mais do que o envio automático. Acionável porque quem cria um operador já é, por definição, alguém com acesso ao painel, ou seja, tecnicamente confortável o bastante para copiar um link.
+**Trade-off aceito, reconhecido explicitamente:** com criação direta, **quem cria sabe a senha inicial de outra pessoa** — o próprio motivo que tinha descartado esse caminho na primeira versão da decisão (D-03/D-09 originais). O usuário decidiu que a simplicidade operacional vale mais que essa garantia neste projeto (equipe pequena, todos os operadores já se conhecem e confiam). Mitigação parcial, não implementada por não ter sido pedida: nada impede um operador de trocar a própria senha depois pelo fluxo padrão do Supabase, se isso vier a ser necessário.
 
 **Consequências de segurança, inegociáveis:**
 - A chave secreta do Supabase (`SUPABASE_SECRET_KEY`) já é usada pela API para outras coisas (D-01, D-05) e continua nunca saindo do servidor; nenhuma rota nova a expõe ao navegador.
@@ -310,7 +308,7 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 | `POST /api/admin/media` | Confirma o upload e registra a mídia; devolve o registro com a URL pública |
 | `GET /api/admin/media/:id` · `DELETE /api/admin/media/:id` | Consulta e remoção. A remoção é recusada com `409` se a mídia estiver referenciada por alguma seção |
 | `GET /api/admin/operators` | Lista os operadores (e-mail, criado em, último login) |
-| `POST /api/admin/operators` | Recebe um e-mail, convida via Admin API (D-09) e devolve o link de ativação de uso único — **só nesta resposta**, nunca mais tarde |
+| `POST /api/admin/operators` | Recebe e-mail, senha e nome; cria a conta pronta para uso via Admin API (D-09) |
 | `DELETE /api/admin/operators/:id` | Remove um operador. Recusado com `409` se for o próprio operador autenticado, ou o último operador restante |
 | `GET /api/admin/leads` | Lista paginada, mais recente primeiro. Filtros `from` e `to` por data |
 | `GET /api/admin/leads/export` | Exportação em CSV com separador `;` e BOM UTF-8, respeitando os filtros |
@@ -381,7 +379,7 @@ Régua usada na Fase 4 para detectar divergência entre o implementado e o prete
 | **C-10** | Consumo do conteúdo pela LP | Nenhuma seção importa de `*.content.ts`; todas leem da API. A página não apresenta mudança visual perceptível em relação ao estado atual. Com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia ou quebrada. |
 | **C-11** | Registro dos leads | Um envio do formulário cria um registro com todos os campos preenchidos, inclusive os três que hoje são descartados em produção (R-01). O honeypot preenchido não gera registro. **O banco do CMS é o único lugar onde o lead existe** — não há destino externo desde que o RD Station foi descontinuado (2026-09-03), o que torna a gravação a única barreira entre o envio e a perda do dado. |
 | **C-12** | Consulta e exportação de leads | A tela lista do mais recente ao mais antigo, com filtro por período, recortando o dia em **horário de Brasília (UTC−3)**, não em UTC. A exclusão remove o lead definitivamente. Nenhum lead é acessível sem autenticação. **Exportação (regra de negócio RN-01, abaixo):** o arquivo é `.csv`, traz **todos os dados preenchidos no formulário, um por coluna**, abre no Excel em português com acentuação correta, e respeita os filtros aplicados na tela. |
-| **C-13** | Gestão de operadores (D-09) | A tela lista os operadores existentes. Convidar um e-mail novo gera um link de ativação de uso único, mostrado uma vez; abrir esse link deixa o convidado definir a própria senha e acessar o painel. Remover um operador exige confirmação; é recusado com erro claro ao tentar remover a si mesmo ou o último operador restante. Nenhuma senha é definida ou visível para quem convida. |
+| **C-13** | Gestão de operadores (D-09) | A tela lista os operadores existentes (e-mail e nome). Criar um operador novo pede e-mail, senha e nome, e a conta já nasce pronta para logar — sem link nem e-mail. Remover um operador exige confirmação; é recusado com erro claro ao tentar remover a si mesmo ou o último operador restante. |
 
 ### RN-01 — Exportação de leads em CSV
 

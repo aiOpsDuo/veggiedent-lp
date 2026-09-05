@@ -508,6 +508,25 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T28, T29, T31, T32 (a branch integrada que já reúne as quatro, ver CHANGELOG de 2026-09-04 sobre o merge de T29 — comece daí, não de uma branch mais antiga)
 - Execução: sequencial, árvore principal
 - Toca documentação: sim — README, se o fluxo de navegação do painel for descrito em algum lugar (confirmar).
+- Status: **concluída e ACEITA pelo orquestrador** em 2026-09-04, branch `feat/T33-navegacao-lateral-e-usabilidade` (8 commits, sem merge em `main`). A execução foi interrompida uma vez por limite de sessão do orquestrador, no meio do trabalho — retomada por um segundo subagente a partir do estado não commitado (nada foi perdido; ver `agent_context/CHANGELOG.md`).
+- Verificação própria: `npm run test` — **708 testes** (238 admin + 321 API + 39 LP + 110 content-schema); `npm run typecheck` e `npm run build` limpos nos 4 workspaces. Confirmado ao vivo: sem `required` nativo em `LoginScreen.tsx`, botão usando `bg-slate-900` (mesmo padrão do resto do painel), os três serviços respondendo `200` com conteúdo correto.
+- Achado corrigido pelo próprio subagente antes de continuar: o contexto que lhe passei afirmava que os achados (a)/(b) do login "já estavam prontos" — não estava; `LoginScreen.tsx` seguia intocado. Ele conferiu por conta própria antes de aceitar a premissa, e implementou do zero. Registrado aqui para não repetir: nota de retomada de tarefa interrompida é só hipótese até o próprio arquivo ser lido, mesma regra já derivada em 2026-09-02.
+- Decisão declarada e aceita: `ActivateScreen.tsx` manteve o botão de marca e a validação nativa (fora do escopo explícito da T33, que só citava `LoginScreen.tsx`) — revisitar se a T34 (abaixo) tornar essa tela órfã.
+
+### T34 — Criar operador direto (e-mail, senha e nome), sem convite por link
+
+- Descrição: o usuário decidiu trocar o fluxo de criação de operador (T29/D-09) de "convite por link de uso único" para "criação direta": quem cria preenche e-mail, senha e **nome** (campo novo) na tela, e a conta já nasce pronta para logar.
+- Rastreável a: SDD § D-09 (revista 2026-09-04), § C-13; `agent_context/CHANGELOG.md`, entrada de 2026-09-04.
+- Escopo:
+  - `POST /api/admin/operators`: corpo passa a ser `{ email, password, name }`. Implementação troca `generateLink({ type: 'invite' })` por `auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })`.
+  - `GET /api/admin/operators`: passa a devolver também o nome (de `user_metadata.name`), com fallback sensato se um operador antigo não tiver nome preenchido (ex.: o operador original, criado antes deste campo existir).
+  - `apps/admin/src/operators/OperatorsScreen.tsx`: formulário de criação ganha os três campos (e-mail, senha, nome); lista passa a mostrar o nome também.
+  - **Decida e declare, não presuma:** `apps/admin/src/routing/ActivateRoute.tsx`, `apps/admin/src/screens/ActivateScreen.tsx` e a rota `/admin/ativar` ficam sem nenhum chamador depois desta mudança — são candidatas a remoção como código morto. Se remover, confirme por busca de referência (rota, import, teste) antes, no mesmo padrão de remoção verificada já usado neste projeto — nunca remoção especulativa.
+  - Validação de senha: force um mínimo razoável (o Supabase Auth já exige 6 caracteres por padrão — confirme e decida se vale reforçar no formulário, com mensagem em português).
+- Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam a partir da raiz; teste de regressão provando (por mutação, reaproveitando o que já existe) que remover a si mesmo e remover o último operador continuam recusados com `409` — essas duas regras não mudam; **verificado em navegador real, logado como o operador real**: criar um operador de teste com e-mail/senha/nome pela tela, confirmar que ele aparece na lista com o nome certo, logar com a conta nova usando a senha definida (sem nenhum link envolvido), remover a conta de teste pelo painel e confirmar via Admin API do Supabase que não sobrou conta órfã.
+- Dependências: T29, T33 (branch `feat/T33-navegacao-lateral-e-usabilidade`, que já tem o menu lateral e todas as telas atuais — comece daí)
+- Execução: sequencial, árvore principal
+- Toca documentação: sim — README (fluxo de criação de operador, que ainda descreve convite por link).
 - Status: pendente
 
 ## Ordem de execução
