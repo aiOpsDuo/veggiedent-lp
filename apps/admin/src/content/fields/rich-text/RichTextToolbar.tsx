@@ -19,9 +19,10 @@ import { useEffect, useState } from 'react'
  */
 
 const BOTAO =
-  'rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 hover:bg-slate-100'
+  'rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700'
 
-const BOTAO_ATIVO = 'rounded border border-slate-500 bg-slate-200 px-2 py-1 text-sm text-slate-900'
+const BOTAO_ATIVO =
+  'rounded border border-slate-500 bg-slate-200 px-2 py-1 text-sm text-slate-900 dark:border-slate-400 dark:bg-slate-600 dark:text-slate-100'
 
 export function RichTextToolbar(): JSX.Element {
   const [editor] = useLexicalComposerContext()

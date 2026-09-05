@@ -31,9 +31,10 @@ interface FieldControlSpec {
 }
 
 const TEXT_INPUT_CLASS =
-  'w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500'
+  'w-full rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:focus:border-slate-400 dark:focus:ring-slate-400'
 
-const INVALID_INPUT_CLASS = 'border-red-500 focus:border-red-500 focus:ring-red-500'
+const INVALID_INPUT_CLASS =
+  'border-red-500 focus:border-red-500 focus:ring-red-500 dark:border-red-500'
 
 const LONG_TEXT_ROWS = 4
 
@@ -84,7 +85,7 @@ function BooleanInput({ id, describedBy, invalid, spec, value, onChange }: Input
     <input
       id={id}
       type="checkbox"
-      className="h-4 w-4 rounded border-slate-300"
+      className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800"
       aria-describedby={describedBy}
       aria-invalid={invalid || undefined}
       aria-required={spec.required || undefined}
@@ -119,7 +120,7 @@ function TextListInput({ describedBy, invalid, spec, value, onChange }: InputPro
           />
           <button
             type="button"
-            className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 hover:bg-slate-100"
+            className="rounded border border-slate-300 px-2 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
             onClick={() => onChange(lines.filter((_line, position) => position !== index))}
           >
             {`Remover a linha ${index + 1} de ${spec.label}`}
@@ -128,7 +129,7 @@ function TextListInput({ describedBy, invalid, spec, value, onChange }: InputPro
       ))}
       <button
         type="button"
-        className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+        className="rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
         onClick={() => onChange([...lines, ''])}
       >
         {`Adicionar linha em ${spec.label}`}
@@ -204,12 +205,12 @@ function FieldMeta({ helpId, help, errorId, error }: FieldMetaProps): JSX.Elemen
   return (
     <>
       {help !== undefined && (
-        <p id={helpId} className="text-xs text-slate-500">
+        <p id={helpId} className="text-xs text-slate-500 dark:text-slate-400">
           {help}
         </p>
       )}
       {error !== undefined && (
-        <p id={errorId} className="text-sm text-red-600">
+        <p id={errorId} className="text-sm text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -232,7 +233,7 @@ export interface FieldControlProps {
  */
 function RequiredMark({ required }: { readonly required: boolean }): JSX.Element | null {
   return required ? (
-    <span aria-hidden="true" className="text-red-600">
+    <span aria-hidden="true" className="text-red-600 dark:text-red-400">
       *
     </span>
   ) : null
@@ -270,7 +271,7 @@ export function FieldControl({ spec, value, error, onChange }: FieldControlProps
     </FieldGroup>
   ) : (
     <div className="space-y-1">
-      <div className="flex items-center gap-1 text-sm font-medium text-slate-800">
+      <div className="flex items-center gap-1 text-sm font-medium text-slate-800 dark:text-slate-200">
         <label htmlFor={controlId}>{spec.label}</label>
         <RequiredMark required={spec.required} />
       </div>
@@ -290,7 +291,7 @@ interface FieldGroupProps {
 function FieldGroup({ label, required, children }: FieldGroupProps): JSX.Element {
   return (
     <fieldset className="space-y-1">
-      <legend className="flex items-center gap-1 text-sm font-medium text-slate-800">
+      <legend className="flex items-center gap-1 text-sm font-medium text-slate-800 dark:text-slate-200">
         <span>{label}</span>
         <RequiredMark required={required} />
       </legend>

@@ -30,7 +30,7 @@ function itemName(list: ListSpec, position: number): string {
 }
 
 const ITEM_BUTTON_CLASS =
-  'rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40'
+  'rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800'
 
 export function ListEditor({ list, items, errors, onChange }: ListEditorProps): JSX.Element {
   const listError = errors[listPath(list.name)]
@@ -40,21 +40,28 @@ export function ListEditor({ list, items, errors, onChange }: ListEditorProps): 
   }
 
   return (
-    <fieldset className="space-y-3 rounded border border-slate-200 bg-white p-4">
-      <legend className="px-1 text-sm font-semibold text-slate-900">{list.label}</legend>
+    <fieldset className="animate-fade-in-up space-y-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+      <legend className="px-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+        {list.label}
+      </legend>
 
-      {listError !== undefined && <p className="text-sm text-red-600">{listError}</p>}
+      {listError !== undefined && (
+        <p className="text-sm text-red-600 dark:text-red-400">{listError}</p>
+      )}
 
       {items.length === 0 && (
-        <p className="text-sm text-slate-500">Nenhum item nesta lista.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum item nesta lista.</p>
       )}
 
       {items.map((item, position) => (
-        <div key={item.id} className="space-y-3 rounded border border-slate-200 p-4">
+        <div
+          key={item.id}
+          className="space-y-3 rounded border border-slate-200 p-4 dark:border-slate-700"
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium text-slate-700">{`Item ${position + 1}`}</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{`Item ${position + 1}`}</span>
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1 text-xs text-slate-600">
+              <label className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-slate-300"
@@ -113,7 +120,7 @@ export function ListEditor({ list, items, errors, onChange }: ListEditorProps): 
 
       <button
         type="button"
-        className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+        className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
         onClick={() => onChange([...items, newListItem(list)])}
       >
         {`Adicionar item em ${list.label}`}

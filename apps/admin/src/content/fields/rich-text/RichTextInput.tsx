@@ -17,12 +17,13 @@ import { RichTextToolbar } from './RichTextToolbar'
  * em `rich-text-html.ts`.
  */
 
-const MOLDURA = 'overflow-hidden rounded border border-slate-300 bg-white'
+const MOLDURA = 'overflow-hidden rounded border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800'
 
-const MOLDURA_INVALIDA = 'overflow-hidden rounded border border-red-500 bg-white'
+const MOLDURA_INVALIDA =
+  'overflow-hidden rounded border border-red-500 bg-white dark:bg-slate-800'
 
 const AREA_DE_TEXTO =
-  'min-h-[3rem] px-3 py-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-500'
+  'min-h-[3rem] px-3 py-2 text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-500 dark:text-slate-100'
 
 export interface RichTextInputProps {
   readonly id: string

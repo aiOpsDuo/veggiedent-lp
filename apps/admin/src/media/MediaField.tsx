@@ -68,7 +68,7 @@ const PREVIEWS: Readonly<Record<MediaFieldType, (media: RegisteredMedia) => JSX.
 }
 
 const SELECT_CLASS =
-  'block w-full text-sm text-slate-700 file:mr-3 file:rounded file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-slate-700 hover:file:bg-slate-100'
+  'block w-full text-sm text-slate-700 file:mr-3 file:rounded file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:text-slate-700 hover:file:bg-slate-100 dark:text-slate-300 dark:file:border-slate-600 dark:file:bg-slate-800 dark:file:text-slate-200 dark:hover:file:bg-slate-700'
 
 export function MediaField({
   id,
@@ -154,12 +154,12 @@ export function MediaField({
         onChange={(event) => void chooseFile(event)}
       />
 
-      <p className="text-xs text-slate-500">{limitHint(fieldType)}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{limitHint(fieldType)}</p>
 
       {send.kind === 'enviando' && <SendProgress label={label} percent={send.percent} />}
 
       {send.kind === 'recusado' && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {send.message}
         </p>
       )}
@@ -167,7 +167,7 @@ export function MediaField({
       {value !== '' && send.kind !== 'enviando' && (
         <button
           type="button"
-          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+          className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
           onClick={remove}
         >
           {`Remover ${noun === 'imagem' ? 'a imagem' : `o arquivo de ${noun}`}`}
@@ -190,14 +190,14 @@ function StoredMedia({
   readonly stored: StoredState
 }): JSX.Element | null {
   if (stored.kind === 'vazio') {
-    return <p className="text-xs text-slate-500">Nenhum arquivo enviado.</p>
+    return <p className="text-xs text-slate-500 dark:text-slate-400">Nenhum arquivo enviado.</p>
   }
   if (stored.kind === 'buscando') {
-    return <p className="text-xs text-slate-500">Carregando o arquivo guardado…</p>
+    return <p className="text-xs text-slate-500 dark:text-slate-400">Carregando o arquivo guardado…</p>
   }
   if (stored.kind === 'ausente') {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
         O arquivo deste campo não está mais no armazenamento. Envie outro.
       </p>
     )
@@ -205,7 +205,7 @@ function StoredMedia({
   return (
     <div className="space-y-1">
       {PREVIEWS[fieldType](stored.media)}
-      <p className="text-xs text-slate-500">{stored.media.originalFilename}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-400">{stored.media.originalFilename}</p>
     </div>
   )
 }
@@ -230,7 +230,7 @@ function SendProgress({
         value={percent}
         aria-label={`Envio de ${label}`}
       />
-      <p role="status" className="text-xs text-slate-600">
+      <p role="status" className="text-xs text-slate-600 dark:text-slate-400">
         {`Enviando… ${percent}%`}
       </p>
     </div>
