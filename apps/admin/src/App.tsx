@@ -1,4 +1,13 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { useMemo } from 'react'
+import {
+  Navigate,
+  Outlet,
+  Route,
+  RouterProvider,
+  createBrowserRouter,
+  createMemoryRouter,
+  createRoutesFromElements,
+} from 'react-router-dom'
 import type { AdminApiClient } from './api/admin-api-client'
 import { AuthProvider } from './auth/AuthProvider'
 import type { AuthGateway } from './auth/auth-gateway'
@@ -22,11 +31,42 @@ import {
   SECTION_EDITOR_ROUTE,
 } from './routing/paths'
 import { AdminLayout } from './screens/AdminLayout'
-import { HomeScreen } from './screens/HomeScreen'
 
 interface AppProps {
   readonly authGateway: AuthGateway
   readonly apiClient: AdminApiClient
+  /** O prefixo em que o navegador de verdade serve o painel (ver `main.tsx`). */
+  readonly basename?: string
+  /**
+   * Só para teste: entradas de um roteador em memória, no lugar do navegador
+   * de verdade. Presente aqui (e não escondida em `main.tsx`) para que o
+   * mesmo `App` monte tanto a aplicação real quanto a suíte de testes — sem
+   * isso, o bloqueio de navegação de `UnsavedChangesGuard` (`useBlocker`)
+   * exigiria um roteador de dados que só existiria em produção, e a suíte não
+   * conseguiria exercitá-lo.
+   */
+  readonly initialEntries?: readonly string[]
+}
+
+interface AppShellProps {
+  readonly authGateway: AuthGateway
+  readonly apiClient: AdminApiClient
+}
+
+/**
+ * A raiz de toda rota: quem dá a sessão e o cliente da API a tudo que vem
+ * abaixo. Existe como rota de layout — e não como o invólucro de `App` — para
+ * que `authGateway`/`apiClient` continuem vindo de fora por prop, e não por um
+ * módulo global, mesmo com as rotas descritas fora do corpo do componente.
+ */
+function AppShell({ authGateway, apiClient }: AppShellProps): JSX.Element {
+  return (
+    <AuthProvider gateway={authGateway}>
+      <ApiMediaProvider gateway={apiClient}>
+        <Outlet />
+      </ApiMediaProvider>
+    </AuthProvider>
+  )
 }
 
 /**
@@ -38,32 +78,43 @@ interface AppProps {
  * rota fora da guarda, de propósito. `/ativar` (SDD § D-09) é pública pelo
  * mesmo motivo que `/login` é: quem chega até ela ainda não tem sessão.
  *
- * Recebe o gateway e o cliente da API prontos para que o teste monte o painel de
- * verdade com dublês no lugar da rede.
+ * `/` (`HOME_PATH`) não tem tela própria (T30-c): o operador que chega ali
+ * autenticado é levado direto para a lista de seções, que já é o primeiro
+ * módulo do menu lateral — uma tela de "Início" só repetiria os mesmos links.
+ *
+ * Usa um roteador de dados (`createBrowserRouter`/`createMemoryRouter`), e não
+ * `<BrowserRouter>`/`<Routes>` como antes: é o que `UnsavedChangesGuard`
+ * (`useBlocker`, T30-d) exige do React Router para interceptar uma navegação
+ * antes dela acontecer. Em teste, passar `initialEntries` troca o roteador do
+ * navegador por um em memória, sem duplicar a árvore de rotas.
  */
-export function App({ authGateway, apiClient }: AppProps): JSX.Element {
-  return (
-    <AuthProvider gateway={authGateway}>
-      <ApiMediaProvider gateway={apiClient}>
-        <Routes>
-          <Route path={LOGIN_PATH} element={<LoginRoute />} />
-          <Route path={ACTIVATE_PATH} element={<ActivateRoute />} />
-          <Route element={<RequireSession />}>
-            <Route element={<AdminLayout />}>
-              <Route path={HOME_PATH} element={<HomeScreen apiClient={apiClient} />} />
-              <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
-              <Route
-                path={SECTION_EDITOR_ROUTE}
-                element={<SectionEditorScreen gateway={apiClient} />}
-              />
-              <Route path={METADATA_PATH} element={<MetadataScreen gateway={apiClient} />} />
-              <Route path={LEADS_PATH} element={<LeadsScreen gateway={apiClient} />} />
-              <Route path={OPERATORS_PATH} element={<OperatorsScreen gateway={apiClient} />} />
-              <Route path="*" element={<Navigate to={HOME_PATH} replace />} />
-            </Route>
+export function App({ authGateway, apiClient, basename, initialEntries }: AppProps): JSX.Element {
+  const router = useMemo(() => {
+    const routes = createRoutesFromElements(
+      <Route element={<AppShell authGateway={authGateway} apiClient={apiClient} />}>
+        <Route path={LOGIN_PATH} element={<LoginRoute />} />
+        <Route path={ACTIVATE_PATH} element={<ActivateRoute />} />
+        <Route element={<RequireSession />}>
+          <Route element={<AdminLayout apiClient={apiClient} />}>
+            <Route path={HOME_PATH} element={<Navigate to={SECTIONS_PATH} replace />} />
+            <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
+            <Route
+              path={SECTION_EDITOR_ROUTE}
+              element={<SectionEditorScreen gateway={apiClient} />}
+            />
+            <Route path={METADATA_PATH} element={<MetadataScreen gateway={apiClient} />} />
+            <Route path={LEADS_PATH} element={<LeadsScreen gateway={apiClient} />} />
+            <Route path={OPERATORS_PATH} element={<OperatorsScreen gateway={apiClient} />} />
+            <Route path="*" element={<Navigate to={SECTIONS_PATH} replace />} />
           </Route>
-        </Routes>
-      </ApiMediaProvider>
-    </AuthProvider>
-  )
+        </Route>
+      </Route>,
+    )
+    return initialEntries !== undefined
+      ? createMemoryRouter(routes, { initialEntries: [...initialEntries] })
+      : createBrowserRouter(routes, { basename })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialEntries só varia entre testes, nunca dentro da vida de uma instância montada
+  }, [authGateway, apiClient, basename])
+
+  return <RouterProvider router={router} />
 }

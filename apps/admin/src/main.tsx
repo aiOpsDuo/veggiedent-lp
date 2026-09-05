@@ -1,6 +1,5 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
 import { AdminApiClient } from './api/admin-api-client'
 import { App } from './App'
 import { createSupabaseAuthGateway } from './auth/supabase-auth-gateway'
@@ -26,12 +25,11 @@ try {
   const environment = readEnvironment(import.meta.env)
   ReactDOM.createRoot(container).render(
     <React.StrictMode>
-      <BrowserRouter basename={ADMIN_BASENAME}>
-        <App
-          authGateway={createSupabaseAuthGateway(environment)}
-          apiClient={new AdminApiClient(environment.apiBaseUrl)}
-        />
-      </BrowserRouter>
+      <App
+        authGateway={createSupabaseAuthGateway(environment)}
+        apiClient={new AdminApiClient(environment.apiBaseUrl)}
+        basename={ADMIN_BASENAME}
+      />
     </React.StrictMode>,
   )
 } catch (error) {
