@@ -38,6 +38,18 @@ const EMPTY_PERIOD: LeadPeriod = { from: '', to: '' }
 
 const FIRST_PAGE = 1
 
+/**
+ * A tabela tem 13 colunas, e "Ações" (excluir) ficava fora da área visível em
+ * telas normais, sem nenhum indício de que havia mais conteúdo à direita
+ * (T30-f). Fixá-la com `sticky` resolve os dois problemas de uma vez: o botão
+ * de excluir está sempre alcançável, e a sombra à esquerda é o próprio indício
+ * visual de que a rolagem continua por baixo dela.
+ */
+const ACTIONS_CELL_CLASS =
+  'sticky right-0 z-10 whitespace-nowrap bg-slate-100 px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)]'
+const ACTIONS_BODY_CELL_CLASS =
+  'sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)]'
+
 const EXPORTED_MESSAGE = 'Exportação concluída. O arquivo foi baixado.'
 const DELETED_MESSAGE = 'Lead excluído definitivamente.'
 
@@ -195,7 +207,7 @@ export function LeadsScreen({
                     {column.header}
                   </th>
                 ))}
-                <th scope="col" className="px-3 py-2">
+                <th scope="col" className={ACTIONS_CELL_CLASS}>
                   Ações
                 </th>
               </tr>
@@ -325,7 +337,7 @@ function LeadRow({
           {column.value(lead)}
         </td>
       ))}
-      <td className="px-3 py-2">
+      <td className={ACTIONS_BODY_CELL_CLASS}>
         {confirming ? (
           <div className="flex flex-col gap-1">
             <span className="text-xs text-red-700">

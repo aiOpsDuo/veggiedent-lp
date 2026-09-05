@@ -100,7 +100,9 @@ describe('Listagem de leads', () => {
     expect(celulas).toContain('11999999999')
     expect(celulas).toContain('Bidu')
     expect(celulas).toContain('São Paulo/SP')
-    expect(celulas).toContain('sim')
+    // T30-e: o rótulo em português do código, não o código bruto.
+    expect(celulas).toContain('Médio')
+    expect(celulas).toContain('Sim')
     // 2 de setembro às 15h em UTC é meio-dia em Brasília.
     expect(celulas).toContain('02/09/2026, 12:00')
   })
@@ -280,6 +282,28 @@ describe('Exclusão a pedido do titular (LGPD)', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Lead não encontrado.')
     expect(await nomesNaTela()).toHaveLength(3)
+  })
+})
+
+/**
+ * T30-f: a tabela tem 13 colunas, e a de "Ações" (excluir) ficava fora da
+ * área visível em telas normais, sem nenhum indício de que havia mais
+ * conteúdo à direita. A coluna passou a ser fixa (`position: sticky`).
+ */
+describe('Coluna de ações fixa (T30-f)', () => {
+  it('mantém a coluna "Ações" fixa à direita, no cabeçalho e nas linhas', async () => {
+    montarLeads(new FakeLeadsGateway({ leads: [DO_MEIO] }))
+    await screen.findByRole('table')
+
+    const cabecalhoAcoes = screen.getByRole('columnheader', { name: 'Ações' })
+    expect(cabecalhoAcoes.className).toContain('sticky')
+    expect(cabecalhoAcoes.className).toContain('right-0')
+
+    const linha = (await screen.findAllByRole('row'))[1] as HTMLElement
+    const celulaAcoes = within(linha).getByRole('button', { name: /Excluir o lead de/ })
+      .closest('td') as HTMLElement
+    expect(celulaAcoes.className).toContain('sticky')
+    expect(celulaAcoes.className).toContain('right-0')
   })
 })
 
