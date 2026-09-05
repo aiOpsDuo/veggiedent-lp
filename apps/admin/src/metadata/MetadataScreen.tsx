@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer } from 'react'
+import { Save } from 'lucide-react'
 import { siteMetadataSchema } from '@veggiedent/content-schema'
 import { useAuth } from '../auth/auth-context'
 import { altTextErrors } from '../content/alt-text-rule'
@@ -154,15 +155,18 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
           ))}
         </Card>
 
-        <ActionBar>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            {saving ? 'Salvando…' : 'Salvar metadados'}
-          </button>
-        </ActionBar>
+        <ActionBar
+          end={
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+            >
+              <Save className="h-4 w-4" aria-hidden="true" />
+              {saving ? 'Salvando…' : 'Salvar metadados'}
+            </button>
+          }
+        />
       </form>
     </section>
   )

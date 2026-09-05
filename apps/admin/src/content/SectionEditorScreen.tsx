@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer } from 'react'
+import { ArrowLeft, Save } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { getSectionSchema, isSectionKey, type SectionKey } from '@veggiedent/content-schema'
 import { useAuth } from '../auth/auth-context'
@@ -163,12 +164,6 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
   return (
     <section className="space-y-6 pb-24">
       <UnsavedChangesGuard when={dirty} />
-      <Link
-        to={SECTIONS_PATH}
-        className="text-sm text-slate-600 underline dark:text-slate-400"
-      >
-        Voltar para a lista de seções
-      </Link>
 
       <Card className="space-y-2">
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
@@ -214,15 +209,27 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
           onListChange={onListChange}
         />
 
-        <ActionBar>
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
-          >
-            {saving ? 'Salvando…' : 'Salvar e publicar'}
-          </button>
-        </ActionBar>
+        <ActionBar
+          start={
+            <Link
+              to={SECTIONS_PATH}
+              className="inline-flex items-center gap-1.5 text-sm text-slate-600 underline dark:text-slate-400"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Voltar para a lista de seções
+            </Link>
+          }
+          end={
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+            >
+              <Save className="h-4 w-4" aria-hidden="true" />
+              {saving ? 'Salvando…' : 'Salvar e publicar'}
+            </button>
+          }
+        />
       </form>
     </section>
   )
