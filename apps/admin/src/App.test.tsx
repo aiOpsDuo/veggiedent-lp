@@ -1,6 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
 import { FakeSupabaseAuth, type SessionStorage } from '../test/fake-supabase-auth'
 import { AdminApiClient } from './api/admin-api-client'
 import { App } from './App'
@@ -36,9 +35,7 @@ function gatewayCom(storage: SessionStorage): AuthGateway {
 
 function renderPainel(gateway: AuthGateway, caminhoInicial = '/'): void {
   render(
-    <MemoryRouter initialEntries={[caminhoInicial]}>
-      <App authGateway={gateway} apiClient={apiAutorizando()} />
-    </MemoryRouter>,
+    <App authGateway={gateway} apiClient={apiAutorizando()} initialEntries={[caminhoInicial]} />,
   )
 }
 
@@ -114,6 +111,57 @@ describe('Proteção de rota (SDD § C-01)', () => {
     await entrar(OPERADORA.email, OPERADORA.password)
 
     expect(await screen.findByTestId('area-administrativa')).toBeInTheDocument()
+  })
+})
+
+describe('Validação do formulário de login (T30-a, T30-b)', () => {
+  /**
+   * Contraste renderizado de verdade não é algo que um teste automatizado mede
+   * — a asserção de classe é a aproximação registrada no critério de "pronto"
+   * da T33: `bg-slate-900` é o mesmo tom já usado em "Salvar e publicar" e no
+   * item ativo do menu, com contraste 4,5:1+ contra texto branco, no lugar do
+   * `bg-brand-primary` (2,51:1, reprovado no WCAG AA) que causou o achado.
+   */
+  it('usa o mesmo tom escuro do restante do painel no botão "Entrar", não a cor de marca', async () => {
+    renderPainel(gatewayCom(new Map()))
+
+    const botao = await screen.findByRole('button', { name: 'Entrar' })
+
+    expect(botao.className).toContain('bg-slate-900')
+    expect(botao.className).not.toContain('bg-brand-primary')
+  })
+
+  it('não usa validação nativa do navegador nos campos', async () => {
+    renderPainel(gatewayCom(new Map()))
+
+    expect(await screen.findByLabelText('E-mail')).not.toBeRequired()
+    expect(screen.getByLabelText('Senha')).not.toBeRequired()
+  })
+
+  it('pede e-mail e senha, em português, sem tentar autenticar', async () => {
+    renderPainel(gatewayCom(new Map()))
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Informe o e-mail e a senha.')
+  })
+
+  it('pede só o e-mail quando a senha já foi digitada', async () => {
+    renderPainel(gatewayCom(new Map()))
+
+    await userEvent.type(await screen.findByLabelText('Senha'), 'qualquer-senha')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Informe o e-mail.')
+  })
+
+  it('pede só a senha quando o e-mail já foi digitado', async () => {
+    renderPainel(gatewayCom(new Map()))
+
+    await userEvent.type(await screen.findByLabelText('E-mail'), 'operadora@veggiedent.test')
+    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Informe a senha.')
   })
 })
 
@@ -197,9 +245,11 @@ describe('Sessão (SDD § C-02)', () => {
       signInFailure: { status: 503, message: 'service unavailable' },
     })
     render(
-      <MemoryRouter>
-        <App authGateway={new SupabaseAuthGateway(auth)} apiClient={apiAutorizando()} />
-      </MemoryRouter>,
+      <App
+        authGateway={new SupabaseAuthGateway(auth)}
+        apiClient={apiAutorizando()}
+        initialEntries={['/']}
+      />,
     )
 
     await entrar(OPERADORA.email, OPERADORA.password)
@@ -207,6 +257,49 @@ describe('Sessão (SDD § C-02)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Não foi possível falar com o serviço de autenticação.',
     )
+  })
+})
+
+describe('Menu lateral (T33)', () => {
+  it('lista as quatro áreas do painel e indica qual está ativa ao navegar entre elas', async () => {
+    renderPainel(gatewayCom(new Map()))
+    await entrar(OPERADORA.email, OPERADORA.password)
+    await screen.findByTestId('area-administrativa')
+
+    const menu = screen.getByRole('navigation', { name: 'Áreas do painel' })
+    for (const rotulo of ['Seções da página', 'Metadados da página', 'Leads recebidos', 'Operadores']) {
+      expect(within(menu).getByRole('link', { name: rotulo })).toBeInTheDocument()
+    }
+
+    expect(within(menu).getByRole('link', { name: 'Seções da página' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(menu).getByRole('link', { name: 'Leads recebidos' })).not.toHaveAttribute(
+      'aria-current',
+    )
+
+    await userEvent.click(within(menu).getByRole('link', { name: 'Leads recebidos' }))
+
+    expect(await screen.findByRole('heading', { name: 'Leads recebidos' })).toBeInTheDocument()
+    expect(within(menu).getByRole('link', { name: 'Leads recebidos' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(menu).getByRole('link', { name: 'Seções da página' })).not.toHaveAttribute(
+      'aria-current',
+    )
+  })
+
+  it('continua visível depois de trocar de área', async () => {
+    renderPainel(gatewayCom(new Map()))
+    await entrar(OPERADORA.email, OPERADORA.password)
+    const menu = await screen.findByRole('navigation', { name: 'Áreas do painel' })
+
+    await userEvent.click(within(menu).getByRole('link', { name: 'Metadados da página' }))
+    await screen.findByRole('heading', { name: 'Metadados da página' })
+
+    expect(screen.getByRole('navigation', { name: 'Áreas do painel' })).toBeInTheDocument()
   })
 })
 
@@ -231,9 +324,11 @@ describe('Ativação de convite (SDD § D-09)', () => {
 
   function renderAtivacao(auth: FakeSupabaseAuth): void {
     render(
-      <MemoryRouter initialEntries={[ACTIVATE_PATH]}>
-        <App authGateway={new SupabaseAuthGateway(auth)} apiClient={apiAutorizando()} />
-      </MemoryRouter>,
+      <App
+        authGateway={new SupabaseAuthGateway(auth)}
+        apiClient={apiAutorizando()}
+        initialEntries={[ACTIVATE_PATH]}
+      />,
     )
   }
 
