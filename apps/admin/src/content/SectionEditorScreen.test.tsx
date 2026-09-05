@@ -7,7 +7,7 @@ import { FakeSectionsGateway } from '../../test/fake-sections-gateway'
 import { montarTela } from '../../test/painel-autenticado'
 import { SAVED_MESSAGE, UNPUBLISHED_MESSAGE } from './editor-state'
 import { SectionEditorScreen } from './SectionEditorScreen'
-import { SECTION_EDITOR_ROUTE } from '../routing/paths'
+import { SECTIONS_PATH, SECTION_EDITOR_ROUTE } from '../routing/paths'
 
 const faq = getSectionSchema('faq')
 const hero = getSectionSchema('hero')
@@ -452,3 +452,75 @@ describe('Texto alternativo: a escolha entre informativa e decorativa (SDD § C-
 function campoDeTextoAlternativoDaAbertura() {
   return hero.fields.find((spec) => spec.name === 'imageAlt')
 }
+
+describe('Bloqueio de navegação sem edição salva (T30-d)', () => {
+  const ROTA_LISTA_DE_SECOES = { path: SECTIONS_PATH, element: <p>Lista de seções</p> }
+
+  function abrirFaqComNavegacao(gateway: FakeSectionsGateway): void {
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/faq',
+      extraRoutes: [ROTA_LISTA_DE_SECOES],
+    })
+  }
+
+  const sair = (): Promise<void> =>
+    userEvent.click(screen.getByRole('link', { name: 'Voltar para a lista de seções' }))
+
+  it('não pede confirmação para sair sem ter editado nada', async () => {
+    abrirFaqComNavegacao(gatewayComFaq())
+    await screen.findByLabelText('Título da seção')
+
+    await sair()
+
+    expect(await screen.findByText('Lista de seções')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('pede confirmação em português ao tentar sair com edição não salva', async () => {
+    abrirFaqComNavegacao(gatewayComFaq())
+    await userEvent.type(await screen.findByLabelText('Título da seção'), '!')
+
+    await sair()
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+      'Você tem alterações não salvas. Sair mesmo assim?',
+    )
+    expect(screen.queryByText('Lista de seções')).not.toBeInTheDocument()
+  })
+
+  it('mantém o rascunho na tela ao escolher continuar editando', async () => {
+    abrirFaqComNavegacao(gatewayComFaq())
+    await userEvent.type(await screen.findByLabelText('Título da seção'), '!')
+    await sair()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar editando' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Título da seção')).toHaveValue('Perguntas frequentes!')
+  })
+
+  it('descarta a edição e navega ao escolher sair sem salvar', async () => {
+    const gateway = gatewayComFaq()
+    abrirFaqComNavegacao(gateway)
+    await userEvent.type(await screen.findByLabelText('Título da seção'), '!')
+    await sair()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair sem salvar' }))
+
+    expect(await screen.findByText('Lista de seções')).toBeInTheDocument()
+    expect(gateway.savedDocuments).toEqual([])
+  })
+
+  it('não pede confirmação depois de salvar', async () => {
+    abrirFaqComNavegacao(gatewayComFaq())
+    await userEvent.type(await screen.findByLabelText('Título da seção'), '!')
+    await salvar()
+    await screen.findByRole('status')
+
+    await sair()
+
+    expect(await screen.findByText('Lista de seções')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+})

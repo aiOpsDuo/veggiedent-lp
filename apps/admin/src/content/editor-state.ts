@@ -32,6 +32,8 @@ export type EditorState =
       readonly status: 'pronto'
       readonly section: SectionSummary
       readonly draft: SectionDraft
+      /** O rascunho como veio do servidor, para saber se há edição não salva (T30-d). */
+      readonly savedDraft: SectionDraft
       readonly errors: SectionFieldErrors
       readonly save: SaveState
     }
@@ -100,10 +102,12 @@ export function createEditorReducer(
 ): (state: EditorState, action: EditorAction) => EditorState {
   return (state, action) => {
     if (action.type === 'carregado') {
+      const draft = buildDraft(schema, action.section.data)
       return {
         status: 'pronto',
         section: summaryOf(action.section),
-        draft: buildDraft(schema, action.section.data),
+        draft,
+        savedDraft: draft,
         errors: NO_ERRORS,
         save: { kind: 'ocioso' },
       }
@@ -131,14 +135,17 @@ export function createEditorReducer(
       case 'gravando':
         return { ...state, errors: NO_ERRORS, save: { kind: 'salvando' } }
 
-      case 'gravado':
+      case 'gravado': {
+        const draft = buildDraft(schema, action.section.data)
         return {
           ...state,
           section: summaryOf(action.section),
-          draft: buildDraft(schema, action.section.data),
+          draft,
+          savedDraft: draft,
           errors: NO_ERRORS,
           save: { kind: 'confirmado', message: SAVED_MESSAGE },
         }
+      }
 
       case 'recusado':
         return {

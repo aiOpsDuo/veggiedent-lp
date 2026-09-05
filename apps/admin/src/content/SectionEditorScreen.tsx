@@ -4,13 +4,14 @@ import { getSectionSchema, isSectionKey, type SectionKey } from '@veggiedent/con
 import { useAuth } from '../auth/auth-context'
 import { SECTIONS_PATH } from '../routing/paths'
 import { altTextErrors } from './alt-text-rule'
+import { UnsavedChangesGuard } from './UnsavedChangesGuard'
 import {
   INITIAL_EDITOR_STATE,
   createEditorReducer,
   type SaveState,
 } from './editor-state'
 import { SectionForm } from './SectionForm'
-import { toDocument, type DraftListItem } from './section-draft'
+import { isDraftDirty, toDocument, type DraftListItem } from './section-draft'
 import type { SectionsGateway } from './sections-gateway'
 import { formatUpdatedAt } from './updated-at'
 
@@ -150,9 +151,11 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
   }
 
   const saving = state.save.kind === 'salvando'
+  const dirty = isDraftDirty(state.draft, state.savedDraft)
 
   return (
     <section className="space-y-6">
+      <UnsavedChangesGuard when={dirty} />
       <header className="space-y-2">
         <Link to={SECTIONS_PATH} className="text-sm text-slate-600 underline">
           Voltar para a lista de seções

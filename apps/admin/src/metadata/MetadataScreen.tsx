@@ -4,7 +4,8 @@ import { useAuth } from '../auth/auth-context'
 import { altTextErrors } from '../content/alt-text-rule'
 import { fieldPath } from '../content/field-errors'
 import { FieldControl } from '../content/fields/FieldControl'
-import { toDocument } from '../content/section-draft'
+import { isDraftDirty, toDocument } from '../content/section-draft'
+import { UnsavedChangesGuard } from '../content/UnsavedChangesGuard'
 import { formatUpdatedAt } from '../content/updated-at'
 import type { MetadataGateway } from './metadata-gateway'
 import {
@@ -103,9 +104,11 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
   }
 
   const saving = state.save.kind === 'salvando'
+  const dirty = isDraftDirty(state.draft, state.savedDraft)
 
   return (
     <section className="space-y-6">
+      <UnsavedChangesGuard when={dirty} />
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold text-slate-900">{siteMetadataSchema.label}</h1>
         <p className="text-sm text-slate-600">

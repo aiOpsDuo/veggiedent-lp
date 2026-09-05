@@ -32,6 +32,8 @@ export type MetadataEditorState =
       readonly status: 'pronto'
       readonly updatedAt: string | null
       readonly draft: SectionDraft
+      /** O rascunho como veio do servidor, para saber se há edição não salva (T30-d). */
+      readonly savedDraft: SectionDraft
       readonly errors: SectionFieldErrors
       readonly save: MetadataSaveState
     }
@@ -53,10 +55,12 @@ export const INVALID_MESSAGE = 'Os metadados não foram salvos. Corrija os campo
 export const INITIAL_METADATA_STATE: MetadataEditorState = { status: 'carregando' }
 
 function loaded(metadata: SiteMetadataDetail, save: MetadataSaveState): MetadataEditorState {
+  const draft = buildDraft(siteMetadataSchema, metadata.metadata)
   return {
     status: 'pronto',
     updatedAt: metadata.updatedAt,
-    draft: buildDraft(siteMetadataSchema, metadata.metadata),
+    draft,
+    savedDraft: draft,
     errors: NO_ERRORS,
     save,
   }

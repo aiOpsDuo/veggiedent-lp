@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Link } from 'react-router-dom'
 import { arquivoDe } from '../../test/arquivo'
 import { FakeMediaService } from '../../test/fake-media-service'
 import { FakeMetadataGateway } from '../../test/fake-metadata-gateway'
@@ -199,5 +200,83 @@ describe('Imagem de compartilhamento', () => {
 
     await screen.findByText(SAVED_MESSAGE)
     expect(gateway.lastDocument).not.toHaveProperty('ogImage')
+  })
+})
+
+describe('Bloqueio de navegação sem edição salva (T30-d)', () => {
+  const OUTRA_TELA = '/outra-tela'
+
+  function montarMetadadosComNavegacao(gateway: FakeMetadataGateway): void {
+    montarTela(
+      <>
+        <Link to={OUTRA_TELA}>Ir para outra tela</Link>
+        <MetadataScreen gateway={gateway} />
+      </>,
+      { extraRoutes: [{ path: OUTRA_TELA, element: <p>Outra tela</p> }] },
+    )
+  }
+
+  const sair = (): Promise<void> =>
+    userEvent.click(screen.getByRole('link', { name: 'Ir para outra tela' }))
+
+  it('não pede confirmação para sair sem ter editado nada', async () => {
+    montarMetadadosComNavegacao(new FakeMetadataGateway({ metadata: METADADOS }))
+    await esperarFormulario()
+
+    await sair()
+
+    expect(await screen.findByText('Outra tela')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+  })
+
+  it('pede confirmação em português ao tentar sair com edição não salva', async () => {
+    montarMetadadosComNavegacao(new FakeMetadataGateway({ metadata: METADADOS }))
+    await esperarFormulario()
+    await userEvent.type(screen.getByLabelText('Título da página'), ' revisado')
+
+    await sair()
+
+    expect(await screen.findByRole('alertdialog')).toHaveTextContent(
+      'Você tem alterações não salvas. Sair mesmo assim?',
+    )
+    expect(screen.queryByText('Outra tela')).not.toBeInTheDocument()
+  })
+
+  it('mantém o rascunho na tela ao escolher continuar editando', async () => {
+    montarMetadadosComNavegacao(new FakeMetadataGateway({ metadata: METADADOS }))
+    await esperarFormulario()
+    await userEvent.type(screen.getByLabelText('Título da página'), ' revisado')
+    await sair()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continuar editando' }))
+
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Título da página')).toHaveValue(`${METADADOS.title} revisado`)
+  })
+
+  it('descarta a edição e navega ao escolher sair sem salvar', async () => {
+    const gateway = new FakeMetadataGateway({ metadata: METADADOS })
+    montarMetadadosComNavegacao(gateway)
+    await esperarFormulario()
+    await userEvent.type(screen.getByLabelText('Título da página'), ' revisado')
+    await sair()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sair sem salvar' }))
+
+    expect(await screen.findByText('Outra tela')).toBeInTheDocument()
+    expect(gateway.savedDocuments).toEqual([])
+  })
+
+  it('não pede confirmação depois de salvar', async () => {
+    montarMetadadosComNavegacao(new FakeMetadataGateway({ metadata: METADADOS }))
+    await esperarFormulario()
+    await userEvent.type(screen.getByLabelText('Título da página'), ' revisado')
+    await userEvent.click(screen.getByRole('button', { name: 'Salvar metadados' }))
+    await screen.findByText(SAVED_MESSAGE)
+
+    await sair()
+
+    expect(await screen.findByText('Outra tela')).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
   })
 })

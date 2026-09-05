@@ -196,6 +196,21 @@ function collectValues(
  * é o que faz a ordem definida no painel ser a ordem exibida na página
  * (SDD § C-05), sem depender de nenhum número digitado pelo operador.
  */
+/**
+ * Se o rascunho em edição difere do que foi carregado (ou salvo) por último
+ * (T30-d). Comparar por valor, não por referência: cada digitação produz um
+ * novo objeto de rascunho, e comparar referências marcaria "alterado" mesmo
+ * sem nenhuma diferença de conteúdo.
+ *
+ * Depende de os dois lados terem nascido do mesmo `buildDraft` (mesmos
+ * identificadores de item de lista) para não acusar diferença onde não há —
+ * é assim que os dois reducers usam esta função, sempre comparando contra o
+ * próprio retorno de `buildDraft` guardado no momento do carregamento/gravação.
+ */
+export function isDraftDirty(draft: SectionDraft, savedDraft: SectionDraft): boolean {
+  return JSON.stringify(draft) !== JSON.stringify(savedDraft)
+}
+
 export function toDocument(
   schema: EditableSchema,
   draft: SectionDraft,
