@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent } from 'react'
 import type { MediaFieldType } from '@veggiedent/content-schema'
 import { DeleteImageButton, DropzoneEmptyIcon, DropzoneShell, DropzoneUploading } from './Dropzone'
 import { useMediaService } from './media-context'
-import type { RegisteredMedia } from './media-gateway'
+import { PERCENT, type SendState, type StoredState } from './media-field-state'
 import { acceptAttributeOf, limitHint, policyOf } from './upload-policy'
 
 /**
@@ -37,24 +37,6 @@ interface MediaFieldProps {
   readonly value: string
   readonly onChange: (mediaId: string) => void
 }
-
-type SendState =
-  | { readonly kind: 'ocioso' }
-  | { readonly kind: 'enviando'; readonly percent: number }
-  | { readonly kind: 'recusado'; readonly message: string }
-
-/**
- * O que o campo sabe sobre a mídia já guardada. `ausente` é diferente de
- * `buscando`: uma mídia apagada por fora precisa ser dita ao operador, não
- * escondida atrás de um "carregando" que nunca termina.
- */
-type StoredState =
-  | { readonly kind: 'vazio' }
-  | { readonly kind: 'buscando' }
-  | { readonly kind: 'encontrada'; readonly media: RegisteredMedia }
-  | { readonly kind: 'ausente' }
-
-const PERCENT = 100
 
 export function MediaField({
   id,

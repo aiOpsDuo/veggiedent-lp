@@ -17,6 +17,7 @@ import { SectionsScreen } from './content/SectionsScreen'
 import { DashboardScreen } from './dashboard/DashboardScreen'
 import { LeadsScreen } from './leads/LeadsScreen'
 import { ApiMediaProvider } from './media/media-context'
+import { MultiImageFieldHarnessScreen } from './media/MultiImageFieldHarnessScreen'
 import { MetadataScreen } from './metadata/MetadataScreen'
 import { OperatorsScreen } from './operators/OperatorsScreen'
 import { LoginRoute } from './routing/LoginRoute'
@@ -25,6 +26,7 @@ import {
   LEADS_PATH,
   LOGIN_PATH,
   METADATA_PATH,
+  MULTI_IMAGE_HARNESS_PATH,
   OPERATORS_PATH,
   SECTIONS_PATH,
   SECTION_EDITOR_ROUTE,
@@ -106,6 +108,7 @@ export function App({ authGateway, apiClient, basename, initialEntries }: AppPro
             <Route path={METADATA_PATH} element={<MetadataScreen gateway={apiClient} />} />
             <Route path={LEADS_PATH} element={<LeadsScreen gateway={apiClient} />} />
             <Route path={OPERATORS_PATH} element={<OperatorsScreen gateway={apiClient} />} />
+            <Route path={MULTI_IMAGE_HARNESS_PATH} element={<MultiImageFieldHarnessScreen />} />
             <Route path="*" element={<Navigate to={SECTIONS_PATH} replace />} />
           </Route>
         </Route>

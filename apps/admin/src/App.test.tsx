@@ -17,7 +17,13 @@ const OPERADORA = {
  * em **todas** elas, e não só na primeira: uma tela nova declarada fora da
  * guarda por engano é exatamente o defeito que estes testes existem para pegar.
  */
-const ROTAS_INTERNAS = ['/', '/secoes', '/metadados', '/leads'] as const
+const ROTAS_INTERNAS = [
+  '/',
+  '/secoes',
+  '/metadados',
+  '/leads',
+  '/verificacao/multi-imagem',
+] as const
 
 const ROTA_INTERNA = '/leads'
 
