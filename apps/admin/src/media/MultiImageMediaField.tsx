@@ -168,7 +168,7 @@ function ImageSlotContent({ stored }: { readonly stored: StoredState }): JSX.Ele
       <img
         src={stored.media.publicUrl}
         alt={`Prévia de ${stored.media.originalFilename}`}
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
       />
     )
   }
