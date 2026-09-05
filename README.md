@@ -284,19 +284,25 @@ no código do painel. Isso é verificado por mutação na T11 — ver "Estado ve
 
 ## As telas do painel
 
-O painel tem cinco telas, todas atrás do login. **Nenhuma delas é alcançável sem sessão**: a
-guarda é uma rota de layout, e toda rota nova nasce dentro dela — expor uma tela exigiria
-declará-la fora da guarda, de propósito. A única rota pública além do login é `/admin/ativar`
-(ver "Como convidar e remover um operador"), porque quem chega até ela ainda não tem sessão —
-é o que o convite existe para lhe dar.
+O painel tem quatro telas, todas atrás do login e sempre acessíveis por um **menu lateral**
+fixo (uma gaveta em telas pequenas), que marca qual delas está ativa no momento — não há uma
+tela "Início" separada: `/admin/` redireciona direto para a lista de seções, que já é o primeiro
+item do menu. **Nenhuma tela é alcançável sem sessão**: a guarda é uma rota de layout, e toda
+rota nova nasce dentro dela — expor uma tela exigiria declará-la fora da guarda, de propósito.
+A única rota pública além do login é `/admin/ativar` (ver "Como convidar e remover um
+operador"), porque quem chega até ela ainda não tem sessão — é o que o convite existe para lhe
+dar.
 
 | Tela | Endereço | O que faz |
 |---|---|---|
-| Início | `/admin/` | Caminhos para as demais e a confirmação de que a API aceitou a sessão |
 | Seções da página | `/admin/secoes` | As 9 seções, na ordem da página, com data da última edição e visibilidade |
 | Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
 | Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
 | Operadores do painel | `/admin/operadores` | Lista, convida por e-mail e remove operadores |
+
+Editar um campo em "Seções da página" ou "Metadados da página" e tentar navegar para outra tela
+sem salvar pede confirmação em português — não há rascunho persistido, então sair descarta a
+edição de verdade.
 
 ### Metadados da página
 
