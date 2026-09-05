@@ -39,7 +39,7 @@ Permitir que a equipe responsável pela landing page do Veggiedent altere qualqu
 
 **Notas de design:**
 
-- O painel é uma ferramenta interna: prioriza clareza e previsibilidade sobre sofisticação visual. Não precisa seguir a identidade visual da marca Veggiedent, que é da landing page.
+- O painel é uma ferramenta interna: prioriza clareza e previsibilidade sobre sofisticação visual. **Revisto em 2026-09-04 (T35):** o usuário decidiu que o painel passa a reaproveitar a paleta e o estilo visual da landing page (antes, o painel tinha liberdade para não seguir a identidade da marca — essa liberdade deixou de ser usada). A prioridade de clareza e previsibilidade sobre sofisticação continua valendo: a mudança é de paleta e acabamento, não de densidade de informação nem de complexidade de interação.
 - Cada campo do painel deve deixar claro **onde** ele aparece na página, para que o operador não precise adivinhar o efeito da edição. Rótulos usam a linguagem de quem escreve o conteúdo, não os nomes técnicos dos campos do código.
 - O texto alternativo (`alt`) de cada imagem é um campo obrigatório ao lado do upload, não um detalhe escondido: a acessibilidade da página hoje depende dele.
 - Toda alteração salva precisa de confirmação visível de sucesso ou de erro — como não há rascunho, o operador precisa saber com certeza se o que ele acabou de escrever está no ar.
