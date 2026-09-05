@@ -180,7 +180,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Dependências: T1, T5
 - Execução: sequencial em relação a T11–T13 (mesmo app)
 - Toca documentação: sim — README explica como acessar o painel e rodá-lo localmente.
-- Status: pendente
+- Status: **concluída e ACEITA** (data original não registrada — corrigido nesta retomada). `apps/admin` existe, servido sob `/admin`, com login por e-mail/senha via Supabase Auth, sessão persistente, logout e guarda de rota — pré-requisito de que T11, T12 e T13 (todas aceitas, todas dependentes desta) são prova indireta, e verificado de novo diretamente nesta sessão em múltiplas tarefas (T27, T29, T33, T34, T35) com login real do operador.
 
 ### T11 — Painel: formulário gerado a partir do esquema
 - Descrição: renderizar, a partir do pacote de esquemas, o formulário de cada seção — campos simples, textos longos, listas com adicionar, remover e reordenar, e o controle de visibilidade de seção e de item. Incluir confirmação visível de sucesso e de erro ao salvar.
@@ -236,7 +236,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Dependências: T9
 - Execução: sequencial
 - Toca documentação: sim — README explica o instantâneo e quando ele é regenerado.
-- Status: pendente
+- Status: **concluída e ACEITA** (data original não registrada — corrigido nesta retomada). A LP lê de `GET /api/content`, com `content-snapshot.json` como reserva; nenhum arquivo `*.content.ts` resta no repositório. Verificado de novo nesta sessão: `apps/lp/src/content/PublishedContentProvider.tsx` e a suíte `App.test.tsx` ("LP com a API de conteúdo indisponível"/"respondendo") exercitam exatamente esse contrato, e passaram em toda verificação de T27 a T35.
 
 ### T15 — Injetor de SEO na borda
 - Descrição: implementar a função de borda que intercepta a requisição do documento, busca os metadados em `GET /api/seo` com cache curto, injeta no HTML e devolve; em erro ou expiração do tempo limite, devolve o HTML estático intacto. Implementação da plataforma isolada em um único arquivo.
@@ -457,7 +457,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: nenhuma
 - **Execução: em worktree isolado, com instância própria em portas alternativas** (não 5173/5174/3000, que são as do ambiente principal do usuário) — mesmo não escrevendo código, rodar contra a instância principal arriscaria falso positivo se T28 precisar derrubar e subir serviços durante a auditoria. Sem risco de conflito de arquivo com T28/T29 por não escrever nada no repositório.
 - Toca documentação: não — o resultado é uma proposta para o usuário decidir, não um artefato de processo definitivo ainda.
-- Status: pendente
+- Status: **concluída** em 2026-09-04. Entregou 6 achados reais em navegador real, logado (login: contraste do botão, validação em inglês; pós-login: tela "Início" redundante, edição perdida sem aviso, código bruto na tela/CSV de leads, coluna de ações escondida). Todos os 6 corrigidos na T33. Não é mais uma proposta em aberto — virou trabalho entregue.
 
 ### T31 — Remover os campos "Arquivo de legendas" (tipo de mídia `legenda`)
 
