@@ -1,16 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/auth-context'
 import { formatBrasiliaDateTime } from '../shared/brasilia-time'
-import type { OperatorInvite, OperatorsGateway, OperatorView } from './operators-gateway'
+import type { OperatorsGateway, OperatorView } from './operators-gateway'
 
 /**
  * A tela de operadores (SDD § D-09, § C-13): lista quem tem acesso ao painel,
- * convida por e-mail e remove, com confirmação.
+ * cria uma conta nova e remove, com confirmação.
  *
- * O convite gera um **link de uso único**, mostrado uma vez só — a tela nunca
- * o guarda além do estado local desta sessão de navegador, e ele some assim
- * que a caixa é fechada ou um novo convite é gerado (D-09: "a tela nunca
- * reexibe um link já gerado").
+ * Criar pede **e-mail, senha e nome** diretamente — a conta já nasce pronta
+ * para logar, sem link nem e-mail de convite (D-09, revista na T34). Quem
+ * cria sabe a senha inicial de outra pessoa: trade-off aceito e declarado no
+ * SDD, não um descuido desta tela.
  *
  * O botão de remover é desabilitado, com o motivo visível, para a própria
  * conta e para o único operador restante — a mesma recusa que a API impõe com
@@ -18,6 +18,11 @@ import type { OperatorInvite, OperatorsGateway, OperatorView } from './operators
  * descobrir. A API continua sendo quem decide de verdade: um clique que
  * escapasse dessa checagem local ainda voltaria recusado.
  */
+
+/** O Supabase Auth exige este mínimo por padrão — mesmo valor do backstop da API. */
+const MIN_PASSWORD_LENGTH = 6
+const SHORT_PASSWORD_MESSAGE = `A senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+const CREATED_MESSAGE = 'Operador criado. Já pode entrar no painel com o e-mail e a senha definidos.'
 
 interface OperatorsScreenProps {
   readonly gateway: OperatorsGateway
@@ -44,9 +49,10 @@ export function OperatorsScreen({ gateway }: OperatorsScreenProps): JSX.Element 
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [email, setEmail] = useState('')
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [lastInvite, setLastInvite] = useState<OperatorInvite | null>(null)
-  /** Sobe a cada convite ou remoção: é o pedido de releitura da listagem. */
+  const [password, setPasswordValue] = useState('')
+  const [name, setName] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  /** Sobe a cada criação ou remoção: é o pedido de releitura da listagem. */
   const [revision, setRevision] = useState(0)
 
   useEffect(() => {
@@ -70,23 +76,29 @@ export function OperatorsScreen({ gateway }: OperatorsScreenProps): JSX.Element 
     }
   }, [gateway, accessToken, revision])
 
-  const invite = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+  const create = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault()
     if (accessToken === null) {
       return
     }
-    setInviteError(null)
+    setCreateError(null)
     setNotice(null)
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setCreateError(SHORT_PASSWORD_MESSAGE)
+      return
+    }
     setBusy(true)
-    const result = await gateway.inviteOperator(accessToken, email)
+    const result = await gateway.createOperator(accessToken, { email, password, name })
     setBusy(false)
-    if (result.status === 'convidado') {
-      setLastInvite(result.value)
+    if (result.status === 'criado') {
       setEmail('')
+      setPasswordValue('')
+      setName('')
+      setNotice({ tone: 'sucesso', message: CREATED_MESSAGE })
       setRevision((current) => current + 1)
       return
     }
-    setInviteError(result.message)
+    setCreateError(result.message)
   }
 
   const remove = async (id: string): Promise<void> => {
@@ -113,22 +125,22 @@ export function OperatorsScreen({ gateway }: OperatorsScreenProps): JSX.Element 
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold text-slate-900">Operadores do painel</h1>
         <p className="text-sm text-slate-600">
-          Todo operador tem o mesmo nível de acesso. Quem é convidado define a própria senha ao
-          abrir o link de ativação — ninguém aqui define senha por outra pessoa.
+          Todo operador tem o mesmo nível de acesso. A conta nasce pronta para logar assim que
+          criada — informe o e-mail e a senha com que o novo operador vai entrar.
         </p>
       </header>
 
-      <InviteForm
+      <CreateForm
         email={email}
+        password={password}
+        name={name}
         onChangeEmail={setEmail}
-        onSubmit={(event) => void invite(event)}
+        onChangePassword={setPasswordValue}
+        onChangeName={setName}
+        onSubmit={(event) => void create(event)}
         busy={busy}
-        error={inviteError}
+        error={createError}
       />
-
-      {lastInvite !== null && (
-        <InviteLinkNotice invite={lastInvite} onDismiss={() => setLastInvite(null)} />
-      )}
 
       {notice !== null && (
         <p
@@ -161,6 +173,9 @@ export function OperatorsScreen({ gateway }: OperatorsScreenProps): JSX.Element 
             <caption className="sr-only">Operadores com acesso ao painel</caption>
             <thead className="bg-slate-100 text-xs uppercase text-slate-600">
               <tr>
+                <th scope="col" className="whitespace-nowrap px-3 py-2">
+                  Nome
+                </th>
                 <th scope="col" className="whitespace-nowrap px-3 py-2">
                   E-mail
                 </th>
@@ -200,15 +215,31 @@ export function OperatorsScreen({ gateway }: OperatorsScreenProps): JSX.Element 
   )
 }
 
-interface InviteFormProps {
+interface CreateFormProps {
   readonly email: string
+  readonly password: string
+  readonly name: string
   readonly onChangeEmail: (email: string) => void
+  readonly onChangePassword: (password: string) => void
+  readonly onChangeName: (name: string) => void
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void
   readonly busy: boolean
   readonly error: string | null
 }
 
-function InviteForm({ email, onChangeEmail, onSubmit, busy, error }: InviteFormProps): JSX.Element {
+function CreateForm({
+  email,
+  password,
+  name,
+  onChangeEmail,
+  onChangePassword,
+  onChangeName,
+  onSubmit,
+  busy,
+  error,
+}: CreateFormProps): JSX.Element {
+  const canSubmit = email.trim().length > 0 && password.length > 0 && name.trim().length > 0
+
   return (
     <form
       noValidate
@@ -216,8 +247,21 @@ function InviteForm({ email, onChangeEmail, onSubmit, busy, error }: InviteFormP
       className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-4"
     >
       <div className="space-y-1">
+        <label htmlFor="operador-nome" className="block text-sm font-medium text-slate-800">
+          Nome
+        </label>
+        <input
+          id="operador-nome"
+          type="text"
+          value={name}
+          onChange={(event) => onChangeName(event.target.value)}
+          className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+          placeholder="Nova Operadora"
+        />
+      </div>
+      <div className="space-y-1">
         <label htmlFor="operador-email" className="block text-sm font-medium text-slate-800">
-          E-mail do novo operador
+          E-mail
         </label>
         <input
           id="operador-email"
@@ -228,12 +272,26 @@ function InviteForm({ email, onChangeEmail, onSubmit, busy, error }: InviteFormP
           placeholder="nova.operadora@veggiedent.com.br"
         />
       </div>
+      <div className="space-y-1">
+        <label htmlFor="operador-senha" className="block text-sm font-medium text-slate-800">
+          Senha inicial
+        </label>
+        <input
+          id="operador-senha"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => onChangePassword(event.target.value)}
+          className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+          placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
+        />
+      </div>
       <button
         type="submit"
-        disabled={busy || email.trim().length === 0}
+        disabled={busy || !canSubmit}
         className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
       >
-        {busy ? 'Convidando…' : 'Convidar operador'}
+        {busy ? 'Criando…' : 'Criar operador'}
       </button>
       {error !== null && (
         <p role="alert" className="w-full text-sm text-red-600">
@@ -241,40 +299,6 @@ function InviteForm({ email, onChangeEmail, onSubmit, busy, error }: InviteFormP
         </p>
       )}
     </form>
-  )
-}
-
-interface InviteLinkNoticeProps {
-  readonly invite: OperatorInvite
-  readonly onDismiss: () => void
-}
-
-/**
- * O link de ativação, mostrado uma única vez (D-09). `readOnly` + `select all
- * ao focar` é o jeito de copiar sem depender da API de clipboard do
- * navegador, que nem todo ambiente de teste ou navegador antigo tem.
- */
-function InviteLinkNotice({ invite, onDismiss }: InviteLinkNoticeProps): JSX.Element {
-  return (
-    <div className="space-y-2 rounded border border-amber-300 bg-amber-50 p-4">
-      <p className="text-sm font-medium text-amber-900">
-        {`Convite gerado para ${invite.email}. Copie o link abaixo e envie por um canal seu (e-mail, WhatsApp, Slack) — ele só aparece aqui uma vez.`}
-      </p>
-      <input
-        readOnly
-        value={invite.activationLink}
-        aria-label="Link de ativação de uso único"
-        onFocus={(event) => event.currentTarget.select()}
-        className="w-full rounded border border-amber-300 bg-white px-3 py-2 text-sm text-slate-900"
-      />
-      <button
-        type="button"
-        onClick={onDismiss}
-        className="rounded border border-amber-400 px-3 py-1.5 text-sm text-amber-900 hover:bg-amber-100"
-      >
-        Já copiei, esconder o link
-      </button>
-    </div>
   )
 }
 
@@ -313,6 +337,7 @@ function OperatorRow({
 
   return (
     <tr>
+      <td className="whitespace-nowrap px-3 py-2 text-slate-700">{operator.name}</td>
       <td className="whitespace-nowrap px-3 py-2 text-slate-700">{operator.email}</td>
       <td className="whitespace-nowrap px-3 py-2 text-slate-700">
         {formatBrasiliaDateTime(operator.createdAt) ?? '—'}

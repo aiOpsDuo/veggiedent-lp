@@ -3,12 +3,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger'
 import type { AuthenticatedOperator } from '../../auth/domain/authenticated-operator'
 import { CurrentOperator } from '../../auth/presentation/current-operator.decorator'
 import { requireOperator } from '../../auth/presentation/require-operator'
-import { InviteOperatorUseCase } from '../application/invite-operator.use-case'
+import { CreateOperatorUseCase } from '../application/create-operator.use-case'
 import { ListOperatorsUseCase } from '../application/list-operators.use-case'
 import type { OperatorView } from '../application/operator-view'
 import { RemoveOperatorUseCase } from '../application/remove-operator.use-case'
-import type { OperatorInvite } from '../domain/operator-directory.port'
-import { InviteOperatorDto } from './invite-operator.dto'
+import { CreateOperatorDto } from './create-operator.dto'
 
 /**
  * Operadores do painel (SDD § D-09, § C-13). Sem marcação de público: a guarda
@@ -24,7 +23,7 @@ import { InviteOperatorDto } from './invite-operator.dto'
 export class AdminOperatorsController {
   constructor(
     private readonly listOperators: ListOperatorsUseCase,
-    private readonly inviteOperator: InviteOperatorUseCase,
+    private readonly createOperator: CreateOperatorUseCase,
     private readonly removeOperator: RemoveOperatorUseCase,
   ) {}
 
@@ -36,12 +35,12 @@ export class AdminOperatorsController {
 
   @Post()
   @ApiOperation({
-    summary: 'Convida um novo operador.',
+    summary: 'Cria um novo operador.',
     description:
-      'Gera o link de ativação de uso único e o devolve nesta resposta — a única vez que ele existe (SDD § D-09). Nenhum e-mail é enviado pela API.',
+      'Cria a conta com e-mail, senha e nome informados, já pronta para logar — sem link nem e-mail (SDD § D-09, revista na T34).',
   })
-  async convidar(@Body() pedido: InviteOperatorDto): Promise<OperatorInvite> {
-    return this.inviteOperator.execute(pedido.email)
+  async criar(@Body() pedido: CreateOperatorDto): Promise<OperatorView> {
+    return this.createOperator.execute(pedido)
   }
 
   @Delete(':id')

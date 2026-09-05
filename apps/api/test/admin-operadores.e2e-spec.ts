@@ -11,8 +11,8 @@ import { OPERATOR_ID, startContentHarness, type ContentHarness } from './content
  *    operador restante respondem `409`, sem apagar ninguém. É a prova em
  *    nível de HTTP das mesmas regras que `remove-operator.use-case.spec.ts`
  *    prova por mutação em nível de unidade.
- * 2. **O link de convite nunca é senha**: `POST` devolve um link, nunca
- *    define credencial nenhuma.
+ * 2. **A conta nasce pronta para logar, sem link** (D-09, revista na T34):
+ *    `POST` recebe e-mail, senha e nome, e nenhuma senha volta na resposta.
  * 3. **Tudo aqui exige token** — a guarda global cobre a listagem também.
  */
 
@@ -32,10 +32,16 @@ describe('rotas administrativas de operadores', () => {
     req.set('authorization', `Bearer ${harness.token}`)
 
   const listar = (): request.Test => comToken(agente().get('/api/admin/operators'))
-  const convidar = (email: string): request.Test =>
-    comToken(agente().post('/api/admin/operators').send({ email }))
+  const criar = (body: Partial<{ email: string; password: string; name: string }>): request.Test =>
+    comToken(agente().post('/api/admin/operators').send(body))
   const remover = (id: string): request.Test =>
     comToken(agente().delete(`/api/admin/operators/${id}`))
+
+  const NOVO_OPERADOR = {
+    email: 'nova.operadora@veggiedent.test',
+    password: 'senha-inicial-forte',
+    name: 'Nova Operadora',
+  }
 
   describe('listagem', () => {
     it('responde 401 sem token', async () => {
@@ -44,10 +50,11 @@ describe('rotas administrativas de operadores', () => {
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
     })
 
-    it('lista os operadores existentes, com e-mail, criação e último login', async () => {
+    it('lista os operadores existentes, com e-mail, nome, criação e último login', async () => {
       harness.database.auth.admin.seed({
         id: OPERATOR_ID,
         email: 'operadora@veggiedent.test',
+        name: 'Operadora Original',
         createdAt: '2026-08-01T10:00:00.000Z',
         lastSignInAt: '2026-09-04T09:00:00.000Z',
       })
@@ -59,10 +66,19 @@ describe('rotas administrativas de operadores', () => {
         {
           id: OPERATOR_ID,
           email: 'operadora@veggiedent.test',
+          name: 'Operadora Original',
           createdAt: '2026-08-01T10:00:00.000Z',
           lastSignInAt: '2026-09-04T09:00:00.000Z',
         },
       ])
+    })
+
+    it('deriva um nome legível do e-mail para um operador sem nome cadastrado', async () => {
+      harness.database.auth.admin.seed({ id: OPERATOR_ID, email: 'ana.paula@veggiedent.test' })
+
+      const response = await listar()
+
+      expect(response.body[0].name).toBe('Ana Paula')
     })
 
     it('lista mais recente primeiro', async () => {
@@ -86,51 +102,54 @@ describe('rotas administrativas de operadores', () => {
     })
   })
 
-  describe('convite', () => {
-    it('responde 401 sem token e não convida', async () => {
-      const response = await agente()
-        .post('/api/admin/operators')
-        .send({ email: 'nova@veggiedent.test' })
+  describe('criação', () => {
+    it('responde 401 sem token e não cria', async () => {
+      const response = await agente().post('/api/admin/operators').send(NOVO_OPERADOR)
 
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
       expect(harness.database.auth.admin.count()).toBe(0)
     })
 
-    it('gera o link de ativação de uso único e o devolve na resposta', async () => {
-      const response = await convidar('nova.operadora@veggiedent.test')
+    it('cria a conta com e-mail e nome informados, sem devolver a senha', async () => {
+      const response = await criar(NOVO_OPERADOR)
 
       expect(response.status).toBe(HttpStatus.CREATED)
-      expect(response.body.email).toBe('nova.operadora@veggiedent.test')
-      expect(response.body.activationLink).toEqual(expect.any(String))
-      expect(response.body.activationLink).toContain('nova.operadora%40veggiedent.test')
-      /** Nenhuma senha viaja nesta resposta (SDD § D-09). */
-      expect(JSON.stringify(response.body)).not.toMatch(/password|senha/i)
+      expect(response.body.email).toBe(NOVO_OPERADOR.email)
+      expect(response.body.name).toBe(NOVO_OPERADOR.name)
+      expect(response.body.id).toEqual(expect.any(String))
+      expect(JSON.stringify(response.body)).not.toMatch(/password|senha-inicial-forte/i)
     })
 
-    it('o convidado aparece na listagem depois do convite', async () => {
-      await convidar('nova.operadora@veggiedent.test')
+    it('o operador criado aparece na listagem, pronto — sem link nem segundo passo', async () => {
+      await criar(NOVO_OPERADOR)
 
       const response = await listar()
 
-      expect(response.body.map((operator: { email: string }) => operator.email)).toContain(
-        'nova.operadora@veggiedent.test',
-      )
-    })
-
-    it('aponta o link de ativação para a rota do painel, não para o Site URL padrão do Supabase', async () => {
-      const response = await convidar('nova.operadora@veggiedent.test')
-
-      const link = new URL(response.body.activationLink)
-      expect(link.searchParams.get('redirect_to')).toBe(
-        `${process.env.ADMIN_APP_URL}/admin/ativar`,
+      expect(response.body).toContainEqual(
+        expect.objectContaining({ email: NOVO_OPERADOR.email, name: NOVO_OPERADOR.name }),
       )
     })
 
     it('recusa e-mail malformado com mensagem clara em português', async () => {
-      const response = await convidar('nao-e-email')
+      const response = await criar({ ...NOVO_OPERADOR, email: 'nao-e-email' })
 
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(response.body.fields.email).toBe('Informe um e-mail válido.')
+    })
+
+    it('recusa senha curta com mensagem clara em português, sem chamar o Supabase', async () => {
+      const response = await criar({ ...NOVO_OPERADOR, password: '12345' })
+
+      expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(response.body.fields.password).toBe('A senha precisa ter pelo menos 6 caracteres.')
+      expect(harness.database.auth.admin.count()).toBe(0)
+    })
+
+    it('recusa nome ausente com mensagem clara em português', async () => {
+      const response = await criar({ email: NOVO_OPERADOR.email, password: NOVO_OPERADOR.password })
+
+      expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(response.body.fields.name).toBe('Informe o nome do operador.')
     })
   })
 

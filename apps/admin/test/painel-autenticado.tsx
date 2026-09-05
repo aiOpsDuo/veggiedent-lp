@@ -35,8 +35,6 @@ const SESSAO_ATIVA: AuthGateway = {
   },
   signIn: async () => ({ ok: true }),
   signOut: async () => undefined,
-  activate: async () => ({ ok: true }),
-  setPassword: async () => ({ ok: true }),
 }
 
 interface MontagemOptions {

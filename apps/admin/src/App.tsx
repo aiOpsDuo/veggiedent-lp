@@ -18,10 +18,8 @@ import { LeadsScreen } from './leads/LeadsScreen'
 import { ApiMediaProvider } from './media/media-context'
 import { MetadataScreen } from './metadata/MetadataScreen'
 import { OperatorsScreen } from './operators/OperatorsScreen'
-import { ActivateRoute } from './routing/ActivateRoute'
 import { LoginRoute } from './routing/LoginRoute'
 import {
-  ACTIVATE_PATH,
   HOME_PATH,
   LEADS_PATH,
   LOGIN_PATH,
@@ -70,13 +68,12 @@ function AppShell({ authGateway, apiClient }: AppShellProps): JSX.Element {
 }
 
 /**
- * O painel inteiro, com duas rotas públicas: login e ativação de convite.
+ * O painel inteiro, com uma única rota pública: o login.
  *
  * A guarda é uma rota de layout, e não um invólucro repetido em cada tela. É a
  * mesma ideia da guarda global da API (SDD § D-03): proteger não exige lembrar
  * de nada, porque toda rota nova nasce dentro dela; expor exigiria declarar a
- * rota fora da guarda, de propósito. `/ativar` (SDD § D-09) é pública pelo
- * mesmo motivo que `/login` é: quem chega até ela ainda não tem sessão.
+ * rota fora da guarda, de propósito.
  *
  * `/` (`HOME_PATH`) não tem tela própria (T30-c): o operador que chega ali
  * autenticado é levado direto para a lista de seções, que já é o primeiro
@@ -93,7 +90,6 @@ export function App({ authGateway, apiClient, basename, initialEntries }: AppPro
     const routes = createRoutesFromElements(
       <Route element={<AppShell authGateway={authGateway} apiClient={apiClient} />}>
         <Route path={LOGIN_PATH} element={<LoginRoute />} />
-        <Route path={ACTIVATE_PATH} element={<ActivateRoute />} />
         <Route element={<RequireSession />}>
           <Route element={<AdminLayout apiClient={apiClient} />}>
             <Route path={HOME_PATH} element={<Navigate to={SECTIONS_PATH} replace />} />

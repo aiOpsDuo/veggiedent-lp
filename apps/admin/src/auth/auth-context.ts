@@ -1,10 +1,5 @@
 import { createContext, useContext } from 'react'
-import type {
-  ActivationResult,
-  ActivationTokens,
-  PasswordUpdateResult,
-  SignInResult,
-} from './auth-gateway'
+import type { SignInResult } from './auth-gateway'
 import type { OperatorCredentials, OperatorSession } from './operator-session'
 
 /**
@@ -25,8 +20,6 @@ export interface AuthContextValue {
   readonly state: AuthState
   signIn(credentials: OperatorCredentials): Promise<SignInResult>
   signOut(): Promise<void>
-  activate(tokens: ActivationTokens): Promise<ActivationResult>
-  setPassword(password: string): Promise<PasswordUpdateResult>
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

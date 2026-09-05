@@ -5,7 +5,7 @@ import { montarTela } from '../../test/painel-autenticado'
 import { OperatorsScreen } from './OperatorsScreen'
 
 /**
- * A tela de operadores (SDD § D-09, § C-13, § R-10).
+ * A tela de operadores (SDD § D-09, § C-13, § R-10, revista na T34).
  *
  * `EU` é o id fixo que `test/painel-autenticado.tsx` usa para a sessão ativa
  * de todo teste de tela do painel — é assim que esta suíte consegue simular
@@ -18,25 +18,34 @@ function montarOperadores(gateway: FakeOperatorsGateway): void {
   montarTela(<OperatorsScreen gateway={gateway} />)
 }
 
+async function preencherFormulario(nome: string, email: string, senha: string): Promise<void> {
+  await userEvent.type(screen.getByLabelText('Nome'), nome)
+  await userEvent.type(screen.getByLabelText('E-mail'), email)
+  await userEvent.type(screen.getByLabelText('Senha inicial'), senha)
+}
+
 describe('OperatorsScreen', () => {
-  it('lista os operadores com e-mail, criação e último login', async () => {
+  it('lista os operadores com nome, e-mail, criação e último login', async () => {
     const gateway = new FakeOperatorsGateway({
       operators: [
         operadorDeTeste({
           id: EU,
           email: 'eu@veggiedent.test',
+          name: 'Eu Mesma',
           createdAt: '2026-08-01T12:00:00.000Z',
           lastSignInAt: '2026-09-04T09:00:00.000Z',
         }),
-        operadorDeTeste({ id: OUTRO, email: 'outro@veggiedent.test' }),
+        operadorDeTeste({ id: OUTRO, email: 'outro@veggiedent.test', name: 'Outro Operador' }),
       ],
     })
 
     montarOperadores(gateway)
 
     const linha = (await screen.findByText('eu@veggiedent.test')).closest('tr') as HTMLElement
+    expect(within(linha).getByText('Eu Mesma')).toBeInTheDocument()
     expect(within(linha).getByText(/01\/08\/2026/)).toBeInTheDocument()
     expect(within(linha).getByText(/04\/09\/2026/)).toBeInTheDocument()
+    expect(screen.getByText('Outro Operador')).toBeInTheDocument()
     expect(screen.getByText('outro@veggiedent.test')).toBeInTheDocument()
   })
 
@@ -54,39 +63,54 @@ describe('OperatorsScreen', () => {
     expect(screen.getAllByText('Nunca acessou').length).toBeGreaterThan(0)
   })
 
-  describe('convite', () => {
-    it('convida por e-mail e mostra o link de ativação uma única vez', async () => {
+  describe('criação', () => {
+    it('cria com e-mail, senha e nome, e mostra que a conta já está pronta para logar', async () => {
       const gateway = new FakeOperatorsGateway({ operators: [operadorDeTeste({ id: EU })] })
       montarOperadores(gateway)
       await screen.findByText(operadorDeTeste({ id: EU }).email)
 
-      await userEvent.type(
-        screen.getByLabelText('E-mail do novo operador'),
-        'nova.operadora@veggiedent.test',
-      )
-      await userEvent.click(screen.getByRole('button', { name: 'Convidar operador' }))
+      await preencherFormulario('Nova Operadora', 'nova.operadora@veggiedent.test', 'senha-forte')
+      await userEvent.click(screen.getByRole('button', { name: 'Criar operador' }))
 
-      expect(gateway.convites).toEqual(['nova.operadora@veggiedent.test'])
-      const link = await screen.findByLabelText('Link de ativação de uso único')
-      expect((link as HTMLInputElement).value).toContain('token=')
+      expect(gateway.criacoes).toEqual([
+        { email: 'nova.operadora@veggiedent.test', password: 'senha-forte', name: 'Nova Operadora' },
+      ])
+      expect(
+        await screen.findByText(
+          'Operador criado. Já pode entrar no painel com o e-mail e a senha definidos.',
+        ),
+      ).toBeInTheDocument()
       expect(await screen.findByText('nova.operadora@veggiedent.test')).toBeInTheDocument()
+      expect(await screen.findByText('Nova Operadora')).toBeInTheDocument()
     })
 
-    it('esconde o link ao clicar em "já copiei" e não o reexibe sozinho', async () => {
+    it('limpa o formulário depois de criar', async () => {
       const gateway = new FakeOperatorsGateway({ operators: [operadorDeTeste({ id: EU })] })
       montarOperadores(gateway)
       await screen.findByText(operadorDeTeste({ id: EU }).email)
 
-      await userEvent.type(
-        screen.getByLabelText('E-mail do novo operador'),
-        'nova.operadora@veggiedent.test',
+      await preencherFormulario('Nova Operadora', 'nova.operadora@veggiedent.test', 'senha-forte')
+      await userEvent.click(screen.getByRole('button', { name: 'Criar operador' }))
+      await screen.findByText('nova.operadora@veggiedent.test')
+
+      expect(screen.getByLabelText('Nome')).toHaveValue('')
+      expect(screen.getByLabelText('E-mail')).toHaveValue('')
+      expect(screen.getByLabelText('Senha inicial')).toHaveValue('')
+    })
+
+    /** SDD § D-09 revista na T34: mínimo de 6 caracteres, checado sem round-trip. */
+    it('recusa senha curta antes de chamar a API', async () => {
+      const gateway = new FakeOperatorsGateway({ operators: [operadorDeTeste({ id: EU })] })
+      montarOperadores(gateway)
+      await screen.findByText(operadorDeTeste({ id: EU }).email)
+
+      await preencherFormulario('Nova Operadora', 'nova.operadora@veggiedent.test', '12345')
+      await userEvent.click(screen.getByRole('button', { name: 'Criar operador' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'A senha precisa ter pelo menos 6 caracteres.',
       )
-      await userEvent.click(screen.getByRole('button', { name: 'Convidar operador' }))
-      await screen.findByLabelText('Link de ativação de uso único')
-
-      await userEvent.click(screen.getByRole('button', { name: 'Já copiei, esconder o link' }))
-
-      expect(screen.queryByLabelText('Link de ativação de uso único')).not.toBeInTheDocument()
+      expect(gateway.criacoes).toEqual([])
     })
 
     it('recusa e-mail malformado com a mensagem que a API devolveu', async () => {
@@ -94,10 +118,22 @@ describe('OperatorsScreen', () => {
       montarOperadores(gateway)
       await screen.findByText(operadorDeTeste({ id: EU }).email)
 
-      await userEvent.type(screen.getByLabelText('E-mail do novo operador'), 'nao-e-email')
-      await userEvent.click(screen.getByRole('button', { name: 'Convidar operador' }))
+      await preencherFormulario('Nova Operadora', 'nao-e-email', 'senha-forte')
+      await userEvent.click(screen.getByRole('button', { name: 'Criar operador' }))
 
       expect(await screen.findByRole('alert')).toHaveTextContent('Informe um e-mail válido.')
+    })
+
+    it('mantém o botão desabilitado até nome, e-mail e senha estarem preenchidos', async () => {
+      const gateway = new FakeOperatorsGateway({ operators: [operadorDeTeste({ id: EU })] })
+      montarOperadores(gateway)
+      await screen.findByText(operadorDeTeste({ id: EU }).email)
+
+      expect(screen.getByRole('button', { name: 'Criar operador' })).toBeDisabled()
+
+      await preencherFormulario('Nova Operadora', 'nova.operadora@veggiedent.test', 'senha-forte')
+
+      expect(screen.getByRole('button', { name: 'Criar operador' })).toBeEnabled()
     })
   })
 

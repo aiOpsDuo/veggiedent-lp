@@ -11,4 +11,3 @@ process.env.SUPABASE_SECRET_KEY = 'chave-secreta-ficticia'
 process.env.SUPABASE_JWKS_URL =
   'https://projeto-de-teste.supabase.co/auth/v1/.well-known/jwks.json'
 process.env.ALLOWED_ORIGINS = 'http://localhost:5173'
-process.env.ADMIN_APP_URL = 'http://localhost:5174'

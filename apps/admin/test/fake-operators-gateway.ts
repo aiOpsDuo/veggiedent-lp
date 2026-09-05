@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type {
-  OperatorInvite,
-  OperatorInviteResult,
+  OperatorCreateInput,
+  OperatorCreateResult,
   OperatorRemoveResult,
   OperatorsGateway,
   OperatorsListResult,
@@ -17,12 +17,12 @@ import type {
 export interface FakeOperatorsGatewayOptions {
   readonly operators?: readonly OperatorView[]
   readonly failListWith?: string
-  /** Quando presente, todo convite falha com esta mensagem (`falha`, não `invalido`). */
-  readonly failInviteWith?: string
+  /** Quando presente, toda criação falha com esta mensagem (`falha`, não `invalido`). */
+  readonly failCreateWith?: string
 }
 
 export class FakeOperatorsGateway implements OperatorsGateway {
-  readonly convites: string[] = []
+  readonly criacoes: OperatorCreateInput[] = []
   readonly remocoes: string[] = []
 
   private operators: OperatorView[]
@@ -41,25 +41,26 @@ export class FakeOperatorsGateway implements OperatorsGateway {
     }
   }
 
-  async inviteOperator(_accessToken: string, email: string): Promise<OperatorInviteResult> {
-    this.convites.push(email)
-    if (this.options.failInviteWith !== undefined) {
-      return { status: 'falha', message: this.options.failInviteWith }
+  async createOperator(
+    _accessToken: string,
+    input: OperatorCreateInput,
+  ): Promise<OperatorCreateResult> {
+    this.criacoes.push(input)
+    if (this.options.failCreateWith !== undefined) {
+      return { status: 'falha', message: this.options.failCreateWith }
     }
-    if (!email.includes('@')) {
+    if (!input.email.includes('@')) {
       return { status: 'invalido', message: 'Informe um e-mail válido.' }
     }
-    const invite: OperatorInvite = {
-      email,
-      activationLink: `https://fake-supabase.test/auth/v1/verify?type=invite&token=${randomUUID()}`,
-    }
-    this.operators.push({
+    const created: OperatorView = {
       id: randomUUID(),
-      email,
+      email: input.email,
+      name: input.name,
       createdAt: new Date().toISOString(),
       lastSignInAt: null,
-    })
-    return { status: 'convidado', value: invite }
+    }
+    this.operators.push(created)
+    return { status: 'criado', value: created }
   }
 
   async removeOperator(_accessToken: string, id: string): Promise<OperatorRemoveResult> {
@@ -82,6 +83,7 @@ export function operadorDeTeste(
 ): OperatorView {
   return {
     email: 'operadora@veggiedent.test',
+    name: 'Operadora de Teste',
     createdAt: '2026-09-01T12:00:00.000Z',
     lastSignInAt: null,
     ...overrides,

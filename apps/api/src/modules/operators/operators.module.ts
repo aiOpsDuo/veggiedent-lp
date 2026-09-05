@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { InviteOperatorUseCase } from './application/invite-operator.use-case'
+import { CreateOperatorUseCase } from './application/create-operator.use-case'
 import { ListOperatorsUseCase } from './application/list-operators.use-case'
 import { RemoveOperatorUseCase } from './application/remove-operator.use-case'
 import { OPERATOR_DIRECTORY } from './domain/operator-directory.port'
@@ -21,7 +21,7 @@ import { AdminOperatorsController } from './presentation/admin-operators.control
   providers: [
     { provide: OPERATOR_DIRECTORY, useClass: SupabaseOperatorDirectory },
     ListOperatorsUseCase,
-    InviteOperatorUseCase,
+    CreateOperatorUseCase,
     RemoveOperatorUseCase,
   ],
 })

@@ -9,7 +9,6 @@ const validEnvironment = {
   SUPABASE_SECRET_KEY: 'sb_secret_ficticia',
   SUPABASE_JWKS_URL: 'https://projeto.supabase.co/auth/v1/.well-known/jwks.json',
   ALLOWED_ORIGINS: 'http://localhost:5173',
-  ADMIN_APP_URL: 'http://localhost:5174',
 }
 
 describe('parseEnvironment', () => {
@@ -78,6 +77,5 @@ describe('parseEnvironment', () => {
     )
     expect(() => parseEnvironment({})).toThrow(/SUPABASE_JWKS_URL/)
     expect(() => parseEnvironment({})).toThrow(/ALLOWED_ORIGINS/)
-    expect(() => parseEnvironment({})).toThrow(/ADMIN_APP_URL/)
   })
 })

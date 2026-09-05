@@ -32,8 +32,8 @@ import type {
   SiteMetadataDetail,
 } from '../metadata/metadata-gateway'
 import type {
-  OperatorInvite,
-  OperatorInviteResult,
+  OperatorCreateInput,
+  OperatorCreateResult,
   OperatorRemoveResult,
   OperatorsGateway,
   OperatorsListResult,
@@ -335,14 +335,17 @@ export class AdminApiClient
     return { status: 'ok', value: Array.isArray(outcome.body) ? (outcome.body as OperatorView[]) : [] }
   }
 
-  async inviteOperator(accessToken: string, email: string): Promise<OperatorInviteResult> {
+  async createOperator(
+    accessToken: string,
+    input: OperatorCreateInput,
+  ): Promise<OperatorCreateResult> {
     const outcome = await this.request(accessToken, OPERATORS_PATH, {
       method: 'POST',
-      body: { email },
+      body: input,
     })
     if (outcome.kind === 'ok') {
       return isRecord(outcome.body)
-        ? { status: 'convidado', value: outcome.body as unknown as OperatorInvite }
+        ? { status: 'criado', value: outcome.body as unknown as OperatorView }
         : { status: 'falha', message: UNREADABLE_MESSAGE }
     }
     if (outcome.kind === 'recusado' && outcome.status === UNPROCESSABLE_ENTITY) {

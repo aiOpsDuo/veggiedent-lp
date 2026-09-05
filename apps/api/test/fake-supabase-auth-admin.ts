@@ -8,8 +8,8 @@ import { randomUUID } from 'node:crypto'
  * deixa isso visível para quem lê o teste, do mesmo jeito que `FakeStorage`
  * é separado por representar o armazenamento de arquivos, não o banco.
  *
- * Imita só o que `SupabaseOperatorDirectory` chama — `listUsers`,
- * `generateLink` e `deleteUser` — e nada além disso.
+ * Imita só o que `SupabaseOperatorDirectory` chama — `listUsers`, `createUser`
+ * e `deleteUser` — e nada além disso.
  */
 
 export interface FakeOperator {
@@ -17,6 +17,11 @@ export interface FakeOperator {
   readonly email: string
   readonly created_at: string
   readonly last_sign_in_at: string | null
+  readonly user_metadata: Record<string, unknown>
+  /** Guardada só para o teste conferir que a senha recebida não vaza na resposta. */
+  readonly password: string
+  /** Presente quando `createUser` recebeu `email_confirm: true` (SDD § D-09). */
+  readonly email_confirmed_at: string | null
 }
 
 interface FakeAuthError {
@@ -34,12 +39,21 @@ export class FakeSupabaseAuthAdmin {
   private readonly users = new Map<string, FakeOperator>()
 
   /** Para o `beforeEach` de cada teste popular quem já é operador. */
-  seed(operator: { id: string; email: string; createdAt?: string; lastSignInAt?: string | null }): FakeOperator {
+  seed(operator: {
+    id: string
+    email: string
+    name?: string
+    createdAt?: string
+    lastSignInAt?: string | null
+  }): FakeOperator {
     const stored: FakeOperator = {
       id: operator.id,
       email: operator.email,
       created_at: operator.createdAt ?? new Date().toISOString(),
       last_sign_in_at: operator.lastSignInAt ?? null,
+      user_metadata: operator.name !== undefined ? { name: operator.name } : {},
+      password: '',
+      email_confirmed_at: new Date().toISOString(),
     }
     this.users.set(stored.id, stored)
     return stored
@@ -58,35 +72,33 @@ export class FakeSupabaseAuthAdmin {
   }
 
   /**
-   * Imita `generateLink({ type: 'invite', email })`: o Supabase de verdade
-   * cria a conta do convidado neste passo (ela existe a partir daqui, mesmo
-   * sem senha), e é isso que o dublê reproduz — depois do convite, a nova
-   * conta já aparece em `listUsers`.
+   * Imita `createUser({ email, password, email_confirm, user_metadata })`
+   * (SDD § D-09, revista na T34): a conta nasce pronta para logar nesta
+   * mesma chamada, sem link nem segundo passo.
    */
-  async generateLink(params: {
-    type: string
+  async createUser(params: {
     email: string
-    options?: { redirectTo?: string }
-  }): Promise<{
-    data: { properties: { action_link: string }; user: FakeOperator }
-    error: null
-  }> {
-    const existing = [...this.users.values()].find((user) => user.email === params.email)
-    const operator = existing ?? this.seed({ id: randomUUID(), email: params.email })
-    const token = randomUUID().replace(/-/g, '')
-    const redirectSuffix =
-      params.options?.redirectTo !== undefined
-        ? `&redirect_to=${encodeURIComponent(params.options.redirectTo)}`
-        : ''
-    return {
-      data: {
-        properties: {
-          action_link: `https://fake-supabase.test/auth/v1/verify?type=${params.type}&token=${token}&email=${encodeURIComponent(params.email)}${redirectSuffix}`,
-        },
-        user: operator,
-      },
-      error: null,
+    password: string
+    email_confirm?: boolean
+    user_metadata?: Record<string, unknown>
+  }): Promise<{ data: { user: FakeOperator }; error: FakeAuthError | null }> {
+    if ([...this.users.values()].some((user) => user.email === params.email)) {
+      return {
+        data: { user: undefined as unknown as FakeOperator },
+        error: authError('Email address already registered'),
+      }
     }
+    const operator: FakeOperator = {
+      id: randomUUID(),
+      email: params.email,
+      created_at: new Date().toISOString(),
+      last_sign_in_at: null,
+      user_metadata: params.user_metadata ?? {},
+      password: params.password,
+      email_confirmed_at: params.email_confirm === true ? new Date().toISOString() : null,
+    }
+    this.users.set(operator.id, operator)
+    return { data: { user: operator }, error: null }
   }
 
   async deleteUser(

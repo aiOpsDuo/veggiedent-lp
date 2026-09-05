@@ -126,8 +126,6 @@ describe('SupabaseAuthGateway', () => {
       onAuthStateChange: () => ({
         data: { subscription: { unsubscribe: () => undefined } },
       }),
-      setSession: () => Promise.resolve({ error: null }),
-      updateUser: () => Promise.resolve({ error: null }),
     }
 
     await expect(
@@ -145,123 +143,8 @@ describe('SupabaseAuthGateway', () => {
       onAuthStateChange: () => ({
         data: { subscription: { unsubscribe: () => undefined } },
       }),
-      setSession: () => Promise.resolve({ error: null }),
-      updateUser: () => Promise.resolve({ error: null }),
     }
 
     await expect(new SupabaseAuthGateway(recusaSair).signOut()).resolves.toBeUndefined()
-  })
-
-  /** SDD § D-09: o link de convite estabelece sessão a partir dos tokens do fragmento. */
-  describe('activate', () => {
-    const ATIVACAO = {
-      accessToken: 'token-de-acesso-do-convite',
-      refreshToken: 'token-de-renovacao-do-convite',
-      operator: OPERADORA,
-    }
-
-    it('estabelece a sessão e avisa quem observa, com o par de tokens correto', async () => {
-      const gateway = new SupabaseAuthGateway(
-        new FakeSupabaseAuth({ activation: ATIVACAO }),
-      )
-      const avisos: (OperatorSession | null)[] = []
-      gateway.observeSession((session) => avisos.push(session))
-
-      await expect(
-        gateway.activate({
-          accessToken: ATIVACAO.accessToken,
-          refreshToken: ATIVACAO.refreshToken,
-        }),
-      ).resolves.toEqual({ ok: true })
-
-      expect(avisos).toContainEqual({
-        operatorId: OPERADORA.id,
-        operatorEmail: OPERADORA.email,
-        accessToken: ATIVACAO.accessToken,
-      })
-    })
-
-    it('recusa com link-invalido um par de tokens que não confere', async () => {
-      const gateway = new SupabaseAuthGateway(
-        new FakeSupabaseAuth({ activation: ATIVACAO }),
-      )
-
-      await expect(
-        gateway.activate({ accessToken: 'errado', refreshToken: 'errado' }),
-      ).resolves.toEqual({ ok: false, rejection: 'link-invalido' })
-    })
-
-    it('recusa com link-invalido quando nenhum convite foi configurado', async () => {
-      const gateway = new SupabaseAuthGateway(new FakeSupabaseAuth())
-
-      await expect(
-        gateway.activate({ accessToken: 'qualquer', refreshToken: 'qualquer' }),
-      ).resolves.toEqual({ ok: false, rejection: 'link-invalido' })
-    })
-
-    it('trata uma exceção do cliente como link inválido', async () => {
-      const explosivo: SupabaseAuthApi = {
-        signInWithPassword: () => Promise.resolve({ error: null }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({
-          data: { subscription: { unsubscribe: () => undefined } },
-        }),
-        setSession: () => Promise.reject(new TypeError('fetch failed')),
-        updateUser: () => Promise.resolve({ error: null }),
-      }
-
-      await expect(
-        new SupabaseAuthGateway(explosivo).activate({
-          accessToken: 'x',
-          refreshToken: 'y',
-        }),
-      ).resolves.toEqual({ ok: false, rejection: 'link-invalido' })
-    })
-  })
-
-  describe('setPassword', () => {
-    it('salva a senha de quem já está autenticado', async () => {
-      const auth = new FakeSupabaseAuth({
-        activation: {
-          accessToken: 'token-de-acesso-do-convite',
-          refreshToken: 'token-de-renovacao-do-convite',
-          operator: OPERADORA,
-        },
-      })
-      const gateway = new SupabaseAuthGateway(auth)
-      await gateway.activate({
-        accessToken: 'token-de-acesso-do-convite',
-        refreshToken: 'token-de-renovacao-do-convite',
-      })
-
-      await expect(gateway.setPassword('senha-nova-e-forte')).resolves.toEqual({ ok: true })
-    })
-
-    it('recusa com indisponivel quando o servidor falha ao salvar', async () => {
-      const gateway = new SupabaseAuthGateway(
-        new FakeSupabaseAuth({ updateUserFailure: { status: 500, message: 'falha' } }),
-      )
-
-      await expect(gateway.setPassword('senha-nova-e-forte')).resolves.toEqual({
-        ok: false,
-        rejection: 'indisponivel',
-      })
-    })
-
-    it('trata uma exceção do cliente como indisponibilidade', async () => {
-      const explosivo: SupabaseAuthApi = {
-        signInWithPassword: () => Promise.resolve({ error: null }),
-        signOut: () => Promise.resolve({ error: null }),
-        onAuthStateChange: () => ({
-          data: { subscription: { unsubscribe: () => undefined } },
-        }),
-        setSession: () => Promise.resolve({ error: null }),
-        updateUser: () => Promise.reject(new TypeError('fetch failed')),
-      }
-
-      await expect(
-        new SupabaseAuthGateway(explosivo).setPassword('senha-nova-e-forte'),
-      ).resolves.toEqual({ ok: false, rejection: 'indisponivel' })
-    })
   })
 })

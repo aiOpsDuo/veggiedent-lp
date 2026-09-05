@@ -1,7 +1,7 @@
 import { OperatorRemovalRefusedError } from '../../../shared/domain/operator-removal-refused.error'
 import { ResourceNotFoundError } from '../../../shared/domain/resource-not-found.error'
 import type { OperatorAccount } from '../domain/operator-account'
-import type { OperatorDirectory, OperatorInvite } from '../domain/operator-directory.port'
+import type { OperatorDirectory } from '../domain/operator-directory.port'
 import { RemoveOperatorUseCase } from './remove-operator.use-case'
 
 /**
@@ -12,7 +12,13 @@ import { RemoveOperatorUseCase } from './remove-operator.use-case'
  */
 
 function operator(id: string): OperatorAccount {
-  return { id, email: `${id}@veggiedent.test`, createdAt: '2026-09-01T00:00:00.000Z', lastSignInAt: null }
+  return {
+    id,
+    email: `${id}@veggiedent.test`,
+    name: null,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    lastSignInAt: null,
+  }
 }
 
 class FakeOperatorDirectory implements OperatorDirectory {
@@ -24,7 +30,7 @@ class FakeOperatorDirectory implements OperatorDirectory {
     return this.operators
   }
 
-  async invite(): Promise<OperatorInvite> {
+  async create(): Promise<OperatorAccount> {
     throw new Error('não usado neste teste')
   }
 

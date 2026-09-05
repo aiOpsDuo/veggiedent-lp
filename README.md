@@ -289,16 +289,15 @@ fixo (uma gaveta em telas pequenas), que marca qual delas está ativa no momento
 tela "Início" separada: `/admin/` redireciona direto para a lista de seções, que já é o primeiro
 item do menu. **Nenhuma tela é alcançável sem sessão**: a guarda é uma rota de layout, e toda
 rota nova nasce dentro dela — expor uma tela exigiria declará-la fora da guarda, de propósito.
-A única rota pública além do login é `/admin/ativar` (ver "Como convidar e remover um
-operador"), porque quem chega até ela ainda não tem sessão — é o que o convite existe para lhe
-dar.
+A única rota pública é o login — desde a T34, criar um operador não gera mais link nenhum, então
+não existe outra rota pública além dela.
 
 | Tela | Endereço | O que faz |
 |---|---|---|
 | Seções da página | `/admin/secoes` | As 9 seções, na ordem da página, com data da última edição e visibilidade |
 | Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
 | Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
-| Operadores do painel | `/admin/operadores` | Lista, convida por e-mail e remove operadores |
+| Operadores do painel | `/admin/operadores` | Lista (com nome), cria com e-mail/senha/nome e remove operadores |
 
 Editar um campo em "Seções da página" ou "Metadados da página" e tentar navegar para outra tela
 sem salvar pede confirmação em português — não há rascunho persistido, então sair descarta a
@@ -354,7 +353,6 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 | `SUPABASE_SECRET_KEY` | sim | Chave secreta do Supabase. Ignora RLS — jamais no cliente |
 | `SUPABASE_JWKS_URL` | sim | Endpoint JWKS usado para verificar o token dos operadores |
 | `ALLOWED_ORIGINS` | sim | Origens autorizadas a chamar a API, separadas por vírgula |
-| `ADMIN_APP_URL` | sim | Origem do painel (sem caminho) — em desenvolvimento a entrada única, em produção o domínio único. É para onde o link de convite de operador redireciona, na rota `/admin/ativar` (ver "Como convidar e remover um operador") |
 | `NODE_ENV` | não | `development` (padrão), `test` ou `production` |
 | `PORT` | não | Porta HTTP da API. Padrão `3000` |
 
@@ -804,28 +802,34 @@ e saiu idêntico ao que já estava versionado.
 
 A **prova por mutação** do que a D-02 promete foi feita no mesmo passo, e é reproduzível: com um campo `seloDeCampanha` acrescentado a `packages/content-schema/src/sections/hero.ts` — **e nenhuma linha do painel alterada** —, o rótulo declarado no esquema passou a aparecer no formulário da Abertura; removido o campo, ele desapareceu. O único arquivo alterado entre a falha e o acerto foi o do esquema.
 
-### Como convidar e remover um operador do painel
+### Como criar e remover um operador do painel
 
 A T29 trouxe a gestão de operadores para dentro do CMS, revertendo o trade-off original da
-[SDD § D-03](agent_context/SDD.md) (que deixava isso só no painel do Supabase). A API continua
-sem tabela de usuários — o Supabase Auth segue como única fonte —, mas agora é a própria tela
-**Operadores** (`/admin/operadores`) que fala com a Admin API do Supabase em nome de quem
-administra o painel; a chave secreta nunca chega ao navegador.
+[SDD § D-03](agent_context/SDD.md) (que deixava isso só no painel do Supabase). A T34 trocou o
+fluxo de criação por convite (link de ativação de uso único) por criação direta: quem cria
+preenche e-mail, senha e nome, e a conta já nasce pronta para logar — ver
+[SDD § D-09](agent_context/SDD.md), revista em 2026-09-04. A API continua sem tabela de
+usuários — o Supabase Auth segue como única fonte —, mas é a própria tela **Operadores**
+(`/admin/operadores`) que fala com a Admin API do Supabase em nome de quem administra o painel;
+a chave secreta nunca chega ao navegador.
 
-**Convidar:**
+**Criar:**
 
-1. Na tela **Operadores**, preencha o e-mail do novo operador e confirme **Convidar
-   operador**. A API gera um **link de ativação de uso único** (`generateLink({ type: 'invite'
-   })`, nunca `inviteUserByEmail` — SDD § D-09) e o devolve na resposta; nenhum e-mail é
-   enviado automaticamente.
-2. O link aparece na tela **uma única vez** — copie e envie por um canal seu (e-mail,
-   WhatsApp, Slack). Fechar a caixa ou gerar outro convite o esconde de vez.
-3. Quem recebe o link o abre num navegador qualquer e cai em `/admin/ativar`, uma rota
-   **pública** (a única além do login): a tela lê os tokens do fragmento da URL, estabelece a
-   sessão e pede para o convidado **definir a própria senha** — ninguém aqui define senha por
-   outra pessoa. Ao confirmar, o convidado já entra no painel autenticado.
-4. `ADMIN_APP_URL` (ver "Variáveis de ambiente") é o que faz o link apontar para essa rota em
-   vez do `Site URL` padrão do projeto Supabase.
+1. Na tela **Operadores**, preencha **nome**, **e-mail** e **senha inicial** do operador novo e
+   confirme **Criar operador**. A API chama `admin.createUser({ email, password, email_confirm:
+   true, user_metadata: { name } })` — a conta nasce **já confirmada e pronta para logar**, sem
+   link nem e-mail transacional algum.
+2. A senha mínima é de 6 caracteres (o padrão do Supabase Auth); a tela recusa antes de
+   submeter, com mensagem em português, se a senha for mais curta.
+3. **Trade-off aceito, declarado em D-09:** quem cria sabe a senha inicial de outra pessoa —
+   não há passo em que o novo operador a define por conta própria. A equipe é pequena e todos os
+   operadores já se conhecem; nada impede o operador novo de trocar a própria senha depois pelo
+   fluxo padrão do Supabase, se isso vier a ser necessário (não implementado, por não ter sido
+   pedido).
+4. O nome mostrado na lista vem de `user_metadata.name` — a única extensão de dado que a Admin
+   API do Supabase Auth permite sem outra fonte de verdade. Um operador criado antes deste campo
+   existir (o operador original) não tem nome cadastrado; a lista mostra, nesse caso, um nome
+   derivado do e-mail (ex.: `ana.paula@...` vira "Ana Paula").
 
 **Remover:** na mesma tela, com confirmação em dois passos. A API recusa com `409` remover a
 própria conta ou o único operador restante (SDD § R-10) — as duas formas de travar o próprio
@@ -840,15 +844,21 @@ fora de escopo por decisão do PRD.
 > sem que a API guarde nenhum segredo de assinatura. Requisição sem token a um endpoint
 > administrativo responde `401`; com o token do operador, `200`.
 
-> **Verificado de novo na T29**, de ponta a ponta, num navegador de verdade e contra o Supabase
-> e a API reais, pela jornada completa (sem chamada manual à API do Supabase Auth): login como
-> o operador real; convite de um e-mail de teste pela tela; o link copiado, aberto numa aba
-> anônima, clicado e navegado de verdade até `/admin/ativar`; senha definida no formulário
-> novo, com entrada automática no painel já autenticado; saída e login de novo com a conta nova
-> (e-mail e senha), confirmando que a senha valeu; um link sem tokens mostrou a mensagem de erro
-> sem quebrar a tela; de volta como o operador original, a listagem mostrou os dois operadores;
-> o operador de teste foi removido pelo painel e saiu da lista. A Admin API do Supabase
-> confirmou ao final que não sobrou conta órfã — só o operador original permaneceu.
+> **Verificado na T29** (fluxo de convite por link, superado pela T34), de ponta a ponta, num
+> navegador de verdade e contra o Supabase e a API reais: login como o operador real; convite de
+> um e-mail de teste pela tela; o link copiado, aberto numa aba anônima e navegado até a rota de
+> ativação; senha definida no formulário, com entrada automática no painel já autenticado; saída
+> e login de novo com a conta nova, confirmando que a senha valeu; de volta como o operador
+> original, o operador de teste foi removido pelo painel. A Admin API do Supabase confirmou ao
+> final que não sobrou conta órfã.
+>
+> **Verificado de novo na T34**, contra o fluxo de criação direta, num navegador de verdade e
+> contra o Supabase e a API reais: login como o operador real; criação de um operador de teste
+> pela tela, preenchendo nome, e-mail e senha; o operador de teste apareceu na lista com o nome
+> certo, sem nenhum link envolvido; login com esse e-mail e a senha definida na tela, numa aba
+> anônima, sem qualquer passo de ativação; de volta como o operador original, o operador de
+> teste foi removido pelo painel e saiu da lista. A Admin API do Supabase confirmou ao final que
+> não sobrou conta órfã — só o operador original permaneceu.
 
 ### Como o painel trata a sessão
 

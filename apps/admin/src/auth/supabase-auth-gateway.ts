@@ -1,14 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import type { AdminEnvironment } from '../config/env'
-import type {
-  ActivationResult,
-  ActivationTokens,
-  AuthGateway,
-  PasswordUpdateResult,
-  SignInRejection,
-  SignInResult,
-  Unsubscribe,
-} from './auth-gateway'
+import type { AuthGateway, SignInRejection, SignInResult, Unsubscribe } from './auth-gateway'
 import type { OperatorCredentials, OperatorSession } from './operator-session'
 
 /**
@@ -20,10 +12,8 @@ import type { OperatorCredentials, OperatorSession } from './operator-session'
  * meio de uma edição. `detectSessionInUrl` fica desligada de propósito: essa
  * opção varre a URL **inteira** a cada carregamento em busca de um fragmento
  * de sessão, um comportamento implícito e global que este painel não quer para
- * nenhuma tela — inclusive a de ativação (SDD § D-09), que lê o fragmento por
- * conta própria e chama `setSession` explicitamente, só quando e onde faz
- * sentido (`activate`, abaixo). `storageKey` é próprio do painel para que a
- * LP, servida no mesmo domínio (T16), nunca compartilhe esta chave.
+ * nenhuma tela. `storageKey` é próprio do painel para que a LP, servida no
+ * mesmo domínio (T16), nunca compartilhe esta chave.
  */
 export const ADMIN_AUTH_OPTIONS = {
   persistSession: true,
@@ -52,11 +42,6 @@ export interface SupabaseAuthApi {
   onAuthStateChange(
     callback: (event: string, session: SupabaseSessionLike | null) => void,
   ): { data: { subscription: { unsubscribe: () => void } } }
-  setSession(tokens: {
-    access_token: string
-    refresh_token: string
-  }): Promise<{ error: unknown }>
-  updateUser(attributes: { password: string }): Promise<{ error: unknown }>
 }
 
 /** Estados HTTP em que ninguém chegou a julgar as credenciais. */
@@ -143,35 +128,6 @@ export class SupabaseAuthGateway implements AuthGateway {
     }
   }
 
-  /**
-   * Qualquer recusa do Supabase aqui — assinatura inválida, token já trocado,
-   * convite expirado — vira o mesmo motivo: não há distinção que faça sentido
-   * para quem só está tentando abrir o próprio convite.
-   */
-  async activate(tokens: ActivationTokens): Promise<ActivationResult> {
-    try {
-      const { error } = await this.auth.setSession({
-        access_token: tokens.accessToken,
-        refresh_token: tokens.refreshToken,
-      })
-      return error === null || error === undefined
-        ? { ok: true }
-        : { ok: false, rejection: 'link-invalido' }
-    } catch {
-      return { ok: false, rejection: 'link-invalido' }
-    }
-  }
-
-  async setPassword(password: string): Promise<PasswordUpdateResult> {
-    try {
-      const { error } = await this.auth.updateUser({ password })
-      return error === null || error === undefined
-        ? { ok: true }
-        : { ok: false, rejection: 'indisponivel' }
-    } catch {
-      return { ok: false, rejection: 'indisponivel' }
-    }
-  }
 }
 
 /** Monta o gateway de produção, com o cliente real do Supabase. */
