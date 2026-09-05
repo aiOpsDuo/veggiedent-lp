@@ -15,8 +15,29 @@ const MESSAGE_BY_REJECTION: Readonly<Record<SignInRejection, string>> = {
     'Não foi possível falar com o serviço de autenticação. Tente novamente em instantes.',
 }
 
-const FIELD_CLASS =
-  'w-full rounded border border-slate-300 px-3 py-2 text-slate-900 focus:border-brand-primary focus:outline-none focus:ring-2 focus:ring-brand-primary/40'
+/**
+ * Preenchimento faltante, verificado no próprio painel em vez de deixar o
+ * navegador validar (T30-b): o `required` nativo do HTML mostra sua mensagem
+ * no idioma do navegador, quase sempre inglês, violando o requisito de idioma
+ * do PRD. A mesma mensagem — no mesmo `role="alert"` usado para credencial
+ * inválida — cobre e-mail vazio, senha vazia ou os dois.
+ */
+function missingFieldsMessage(email: string, password: string): string | null {
+  const emailMissing = email.trim() === ''
+  const passwordMissing = password.trim() === ''
+  if (emailMissing && passwordMissing) {
+    return 'Informe o e-mail e a senha.'
+  }
+  if (emailMissing) {
+    return 'Informe o e-mail.'
+  }
+  if (passwordMissing) {
+    return 'Informe a senha.'
+  }
+  return null
+}
+
+const FIELD_CLASS = 'w-full rounded border border-slate-300 px-3 py-2 text-slate-900'
 
 export function LoginScreen(): JSX.Element {
   const { signIn } = useAuth()
@@ -27,6 +48,13 @@ export function LoginScreen(): JSX.Element {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
+
+    const missing = missingFieldsMessage(email, password)
+    if (missing !== null) {
+      setErrorMessage(missing)
+      return
+    }
+
     setErrorMessage(null)
     setSubmitting(true)
     const result = await signIn({ email, password })
@@ -39,14 +67,23 @@ export function LoginScreen(): JSX.Element {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-lg bg-white p-8 shadow"
+        noValidate
+        onSubmit={(event) => void handleSubmit(event)}
+        className="w-full max-w-sm space-y-5 rounded-lg border border-slate-200 bg-white p-8 shadow-sm"
       >
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Painel Veggiedent</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Entre com o e-mail e a senha do seu operador.
-          </p>
+        <div className="space-y-3">
+          <span
+            aria-hidden="true"
+            className="flex h-10 w-10 items-center justify-center rounded bg-slate-900 text-sm font-semibold text-white"
+          >
+            V
+          </span>
+          <div>
+            <h1 className="text-xl font-semibold text-slate-900">Painel Veggiedent</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Entre com o e-mail e a senha do seu operador.
+            </p>
+          </div>
         </div>
 
         <div className="space-y-1">
@@ -58,7 +95,6 @@ export function LoginScreen(): JSX.Element {
             name="email"
             type="email"
             autoComplete="username"
-            required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className={FIELD_CLASS}
@@ -74,7 +110,6 @@ export function LoginScreen(): JSX.Element {
             name="password"
             type="password"
             autoComplete="current-password"
-            required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className={FIELD_CLASS}
@@ -90,7 +125,7 @@ export function LoginScreen(): JSX.Element {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded bg-brand-primary px-4 py-2 font-medium text-white hover:bg-brand-hover disabled:opacity-60"
+          className="w-full rounded bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700 disabled:opacity-50"
         >
           {submitting ? 'Entrando…' : 'Entrar'}
         </button>
