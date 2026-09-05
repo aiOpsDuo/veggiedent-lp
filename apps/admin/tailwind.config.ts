@@ -1,21 +1,32 @@
 import type { Config } from 'tailwindcss'
+import { brandColors, inkColors, surfaceColors } from '@veggiedent/design-tokens'
 
 /**
- * O painel é ferramenta interna: o SDD § D-02 prioriza clareza sobre
- * sofisticação visual. Por isso a configuração fica no padrão do Tailwind, com
- * uma única extensão — a cor da marca, para que o painel seja reconhecível como
- * parte do produto. Os tokens do Design System da LP não são copiados para cá:
- * duplicá-los criaria duas fontes da mesma verdade (regra G5).
+ * A identidade visual do painel é a mesma da LP (T35, item 1; PRD § "Notas de
+ * design", revisão de 2026-09-04) — a decisão anterior de manter uma paleta
+ * própria, mínima, está revertida. As cores vêm de `@veggiedent/design-tokens`
+ * (não copiadas à mão de `apps/lp/tailwind.config.ts`): é o pacote pequeno e
+ * compartilhado que evita duas fontes do mesmo valor hex (regra G5) — ver o
+ * comentário em `packages/design-tokens/src/colors.ts` para a única exceção
+ * declarada (a própria LP, fora do escopo de edição desta tarefa).
+ *
+ * `darkMode: 'class'` (T35, item 4) liga o tema escuro a uma classe no `<html>`
+ * em vez da preferência do sistema sozinha — é o que permite ao operador
+ * escolher e ao painel lembrar essa escolha (ver `src/theme/theme-context.tsx`).
+ * Nenhuma cor de superfície/texto de tema escuro vem daqui: a LP não tem
+ * paleta escura, então o painel usa a escala neutra do próprio Tailwind
+ * (`slate`) para isso, e os tokens de marca só como acento — em claro e em
+ * escuro.
  */
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          primary: '#27B6AD',
-          hover: '#1E8F88',
-        },
+        brand: brandColors,
+        ink: inkColors,
+        surface: surfaceColors,
       },
     },
   },
