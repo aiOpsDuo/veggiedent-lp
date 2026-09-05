@@ -44,7 +44,12 @@ export interface MultiImageMediaFieldProps {
   readonly onChange: (mediaIds: readonly string[]) => void
 }
 
-const TILE_SIZE_CLASS = 'aspect-square'
+/**
+ * Bloco pequeno e quadrado (128px de lado) em vez de esticar pela largura da
+ * célula da grade (T36-ajuste — `aspect-square` numa grade larga produzia
+ * blocos grandes demais).
+ */
+const TILE_SIZE_CLASS = 'h-32 w-32'
 
 export function MultiImageMediaField({
   id,
@@ -85,12 +90,12 @@ export function MultiImageMediaField({
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <div className="flex flex-wrap gap-3">
         {value.map((mediaId) => (
           <ImageSlot key={mediaId} mediaId={mediaId} service={service} onRemove={() => removeAt(mediaId)} />
         ))}
 
-        <div className="relative">
+        <div className="relative shrink-0">
           <label htmlFor={id} className="block">
             <input
               id={id}
@@ -142,7 +147,7 @@ function ImageSlot({ mediaId, service, onRemove }: ImageSlotProps): JSX.Element 
   const stored = useStoredMedia(mediaId, service)
 
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <DropzoneShell interactive={false} className={TILE_SIZE_CLASS}>
         <ImageSlotContent stored={stored} />
       </DropzoneShell>

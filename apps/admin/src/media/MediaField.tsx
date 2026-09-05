@@ -159,7 +159,13 @@ interface ImageDropzoneFieldProps {
   readonly onRemove: () => void
 }
 
-const DROPZONE_SIZE_CLASS = 'aspect-video'
+/**
+ * Altura fixa e compacta (~160px, como a antiga prévia em `max-h-40`), largura
+ * total do campo: um retângulo baixo, não uma faixa 16:9 esticada pela largura
+ * do formulário (T36-ajuste — o formato `aspect-video` original dominava a
+ * tela num formulário largo).
+ */
+const DROPZONE_SIZE_CLASS = 'h-40 w-full'
 
 /**
  * O campo de imagem em estilo de soltar/enviar (T36, item 2): retângulo de

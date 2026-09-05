@@ -18,7 +18,7 @@ import type { ReactNode } from 'react'
  */
 
 const SHELL_BASE_CLASS =
-  'relative flex w-full items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800'
+  'relative flex items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 transition-colors dark:border-slate-600 dark:bg-slate-800'
 
 const SHELL_INTERACTIVE_CLASS =
   'cursor-pointer hover:border-slate-400 hover:bg-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-700/60'
@@ -32,7 +32,11 @@ const SHELL_FOCUS_CLASS =
 interface DropzoneShellProps {
   readonly children: ReactNode
   readonly interactive: boolean
-  /** Classe de tamanho/proporção — cada chamador decide a própria forma. */
+  /**
+   * Classe de tamanho — cada chamador decide a própria forma, largura
+   * incluída: o casco não impõe `w-full` para não conflitar com um tamanho
+   * fixo de largura (ex. a variante de múltiplas imagens, T36-ajuste).
+   */
   readonly className: string
 }
 
