@@ -28,6 +28,17 @@ export default {
         ink: inkColors,
         surface: surfaceColors,
       },
+      // Entrada suave de cartões e campos (T35, item 6) — utilidade do
+      // próprio Tailwind, sem biblioteca de animação nova.
+      keyframes: {
+        'fade-in-up': {
+          '0%': { opacity: '0', transform: 'translateY(0.5rem)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in-up': 'fade-in-up 0.3s ease-out',
+      },
     },
   },
   plugins: [],

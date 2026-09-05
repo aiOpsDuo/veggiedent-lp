@@ -261,7 +261,10 @@ describe('Sessão (SDD § C-02)', () => {
 
 describe('Menu lateral (T33)', () => {
   it('lista as quatro áreas do painel e indica qual está ativa ao navegar entre elas', async () => {
-    renderPainel(gatewayCom(new Map()))
+    // A partir de '/secoes', e não de '/': desde a T35 a raiz é o painel de
+    // início (dashboard), uma tela à parte que não é nenhuma das quatro áreas
+    // do menu — o que este teste cobre é o mecanismo do menu em si.
+    renderPainel(gatewayCom(new Map()), '/secoes')
     await entrar(OPERADORA.email, OPERADORA.password)
     await screen.findByTestId('area-administrativa')
 
@@ -299,5 +302,60 @@ describe('Menu lateral (T33)', () => {
     await screen.findByRole('heading', { name: 'Metadados da página' })
 
     expect(screen.getByRole('navigation', { name: 'Áreas do painel' })).toBeInTheDocument()
+  })
+})
+
+describe('Painel de início (T35)', () => {
+  it('mostra o painel de início, com dado real e não a lista de seções, na raiz do roteador', async () => {
+    renderPainel(gatewayCom(new Map()))
+    await entrar(OPERADORA.email, OPERADORA.password)
+
+    expect(await screen.findByRole('heading', { name: 'Painel' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Seções da página' })).toBeNull()
+  })
+})
+
+/**
+ * A persistência em si (sobreviver a um recarregamento de verdade) não tem
+ * como ser coberta aqui: o ambiente deste projeto roda o Vitest sob Node 25,
+ * cujo `localStorage` global nativo (ainda incompleto nesta versão, sem
+ * `getItem`/`setItem`) tomou o lugar do `window.localStorage` de verdade que o
+ * `jsdom` forneceria — um problema de compatibilidade Node×jsdom anterior a
+ * esta tarefa, não algo que este código introduziu. O que dá para testar aqui
+ * é o comportamento na mesma sessão, que não depende do armazenamento
+ * funcionar; a persistência entre recarregamentos foi conferida em navegador
+ * real (critério de "pronto" da T35), nos dois temas.
+ */
+describe('Preferências do operador — menu e tema (T35)', () => {
+  it('recolhe e expande o menu lateral, escondendo e mostrando os rótulos das áreas', async () => {
+    renderPainel(gatewayCom(new Map()))
+    await entrar(OPERADORA.email, OPERADORA.password)
+    await screen.findByTestId('area-administrativa')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Recolher o menu' }))
+    expect(screen.getByRole('button', { name: 'Expandir o menu' })).toBeInTheDocument()
+    // O rótulo continua acessível ao leitor de tela mesmo recolhido — só
+    // escondido visualmente (o link em si segue com o mesmo nome acessível).
+    const menu = screen.getByRole('navigation', { name: 'Áreas do painel' })
+    expect(within(menu).getByRole('link', { name: 'Seções da página' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Expandir o menu' }))
+    expect(screen.getByRole('button', { name: 'Recolher o menu' })).toBeInTheDocument()
+  })
+
+  it('alterna entre tema claro e escuro, aplicando a classe que o Tailwind usa no documento', async () => {
+    document.documentElement.classList.remove('dark')
+    renderPainel(gatewayCom(new Map()))
+    await entrar(OPERADORA.email, OPERADORA.password)
+    await screen.findByTestId('area-administrativa')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ativar tema escuro' }))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Ativar tema claro' })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ativar tema claro' }))
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 })

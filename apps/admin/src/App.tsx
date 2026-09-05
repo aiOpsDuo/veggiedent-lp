@@ -14,6 +14,7 @@ import type { AuthGateway } from './auth/auth-gateway'
 import { RequireSession } from './auth/RequireSession'
 import { SectionEditorScreen } from './content/SectionEditorScreen'
 import { SectionsScreen } from './content/SectionsScreen'
+import { DashboardScreen } from './dashboard/DashboardScreen'
 import { LeadsScreen } from './leads/LeadsScreen'
 import { ApiMediaProvider } from './media/media-context'
 import { MetadataScreen } from './metadata/MetadataScreen'
@@ -29,6 +30,7 @@ import {
   SECTION_EDITOR_ROUTE,
 } from './routing/paths'
 import { AdminLayout } from './screens/AdminLayout'
+import { ThemeProvider } from './theme/theme-context'
 
 interface AppProps {
   readonly authGateway: AuthGateway
@@ -59,11 +61,13 @@ interface AppShellProps {
  */
 function AppShell({ authGateway, apiClient }: AppShellProps): JSX.Element {
   return (
-    <AuthProvider gateway={authGateway}>
-      <ApiMediaProvider gateway={apiClient}>
-        <Outlet />
-      </ApiMediaProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider gateway={authGateway}>
+        <ApiMediaProvider gateway={apiClient}>
+          <Outlet />
+        </ApiMediaProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
@@ -75,9 +79,10 @@ function AppShell({ authGateway, apiClient }: AppShellProps): JSX.Element {
  * de nada, porque toda rota nova nasce dentro dela; expor exigiria declarar a
  * rota fora da guarda, de propósito.
  *
- * `/` (`HOME_PATH`) não tem tela própria (T30-c): o operador que chega ali
- * autenticado é levado direto para a lista de seções, que já é o primeiro
- * módulo do menu lateral — uma tela de "Início" só repetiria os mesmos links.
+ * `/` (`HOME_PATH`) é o painel de início (T35, item 10) — diferente da tela
+ * "Início" que a T30-c removeu por só repetir os links do menu lateral: esta
+ * mostra dado de verdade (leads recentes, seção despublicada) e atalhos, não
+ * uma segunda navegação.
  *
  * Usa um roteador de dados (`createBrowserRouter`/`createMemoryRouter`), e não
  * `<BrowserRouter>`/`<Routes>` como antes: é o que `UnsavedChangesGuard`
@@ -92,7 +97,7 @@ export function App({ authGateway, apiClient, basename, initialEntries }: AppPro
         <Route path={LOGIN_PATH} element={<LoginRoute />} />
         <Route element={<RequireSession />}>
           <Route element={<AdminLayout apiClient={apiClient} />}>
-            <Route path={HOME_PATH} element={<Navigate to={SECTIONS_PATH} replace />} />
+            <Route path={HOME_PATH} element={<DashboardScreen gateway={apiClient} />} />
             <Route path={SECTIONS_PATH} element={<SectionsScreen gateway={apiClient} />} />
             <Route
               path={SECTION_EDITOR_ROUTE}
