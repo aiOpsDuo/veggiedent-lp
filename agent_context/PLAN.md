@@ -572,7 +572,10 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T35 (branch `feat/T35-identidade-visual-e-dashboard`, comece daí)
 - Execução: sequencial, árvore principal
 - Toca documentação: sim, se a decisão sobre a variante múltipla mudar algo que o README descreve sobre tipos de campo.
-- Status: pendente
+- Status: **concluída e ACEITA pelo orquestrador** em 2026-09-04, branch `feat/T36-acoes-e-dropzone` (4 commits, a partir de `feat/T35-identidade-visual-e-dashboard`), sem merge em `main`.
+- Verificação própria: `npm run test` — **730 testes** (250 admin + 331 API + 39 LP + 110 content-schema); `npm run typecheck` e `npm run build` limpos. Confirmado no código: `ActionBar` com slots `start`/`end` de verdade; botão de excluir do dropzone é **irmão** do `<label>`, nunca filho (comentário explícito no código, confere com o motivo declarado — não disparar o seletor de arquivo por engano); rota `/admin/verificacao/multi-imagem` responde `200`. `GET /api/content` conferido depois da verificação do subagente: `hero.image` continua apontando para `virbac-kv-hero.png` — o envio de teste no formulário real não deixou resíduo no conteúdo publicado.
+- Decisão aceita sobre a variante múltipla: **não migrar `mosaico`** — o componente existe pronto, testado e verificado de verdade num harness dedicado, sem tocar em nenhum dado ou esquema existente. Correto: migrar dado publicado por uma tarefa de polimento visual seria desproporcional, e a decisão foi declarada, não escondida atrás de "não deu tempo".
+- Decisão aceita sobre Metadados: a tela não ganhou um link "Voltar" (só o ícone no botão de salvar) porque Metadados é rota de topo do menu, não sub-tela de lista — inventar um destino de volta ali seria um link sem propósito real.
 
 ## Ordem de execução
 
