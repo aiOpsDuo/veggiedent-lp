@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Download, Trash2 } from 'lucide-react'
 import { useAuth } from '../auth/auth-context'
+import { Card } from '../shared/Card'
+import { Notice } from '../shared/Notice'
 import { downloadInBrowser, type FileDownload } from './file-download'
 import { LEAD_COLUMNS, mostRecentFirst } from './lead-columns'
 import type { LeadPeriod, LeadView, LeadsGateway, LeadsPage, LeadsQuery } from './leads-gateway'
@@ -46,9 +49,9 @@ const FIRST_PAGE = 1
  * visual de que a rolagem continua por baixo dela.
  */
 const ACTIONS_CELL_CLASS =
-  'sticky right-0 z-10 whitespace-nowrap bg-slate-100 px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)]'
+  'sticky right-0 z-10 whitespace-nowrap bg-slate-100 px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)] dark:bg-slate-800'
 const ACTIONS_BODY_CELL_CLASS =
-  'sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)]'
+  'sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-2 shadow-[-8px_0_8px_-6px_rgba(15,23,42,0.35)] dark:bg-slate-900'
 
 const EXPORTED_MESSAGE = 'Exportação concluída. O arquivo foi baixado.'
 const DELETED_MESSAGE = 'Lead excluído definitivamente.'
@@ -143,10 +146,12 @@ export function LeadsScreen({
 
   return (
     <section className="space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-900">Leads recebidos</h1>
-        <p className="text-sm text-slate-600">
-          Do mais recente ao mais antigo. O dia do filtro é o de Brasília (UTC−3).
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Leads recebidos
+        </h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          O dia do filtro é o de Brasília (UTC−3).
         </p>
       </header>
 
@@ -158,49 +163,41 @@ export function LeadsScreen({
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p role="status" className="text-sm text-slate-600">
+        <p role="status" className="text-sm text-slate-600 dark:text-slate-400">
           {summaryOf(listing)}
         </p>
         <button
           type="button"
           disabled={busy || accessToken === null}
           onClick={() => void exportLeads()}
-          className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
         >
+          <Download aria-hidden="true" className="h-4 w-4" />
           Exportar CSV do período
         </button>
       </div>
 
-      {notice !== null && (
-        <p
-          role={notice.tone === 'falha' ? 'alert' : 'status'}
-          className={
-            notice.tone === 'falha'
-              ? 'rounded bg-red-50 px-3 py-2 text-sm text-red-700'
-              : 'rounded bg-green-50 px-3 py-2 text-sm text-green-800'
-          }
-        >
-          {notice.message}
-        </p>
-      )}
+      {notice !== null && <Notice tone={notice.tone} message={notice.message} />}
 
       {listing.status === 'indisponivel' && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {listing.message}
         </p>
       )}
 
       {listing.status === 'pronto' && leads.length === 0 && (
-        <p className="text-sm text-slate-600">Nenhum lead recebido no período.</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
+          Nenhum lead recebido no período.
+        </p>
       )}
 
       {leads.length > 0 && (
-        <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+        <Card className="!p-0 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <caption className="sr-only">
               Leads recebidos, do mais recente ao mais antigo
             </caption>
-            <thead className="bg-slate-100 text-xs uppercase text-slate-600">
+            <thead className="bg-slate-100 text-xs uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-400">
               <tr>
                 {LEAD_COLUMNS.map((column) => (
                   <th key={column.header} scope="col" className="whitespace-nowrap px-3 py-2">
@@ -212,7 +209,7 @@ export function LeadsScreen({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
               {leads.map((lead) => (
                 <LeadRow
                   key={lead.id}
@@ -229,7 +226,7 @@ export function LeadsScreen({
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
 
       {listing.status === 'pronto' && (
@@ -265,10 +262,13 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
         event.preventDefault()
         onApply()
       }}
-      className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-4"
+      className="animate-fade-in-up flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
     >
       <div className="space-y-1">
-        <label htmlFor="leads-de" className="block text-sm font-medium text-slate-800">
+        <label
+          htmlFor="leads-de"
+          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+        >
           De
         </label>
         <input
@@ -276,11 +276,14 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
           type="date"
           value={period.from}
           onChange={(event) => onChange({ ...period, from: event.target.value })}
-          className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+          className="rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
       <div className="space-y-1">
-        <label htmlFor="leads-ate" className="block text-sm font-medium text-slate-800">
+        <label
+          htmlFor="leads-ate"
+          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+        >
           Até
         </label>
         <input
@@ -288,19 +291,19 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
           type="date"
           value={period.to}
           onChange={(event) => onChange({ ...period, to: event.target.value })}
-          className="rounded border border-slate-300 px-3 py-2 text-slate-900"
+          className="rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
       <button
         type="submit"
-        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700"
+        className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
       >
         Filtrar
       </button>
       <button
         type="button"
         onClick={onClear}
-        className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+        className="rounded border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
       >
         Limpar filtro
       </button>
@@ -333,14 +336,17 @@ function LeadRow({
   return (
     <tr>
       {LEAD_COLUMNS.map((column) => (
-        <td key={column.header} className="whitespace-nowrap px-3 py-2 text-slate-700">
+        <td
+          key={column.header}
+          className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300"
+        >
           {column.value(lead)}
         </td>
       ))}
       <td className={ACTIONS_BODY_CELL_CLASS}>
         {confirming ? (
           <div className="flex flex-col gap-1">
-            <span className="text-xs text-red-700">
+            <span className="text-xs text-red-700 dark:text-red-400">
               Excluir para sempre? Não há desfazer.
             </span>
             <div className="flex gap-2">
@@ -355,7 +361,7 @@ function LeadRow({
               <button
                 type="button"
                 onClick={onCancel}
-                className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100"
+                className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 Cancelar
               </button>
@@ -366,8 +372,9 @@ function LeadRow({
             type="button"
             disabled={busy}
             onClick={onAskConfirmation}
-            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
           >
+            <Trash2 aria-hidden="true" className="h-3.5 w-3.5" />
             {`Excluir o lead de ${lead.nome}`}
           </button>
         )}
@@ -394,16 +401,16 @@ function Pagination({ page, busy, onGoTo }: PaginationProps): JSX.Element | null
         type="button"
         disabled={busy || page.page <= FIRST_PAGE}
         onClick={() => onGoTo(page.page - 1)}
-        className="rounded border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+        className="rounded border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
       >
         Página anterior
       </button>
-      <span className="text-slate-600">{`Página ${page.page} de ${lastPage}`}</span>
+      <span className="text-slate-600 dark:text-slate-400">{`Página ${page.page} de ${lastPage}`}</span>
       <button
         type="button"
         disabled={busy || page.page >= lastPage}
         onClick={() => onGoTo(page.page + 1)}
-        className="rounded border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+        className="rounded border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800"
       >
         Próxima página
       </button>

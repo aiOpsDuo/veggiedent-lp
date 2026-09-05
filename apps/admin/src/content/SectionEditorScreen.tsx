@@ -3,13 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import { getSectionSchema, isSectionKey, type SectionKey } from '@veggiedent/content-schema'
 import { useAuth } from '../auth/auth-context'
 import { SECTIONS_PATH } from '../routing/paths'
+import { ActionBar } from '../shared/ActionBar'
+import { Card } from '../shared/Card'
+import { Notice } from '../shared/Notice'
 import { altTextErrors } from './alt-text-rule'
 import { UnsavedChangesGuard } from './UnsavedChangesGuard'
-import {
-  INITIAL_EDITOR_STATE,
-  createEditorReducer,
-  type SaveState,
-} from './editor-state'
+import { INITIAL_EDITOR_STATE, createEditorReducer, type SaveState } from './editor-state'
 import { SectionForm } from './SectionForm'
 import { isDraftDirty, toDocument, type DraftListItem } from './section-draft'
 import type { SectionsGateway } from './sections-gateway'
@@ -34,11 +33,16 @@ export function SectionEditorScreen({ gateway }: SectionEditorScreenProps): JSX.
   if (!isSectionKey(key)) {
     return (
       <section className="space-y-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Seção desconhecida</h1>
-        <p className="text-slate-700">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          Seção desconhecida
+        </h1>
+        <p className="text-slate-700 dark:text-slate-300">
           Este endereço não corresponde a nenhuma das seções da página.
         </p>
-        <Link to={SECTIONS_PATH} className="text-sm text-slate-700 underline">
+        <Link
+          to={SECTIONS_PATH}
+          className="text-sm text-slate-700 underline dark:text-slate-300"
+        >
           Voltar para a lista de seções
         </Link>
       </section>
@@ -92,7 +96,7 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
 
   if (state.status === 'carregando') {
     return (
-      <p role="status" className="text-sm text-slate-500">
+      <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
         Carregando a seção…
       </p>
     )
@@ -101,10 +105,13 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
   if (state.status === 'indisponivel') {
     return (
       <div className="space-y-4">
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.message}
         </p>
-        <Link to={SECTIONS_PATH} className="text-sm text-slate-700 underline">
+        <Link
+          to={SECTIONS_PATH}
+          className="text-sm text-slate-700 underline dark:text-slate-300"
+        >
           Voltar para a lista de seções
         </Link>
       </div>
@@ -154,31 +161,37 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
   const dirty = isDraftDirty(state.draft, state.savedDraft)
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 pb-24">
       <UnsavedChangesGuard when={dirty} />
-      <header className="space-y-2">
-        <Link to={SECTIONS_PATH} className="text-sm text-slate-600 underline">
-          Voltar para a lista de seções
-        </Link>
-        <h1 className="text-2xl font-semibold text-slate-900">{schema.label}</h1>
-        <p className="text-sm text-slate-500">
+      <Link
+        to={SECTIONS_PATH}
+        className="text-sm text-slate-600 underline dark:text-slate-400"
+      >
+        Voltar para a lista de seções
+      </Link>
+
+      <Card className="space-y-2">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          {schema.label}
+        </h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {`Última edição: ${formatUpdatedAt(state.section.updatedAt)}`}
         </p>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-slate-300"
+            className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800"
             checked={state.section.isPublished}
             onChange={(event) => void changeVisibility(event.target.checked)}
           />
           Seção aparece na página
         </label>
-      </header>
+      </Card>
 
       <SaveFeedback save={state.save} />
 
       {state.errors.semCampo.length > 0 && (
-        <ul role="alert" className="space-y-1 text-sm text-red-600">
+        <ul role="alert" className="space-y-1 text-sm text-red-600 dark:text-red-400">
           {state.errors.semCampo.map((message) => (
             <li key={message}>{message}</li>
           ))}
@@ -201,13 +214,15 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
           onListChange={onListChange}
         />
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {saving ? 'Salvando…' : 'Salvar e publicar'}
-        </button>
+        <ActionBar>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving ? 'Salvando…' : 'Salvar e publicar'}
+          </button>
+        </ActionBar>
       </form>
     </section>
   )
@@ -215,22 +230,15 @@ function SectionEditor({ gateway, sectionKey }: SectionEditorProps): JSX.Element
 
 /**
  * A confirmação e a recusa moram em papéis diferentes de propósito: `status`
- * para o que deu certo, `alert` para o que exige atenção imediata.
+ * para o que deu certo, `alert` para o que exige atenção imediata — o mesmo
+ * componente `Notice` usado pelas outras telas do painel.
  */
 function SaveFeedback({ save }: { readonly save: SaveState }): JSX.Element | null {
   if (save.kind === 'confirmado') {
-    return (
-      <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-800">
-        {save.message}
-      </p>
-    )
+    return <Notice tone="sucesso" message={save.message} />
   }
   if (save.kind === 'falha') {
-    return (
-      <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-        {save.message}
-      </p>
-    )
+    return <Notice tone="falha" message={save.message} />
   }
   return null
 }

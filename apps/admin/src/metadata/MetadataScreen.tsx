@@ -7,6 +7,9 @@ import { FieldControl } from '../content/fields/FieldControl'
 import { isDraftDirty, toDocument } from '../content/section-draft'
 import { UnsavedChangesGuard } from '../content/UnsavedChangesGuard'
 import { formatUpdatedAt } from '../content/updated-at'
+import { ActionBar } from '../shared/ActionBar'
+import { Card } from '../shared/Card'
+import { Notice } from '../shared/Notice'
 import type { MetadataGateway } from './metadata-gateway'
 import {
   INITIAL_METADATA_STATE,
@@ -63,7 +66,7 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
 
   if (state.status === 'carregando') {
     return (
-      <p role="status" className="text-sm text-slate-500">
+      <p role="status" className="text-sm text-slate-500 dark:text-slate-400">
         Carregando os metadados…
       </p>
     )
@@ -71,7 +74,7 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
 
   if (state.status === 'indisponivel') {
     return (
-      <p role="alert" className="text-sm text-red-600">
+      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
         {state.message}
       </p>
     )
@@ -107,14 +110,16 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
   const dirty = isDraftDirty(state.draft, state.savedDraft)
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 pb-24">
       <UnsavedChangesGuard when={dirty} />
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-900">{siteMetadataSchema.label}</h1>
-        <p className="text-sm text-slate-600">
+      <header className="space-y-1">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
+          {siteMetadataSchema.label}
+        </h1>
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           O que buscadores e redes sociais mostram sobre a página.
         </p>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           {`Última edição: ${formatUpdatedAt(state.updatedAt)}`}
         </p>
       </header>
@@ -122,7 +127,7 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
       <SaveFeedback save={state.save} />
 
       {state.errors.semCampo.length > 0 && (
-        <ul role="alert" className="space-y-1 text-sm text-red-600">
+        <ul role="alert" className="space-y-1 text-sm text-red-600 dark:text-red-400">
           {state.errors.semCampo.map((message) => (
             <li key={message}>{message}</li>
           ))}
@@ -137,7 +142,7 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
         }}
         className="space-y-6"
       >
-        <div className="space-y-4 rounded border border-slate-200 bg-white p-4">
+        <Card className="space-y-4">
           {siteMetadataSchema.fields.map((spec) => (
             <FieldControl
               key={spec.name}
@@ -147,35 +152,29 @@ export function MetadataScreen({ gateway }: MetadataScreenProps): JSX.Element {
               onChange={(value) => onFieldChange(spec.name, value)}
             />
           ))}
-        </div>
+        </Card>
 
-        <button
-          type="submit"
-          disabled={saving}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50"
-        >
-          {saving ? 'Salvando…' : 'Salvar metadados'}
-        </button>
+        <ActionBar>
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-700 disabled:opacity-50 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            {saving ? 'Salvando…' : 'Salvar metadados'}
+          </button>
+        </ActionBar>
       </form>
     </section>
   )
 }
 
-/** Confirmação em `status`, recusa em `alert` — a mesma divisão da tela de seção. */
+/** Confirmação em `status`, recusa em `alert` — o mesmo `Notice` da tela de seção. */
 function SaveFeedback({ save }: { readonly save: MetadataSaveState }): JSX.Element | null {
   if (save.kind === 'confirmado') {
-    return (
-      <p role="status" className="rounded bg-green-50 px-3 py-2 text-sm text-green-800">
-        {save.message}
-      </p>
-    )
+    return <Notice tone="sucesso" message={save.message} />
   }
   if (save.kind === 'falha') {
-    return (
-      <p role="alert" className="rounded bg-red-50 px-3 py-2 text-sm text-red-700">
-        {save.message}
-      </p>
-    )
+    return <Notice tone="falha" message={save.message} />
   }
   return null
 }
