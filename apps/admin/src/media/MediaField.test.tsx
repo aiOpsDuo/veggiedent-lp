@@ -138,6 +138,49 @@ describe('envio concluído', () => {
   })
 })
 
+/**
+ * O estilo de dropzone do campo de imagem (T36, item 2): a animação de
+ * carregamento aparece **dentro do campo** enquanto o envio está pendente, e o
+ * botão de excluir só existe depois de uma imagem estar guardada — nunca
+ * antes, nunca durante o envio.
+ */
+describe('estilo de dropzone do campo de imagem (T36)', () => {
+  it('mostra a animação de carregamento dentro do campo enquanto o envio está pendente', async () => {
+    const service = new FakeMediaService()
+    let concluirEnvio: (outcome: Awaited<ReturnType<FakeMediaService['send']>>) => void = () => {}
+    vi.spyOn(service, 'send').mockImplementation((_fieldType, _file, onProgress) => {
+      onProgress(0.42)
+      return new Promise((resolve) => {
+        concluirEnvio = resolve
+      })
+    })
+    montar('imagem', '', service)
+
+    await userEvent.upload(seletor(), arquivoDe('cachorro.png', 'image/png', 2048))
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Enviando… 42%')
+    expect(screen.queryByRole('button', { name: 'Remover a imagem' })).not.toBeInTheDocument()
+
+    concluirEnvio({ status: 'enviada', media: MIDIA_GUARDADA })
+
+    expect(await screen.findByAltText(`Prévia de ${MIDIA_GUARDADA.originalFilename}`)).toBeInTheDocument()
+  })
+
+  it('não mostra o botão de excluir quando o campo de imagem está vazio', () => {
+    montar('imagem')
+
+    expect(screen.queryByRole('button', { name: 'Remover a imagem' })).not.toBeInTheDocument()
+  })
+
+  it('mostra o botão de excluir só depois de uma imagem estar guardada', async () => {
+    const service = new FakeMediaService()
+    service.guardar(MIDIA_GUARDADA)
+    montar('imagem', MIDIA_GUARDADA.id, service)
+
+    expect(await screen.findByRole('button', { name: 'Remover a imagem' })).toBeInTheDocument()
+  })
+})
+
 describe('prévia do que já estava guardado', () => {
   /**
    * O painel roda dentro de `StrictMode`, que monta cada efeito duas vezes em
