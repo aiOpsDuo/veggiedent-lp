@@ -122,10 +122,10 @@ describe('tipos de campo do contrato', () => {
 
 describe('visibilidade e ordenação dos itens de lista', () => {
   it('mantém a ordem em que os itens foram gravados', () => {
-    const result = validateSectionDocument('captura_lead', validSectionDocuments.captura_lead)
-    const labels = result.valid ? result.data.porteOptions.map((option) => option.label) : []
+    const result = validateSectionDocument('prova_autoridade', validSectionDocuments.prova_autoridade)
+    const labels = result.valid ? result.data.stats.map((item) => item.stat) : []
 
-    expect(labels).toEqual(['Pequeno', 'Médio', 'Grande'])
+    expect(labels).toEqual(['1.116', 'N.º 1'])
   })
 
   it('aceita um item despublicado sem apagar o conteúdo', () => {

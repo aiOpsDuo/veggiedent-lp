@@ -1,10 +1,10 @@
 import { useId } from 'react'
-import type { SectionContent } from '../../../content/published-content'
+import type { FormOptionView } from '../CapturaLead.types'
 
 interface PorteSelectProps {
   label: string
   placeholder: string
-  options: SectionContent<'captura_lead'>['porteOptions']
+  options: readonly FormOptionView[]
   value: string
   onChange: (value: string) => void
 }

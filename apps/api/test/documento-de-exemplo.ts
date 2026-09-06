@@ -83,6 +83,5 @@ export function exampleMetadata(): Record<string, unknown> {
   return {
     title: 'Veggiedent — saúde oral canina',
     description: 'Rotina de cuidado com o hálito e o tártaro do seu cachorro.',
-    canonicalUrl: 'https://veggiedent.com.br/',
   }
 }

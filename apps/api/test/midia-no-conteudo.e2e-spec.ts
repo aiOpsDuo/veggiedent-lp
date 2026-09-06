@@ -106,7 +106,6 @@ describe('GET /api/content — referências de mídia', () => {
         id: 'default',
         title: 'Veggiedent',
         description: 'Saúde oral canina',
-        canonical_url: 'https://veggiedent.com.br/',
         og_image_media_id: mediaId(7),
         updated_at: AGORA,
       },

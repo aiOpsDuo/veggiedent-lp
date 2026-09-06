@@ -28,7 +28,6 @@ export class PublicSeoController {
         title: { type: 'string', nullable: true },
         description: { type: 'string', nullable: true },
         ogImageUrl: { type: 'string', nullable: true },
-        canonicalUrl: { type: 'string', nullable: true },
       },
     },
   })

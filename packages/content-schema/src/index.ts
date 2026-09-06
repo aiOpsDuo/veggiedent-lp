@@ -32,6 +32,9 @@ export {
 export type { RichTextSanitizer } from './rich-text'
 
 export {
+  OPCAO_SIM,
+  PORTE_OPTIONS,
+  SIM_NAO_OPTIONS,
   getSectionSchema,
   orderedSectionSchemas,
   sectionSchemas,

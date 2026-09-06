@@ -1,4 +1,9 @@
 import { useMemo, useRef, useState } from "react";
+import {
+  OPCAO_SIM,
+  PORTE_OPTIONS,
+  SIM_NAO_OPTIONS,
+} from "@veggiedent/content-schema";
 import { useLeadForm } from "../hooks/useLeadForm";
 import { env } from "../../../config/env";
 import { useTracking } from "../../../hooks/useTracking";
@@ -8,14 +13,33 @@ import { ConsentCheckbox } from "./ConsentCheckbox";
 import { SuccessModal } from "./SuccessModal";
 import { ErrorToast } from "./ErrorToast";
 import type { SectionContent } from "../../../content/published-content";
-import type { LeadFormFieldName } from "../CapturaLead.types";
+import type { FormOptionView, LeadFormFieldName } from "../CapturaLead.types";
 
 interface LeadCaptureFormProps {
   content: SectionContent<"captura_lead">;
 }
 
-/** Valor da opção que abre o campo "qual produto Virbac". */
-const OPCAO_SIM = "sim";
+/**
+ * Junta as duas metades de uma opção do formulário: o **valor** gravado no lead,
+ * que e estrutura e vive em codigo, e o **rotulo** lido pelo visitante, que e
+ * texto e vive no CMS (T25).
+ */
+type OptionLabelField =
+  | (typeof PORTE_OPTIONS)[number]["labelField"]
+  | (typeof SIM_NAO_OPTIONS)[number]["labelField"];
+
+function optionViews(
+  options: readonly {
+    readonly value: string;
+    readonly labelField: OptionLabelField;
+  }[],
+  content: SectionContent<"captura_lead">,
+): FormOptionView[] {
+  return options.map((option) => ({
+    value: option.value,
+    label: content[option.labelField],
+  }));
+}
 
 // LeadCaptureForm — orquestra os subcomponentes de campo, o hook useLeadForm
 // e os estados de sucesso/erro. Todo rotulo, mensagem e opcao vem do CMS
@@ -31,6 +55,14 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
   );
   const { values, errors, status, setValue, handleBlur, submit } =
     useLeadForm(errorMessages);
+  const porteOptions = useMemo(
+    () => optionViews(PORTE_OPTIONS, content),
+    [content],
+  );
+  const simNaoOptions = useMemo(
+    () => optionViews(SIM_NAO_OPTIONS, content),
+    [content],
+  );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const submitButtonRef = useRef<HTMLButtonElement>(null);
@@ -136,7 +168,7 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
         <PorteSelect
           label={content.formPorteCachorroLabel}
           placeholder={content.formPorteCachorroPlaceholder}
-          options={content.porteOptions}
+          options={porteOptions}
           value={values.porteCachorro}
           onChange={(value) => setValue("porteCachorro", value)}
         />
@@ -148,7 +180,7 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
             </legend>
 
             <div className="flex items-center gap-6">
-              {content.simNaoOptions.map((option) => (
+              {simNaoOptions.map((option) => (
                 <label
                   key={option.value}
                   className="flex cursor-pointer items-center gap-2 text-sm text-ink-700"
@@ -173,7 +205,7 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
             </legend>
 
             <div className="flex items-center gap-6">
-              {content.simNaoOptions.map((option) => (
+              {simNaoOptions.map((option) => (
                 <label
                   key={option.value}
                   className="flex cursor-pointer items-center gap-2 text-sm text-ink-700"

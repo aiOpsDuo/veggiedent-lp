@@ -127,6 +127,9 @@ export const capturaLeadDocument: CapturaLeadDocument = {
   formNomeCachorroPlaceholder: 'Ex.: Bidu',
   formPorteCachorroLabel: 'Porte do seu cão (opcional)',
   formPorteCachorroPlaceholder: 'Selecione o porte',
+  portePequenoLabel: 'Pequeno',
+  porteMedioLabel: 'Médio',
+  porteGrandeLabel: 'Grande',
   formCidadeEstadoLabel: 'Cidade e estado (opcional)',
   formCidadeEstadoPlaceholder: 'Ex.: São Paulo, SP',
   formConheceVirbacLabel: 'Você já conhece a Virbac?',
@@ -135,6 +138,8 @@ export const capturaLeadDocument: CapturaLeadDocument = {
   formUsaProdutoVirbacPlaceholder: 'Selecione uma opção',
   formQualProdutoVirbacLabel: 'Qual produto Virbac você utiliza? (opcional)',
   formQualProdutoVirbacPlaceholder: 'Digite o nome do produto',
+  opcaoSimLabel: 'Sim',
+  opcaoNaoLabel: 'Não',
   lgpdLabel:
     'Li e aceito a Política de Privacidade e autorizo o uso dos meus dados para receber o guia e comunicações relacionadas.',
   optInLabel: 'Quero receber novidades e conteúdos da Virbac sobre cuidado com o meu cão.',
@@ -146,18 +151,7 @@ export const capturaLeadDocument: CapturaLeadDocument = {
   successModalTitle: 'Guia a caminho!',
   successModalBody: 'Confirmamos seu cadastro. Clique no botão abaixo para acessar o guia agora.',
   successModalDownloadCtaLabel: 'Baixar o guia agora',
-  successModalEmailModeMessage: 'Enviamos o guia para o seu e-mail. Se não encontrar, confira a caixa de spam.',
-  successModalCloseAriaLabel: 'Fechar',
   errorToastMessage: 'Não foi possível enviar seu cadastro agora. Tente novamente em alguns instantes.',
-  porteOptions: [
-    { visivel: true, ordem: 0, value: 'pequeno', label: 'Pequeno' },
-    { visivel: true, ordem: 1, value: 'medio', label: 'Médio' },
-    { visivel: true, ordem: 2, value: 'grande', label: 'Grande' },
-  ],
-  simNaoOptions: [
-    { visivel: true, ordem: 0, value: 'sim', label: 'Sim' },
-    { visivel: true, ordem: 1, value: 'nao', label: 'Não' },
-  ],
   mosaico: [
     { visivel: true, ordem: 0, image: mediaId(12) },
     { visivel: true, ordem: 1, image: mediaId(13) },
@@ -213,5 +207,4 @@ export const validSiteMetadata: SiteMetadata = {
   title: 'Veggiedent — Rotina de cuidado bucal para cachorros | Virbac',
   description:
     'Veggiedent entra na rotina do seu cachorro para ajudar no controle de tártaro e no hálito fresco.',
-  canonicalUrl: 'https://p.virbac.com.br/',
 }

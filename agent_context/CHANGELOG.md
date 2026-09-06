@@ -508,3 +508,16 @@ Aplicacao das dez mudancas, autorizada pelo usuario:
 **Auditoria da regra 4, resultado:** nenhuma divergencia entre o que o PLAN afirma e o codigo real. Zero `*.content.ts`, zero referencias ao RD Station, 9 secoes no esquema (Ingredientes, Header e Footer removidos), tipo "legenda" removido. E confirmou o fechamento do **risco R-01**: os tres campos que se perdiam a cada envio agora sao enviados pela LP — corrigido na outra conversa, depois de o orquestrador ter registrado, aqui, o proprio erro de te-lo dado como resolvido verificando so a API.
 
 Correcao de conteudo feita junto: `docs/OPERACAO.md` carregava, movida verbatim do README, a afirmacao vencida de que "ate la as tabelas estao vazias" a espera da T9 — que ja foi executada. O subagente sinalizou em vez de corrigir, por ser tarefa de reorganizacao; corrigido pelo orquestrador.
+
+## 2026-09-05 — A publicacao sai do escopo do projeto orquestrado
+
+Documentos afetados: PLAN.md (T16, T17), PRD.md
+
+Motivo: perguntado sobre onde publicar — decisao que nunca havia sido tomada e que travava `publicacao/ambiente` —, o usuario respondeu que **a publicacao sera feita por ele mesmo, sem ajuda de um agente**. A tarefa foi marcada **fora de escopo** em vez de removida do documento, para que o registro do que ela cobriria continue existindo.
+
+Consequencias:
+- `publicacao/revisao-final` (T17) **deixa de depender dela**. Revisar o README contra a realidade e varrer os artefatos de navegador atras de credencial valem por si, publicando ou nao. O unico item que sai do criterio dela e "ambientes publicados".
+- `publicacao/orquestracao-docker` (T21) ganha peso: passa a ser **a entrega final de infraestrutura** do projeto. Ela empacota as tres aplicacoes atras de um proxy reverso com o mesmo mapa de caminhos que ja roda em desenvolvimento, entao publicar vira apontar isso para um servidor, e nao redesenhar roteamento.
+- **Rotacao de credenciais passa a ser responsabilidade declarada do usuario**, no momento da publicacao: chave secreta do Supabase, senha do banco e senha do operador, todas transitadas por chat. Registrado aqui para nao se perder — e anotado na propria T16, que e onde alguem vai procurar ao publicar.
+
+Escopo restante do projeto apos esta decisao: `publicacao/orquestracao-docker`, `ajustes/campos-de-desenvolvedor`, `lp/injetor-de-seo`, `dados/carga-do-instantaneo` e `publicacao/revisao-final`.

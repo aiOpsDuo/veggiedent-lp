@@ -96,7 +96,6 @@ describe('GET /api/content — conteúdo publicado', () => {
         id: 'default',
         title: 'Veggiedent',
         description: 'Saúde oral canina',
-        canonical_url: 'https://veggiedent.com.br/',
         og_image_media_id: null,
         updated_at: AGORA,
       },
@@ -107,7 +106,6 @@ describe('GET /api/content — conteúdo publicado', () => {
     expect(response.body.metadata).toEqual({
       title: 'Veggiedent',
       description: 'Saúde oral canina',
-      canonicalUrl: 'https://veggiedent.com.br/',
     })
   })
 
@@ -183,7 +181,6 @@ describe('GET /api/seo — metadados para o injetor de borda', () => {
       title: null,
       description: null,
       ogImageUrl: null,
-      canonicalUrl: null,
     })
   })
 
@@ -196,7 +193,6 @@ describe('GET /api/seo — metadados para o injetor de borda', () => {
         id: 'default',
         title: 'Veggiedent',
         description: 'Saúde oral canina',
-        canonical_url: 'https://veggiedent.com.br/',
         og_image_media_id: MEDIA_ID,
         updated_at: AGORA,
       },
@@ -209,7 +205,6 @@ describe('GET /api/seo — metadados para o injetor de borda', () => {
       title: 'Veggiedent',
       description: 'Saúde oral canina',
       ogImageUrl: 'https://cdn.exemplo/og.png',
-      canonicalUrl: 'https://veggiedent.com.br/',
     })
     expect(harness.database.calls).toHaveLength(1)
   })

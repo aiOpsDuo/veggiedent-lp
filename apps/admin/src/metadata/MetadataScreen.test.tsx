@@ -20,7 +20,6 @@ import { SAVED_MESSAGE } from './metadata-editor-state'
 const METADADOS = {
   title: 'Veggiedent Fresh — Virbac',
   description: 'Petisco mastigável que ajuda na higiene bucal do cachorro.',
-  canonicalUrl: 'https://veggiedent.com.br/',
 }
 
 function montarMetadados(
@@ -40,13 +39,17 @@ describe('Tela de metadados', () => {
 
     expect(await esperarFormulario()).toHaveValue(METADADOS.title)
     expect(screen.getByLabelText('Descrição da página')).toHaveValue(METADADOS.description)
-    expect(screen.getByLabelText('Endereço oficial da página')).toHaveValue(
-      METADADOS.canonicalUrl,
-    )
     expect(screen.getByLabelText('Imagem de compartilhamento')).toBeInTheDocument()
     expect(
       screen.getByLabelText('Texto alternativo da imagem de compartilhamento'),
     ).toBeInTheDocument()
+  })
+
+  it('não pede o endereço oficial da página, que saiu do painel na T25', async () => {
+    montarMetadados(new FakeMetadataGateway({ metadata: METADADOS }))
+    await esperarFormulario()
+
+    expect(screen.queryByLabelText('Endereço oficial da página')).not.toBeInTheDocument()
   })
 
   it('grava o que foi editado e confirma o sucesso', async () => {
@@ -62,7 +65,6 @@ describe('Tela de metadados', () => {
     expect(gateway.lastDocument).toMatchObject({
       title: 'Título revisado',
       description: METADADOS.description,
-      canonicalUrl: METADADOS.canonicalUrl,
     })
   })
 

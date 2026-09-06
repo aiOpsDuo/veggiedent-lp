@@ -442,6 +442,29 @@ describe('Texto alternativo: a escolha entre informativa e decorativa (SDD § C-
     })
   })
 
+  it('não pede nenhum dos campos de desenvolvedor da captura de lead (T25)', async () => {
+    const gateway = new FakeSectionsGateway({
+      documents: {
+        captura_lead: { mosaico: [{ image: IMAGEM_DA_ABERTURA, ordem: 0, visivel: true }] },
+      },
+    })
+    montarTela(<SectionEditorScreen gateway={gateway} />, {
+      routePattern: SECTION_EDITOR_ROUTE,
+      initialPath: '/secoes/captura_lead',
+    })
+    await screen.findByRole('group', { name: 'Fotos do mosaico' })
+
+    // O código gravado no lead e os dois textos de interface saíram do painel;
+    // os rótulos das opções, que o visitante lê, continuam editáveis.
+    expect(screen.queryByLabelText('Código da opção')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Opções de porte do cão' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Opções de sim ou não' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Descrição do botão de fechar')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Aviso de envio por e-mail')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Opção de porte: cão pequeno')).toBeInTheDocument()
+    expect(screen.getByLabelText('Texto da resposta "sim"')).toBeInTheDocument()
+  })
+
   it('o rótulo do campo de descrição vem do esquema, não do painel', () => {
     expect(campoDeTextoAlternativoDaAbertura()?.label).toBe(
       'Texto alternativo da imagem da abertura',

@@ -6,6 +6,11 @@ import { optionalImage } from './fields'
  * por buscadores e previews de link. Não é uma seção — não tem listas e não
  * entra no conjunto fechado das 9 chaves —, mas é declarado com o mesmo
  * contrato de campos, para que o painel gere seu formulário do mesmo jeito.
+ *
+ * O **endereço oficial** (`<link rel="canonical">`) não está aqui: é SEO
+ * técnico, que um valor errado tira a página do índice sem nenhum sinal visível
+ * a quem edita. Ele vive em `apps/lp/index.html`, junto com o resto do HTML
+ * estático (T25).
  */
 export const siteMetadataSchema = {
   key: 'site_metadata',
@@ -23,13 +28,6 @@ export const siteMetadataSchema = {
       type: 'texto-longo',
       label: 'Descrição da página',
       help: 'Resumo exibido abaixo do título no resultado de busca e no preview do link.',
-      required: true,
-    },
-    {
-      name: 'canonicalUrl',
-      type: 'link',
-      label: 'Endereço oficial da página',
-      help: 'Endereço que os buscadores devem tratar como o oficial desta página.',
       required: true,
     },
     ...optionalImage({

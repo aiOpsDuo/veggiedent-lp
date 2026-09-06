@@ -23,12 +23,11 @@ const SINGLE_ROW_ID = 'default'
  * menor.
  */
 const COLUMNS =
-  'title,description,canonical_url,og_image_media_id,og_image_alt,updated_at,og_image:media_assets(public_url)'
+  'title,description,og_image_media_id,og_image_alt,updated_at,og_image:media_assets(public_url)'
 
 interface MetadataRow {
   title: string | null
   description: string | null
-  canonical_url: string | null
   og_image_media_id: string | null
   og_image_alt: string | null
   updated_at: string
@@ -46,18 +45,21 @@ function optional(value: string | null): string | undefined {
  * `20260902130000_add_og_image_alt_to_site_metadata.sql`: o esquema exige o
  * texto alternativo sempre que há imagem (SDD § "Contrato do esquema de seção"),
  * e um campo validado que não volta ao operador é pior do que campo nenhum.
+ *
+ * `canonical_url` não está aqui desde a T25: o endereço oficial saiu do CMS e
+ * voltou a ser o `<link rel="canonical">` estático de `apps/lp/index.html`. A
+ * coluna foi removida pela migração
+ * `20260905120000_remove_canonical_url_and_option_codes.sql`.
  */
 function toDocument(row: MetadataRow): Record<string, unknown> {
   const document: Record<string, unknown> = {}
   const title = optional(row.title)
   const description = optional(row.description)
-  const canonicalUrl = optional(row.canonical_url)
   const ogImage = optional(row.og_image_media_id)
   const ogImageAlt = optional(row.og_image_alt)
 
   if (title !== undefined) document.title = title
   if (description !== undefined) document.description = description
-  if (canonicalUrl !== undefined) document.canonicalUrl = canonicalUrl
   if (ogImage !== undefined) document.ogImage = ogImage
   if (ogImageAlt !== undefined) document.ogImageAlt = ogImageAlt
 
@@ -108,7 +110,6 @@ export class SupabaseSiteMetadataRepository implements SiteMetadataRepository {
             id: SINGLE_ROW_ID,
             title: textOrNull(document.title),
             description: textOrNull(document.description),
-            canonical_url: textOrNull(document.canonicalUrl),
             og_image_media_id: textOrNull(document.ogImage),
             og_image_alt: textOrNull(document.ogImageAlt),
             updated_at: new Date().toISOString(),

@@ -6,9 +6,11 @@ import { rotinaSchema } from './rotina'
 import { produtoSchema } from './produto'
 import { demonstracaoSchema } from './demonstracao'
 import { provaAutoridadeSchema } from './prova-autoridade'
-import { capturaLeadSchema } from './captura-lead'
+import { capturaLeadSchema, OPCAO_SIM, PORTE_OPTIONS, SIM_NAO_OPTIONS } from './captura-lead'
 import { ondeComprarSchema } from './onde-comprar'
 import { faqSchema } from './faq'
+
+export { OPCAO_SIM, PORTE_OPTIONS, SIM_NAO_OPTIONS }
 
 export {
   heroSchema,

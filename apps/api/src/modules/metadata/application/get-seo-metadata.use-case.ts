@@ -23,7 +23,6 @@ export class GetSeoMetadataUseCase {
       title: optionalText(stored?.document.title),
       description: optionalText(stored?.document.description),
       ogImageUrl: stored?.ogImageUrl ?? null,
-      canonicalUrl: optionalText(stored?.document.canonicalUrl),
     }
   }
 }

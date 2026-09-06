@@ -44,23 +44,6 @@ function formFieldTexts<const N extends string>(input: {
   ] as const
 }
 
-const optionItemFields = [
-  {
-    name: 'value',
-    type: 'texto-curto',
-    label: 'Código da opção',
-    help: 'Valor gravado no lead. Não aparece para o visitante e não deve ser alterado sem aviso à equipe técnica.',
-    required: true,
-  },
-  {
-    name: 'label',
-    type: 'texto-curto',
-    label: 'Texto da opção',
-    help: 'Texto que o visitante lê na lista de opções.',
-    required: true,
-  },
-] as const
-
 /**
  * O mosaico ao lado do formulário foi desenhado para **seis** fotos: é essa
  * quantidade que preenche a grade em todos os tamanhos de tela. A lista não trava
@@ -106,10 +89,45 @@ export const capturaLeadSchema = {
     ...formFieldTexts({ name: 'formTelefone', fieldLabel: 'WhatsApp' }),
     ...formFieldTexts({ name: 'formNomeCachorro', fieldLabel: 'Nome do cão' }),
     ...formFieldTexts({ name: 'formPorteCachorro', fieldLabel: 'Porte do cão' }),
+    {
+      name: 'portePequenoLabel',
+      type: 'texto-curto',
+      label: 'Opção de porte: cão pequeno',
+      help: 'Texto da primeira opção da lista de porte do cão.',
+      required: true,
+    },
+    {
+      name: 'porteMedioLabel',
+      type: 'texto-curto',
+      label: 'Opção de porte: cão médio',
+      help: 'Texto da segunda opção da lista de porte do cão.',
+      required: true,
+    },
+    {
+      name: 'porteGrandeLabel',
+      type: 'texto-curto',
+      label: 'Opção de porte: cão grande',
+      help: 'Texto da terceira opção da lista de porte do cão.',
+      required: true,
+    },
     ...formFieldTexts({ name: 'formCidadeEstado', fieldLabel: 'Cidade e estado' }),
     ...formFieldTexts({ name: 'formConheceVirbac', fieldLabel: 'Conhece a Virbac' }),
     ...formFieldTexts({ name: 'formUsaProdutoVirbac', fieldLabel: 'Usa produto Virbac' }),
     ...formFieldTexts({ name: 'formQualProdutoVirbac', fieldLabel: 'Qual produto Virbac' }),
+    {
+      name: 'opcaoSimLabel',
+      type: 'texto-curto',
+      label: 'Texto da resposta "sim"',
+      help: 'Resposta afirmativa das duas perguntas de sim ou não do formulário.',
+      required: true,
+    },
+    {
+      name: 'opcaoNaoLabel',
+      type: 'texto-curto',
+      label: 'Texto da resposta "não"',
+      help: 'Resposta negativa das duas perguntas de sim ou não do formulário.',
+      required: true,
+    },
     {
       name: 'lgpdLabel',
       type: 'texto-longo',
@@ -181,20 +199,6 @@ export const capturaLeadSchema = {
       required: true,
     },
     {
-      name: 'successModalEmailModeMessage',
-      type: 'texto-longo',
-      label: 'Aviso de envio por e-mail',
-      help: 'Mensagem da janela de sucesso quando o guia é entregue por e-mail em vez de download.',
-      required: true,
-    },
-    {
-      name: 'successModalCloseAriaLabel',
-      type: 'texto-curto',
-      label: 'Descrição do botão de fechar',
-      help: 'Não aparece na tela. É o que o leitor de tela anuncia no botão que fecha a janela de sucesso.',
-      required: true,
-    },
-    {
       name: 'errorToastMessage',
       type: 'texto-longo',
       label: 'Mensagem de falha no envio',
@@ -203,20 +207,6 @@ export const capturaLeadSchema = {
     },
   ],
   lists: [
-    {
-      name: 'porteOptions',
-      label: 'Opções de porte do cão',
-      reorderable: true,
-      minItems: 1,
-      itemFields: optionItemFields,
-    },
-    {
-      name: 'simNaoOptions',
-      label: 'Opções de sim ou não',
-      reorderable: true,
-      minItems: 1,
-      itemFields: optionItemFields,
-    },
     {
       name: 'mosaico',
       label: 'Fotos do mosaico',
@@ -232,3 +222,40 @@ export const capturaLeadSchema = {
     },
   ],
 } as const satisfies SectionSchema
+
+/**
+ * As opções do formulário são **estrutura**, não conteúdo (PRD § "Fora de
+ * escopo": quais campos existem e como são validados permanecem em código; o
+ * CMS edita os textos desses campos, não a sua estrutura).
+ *
+ * Quais opções existem, em que ordem aparecem e — sobretudo — **qual código
+ * cada uma grava no lead** vivem aqui. O código gravado é a série histórica do
+ * banco e do CSV: editá-lo no painel corrompia o dado em silêncio, e era um
+ * dado que o operador não tinha como interpretar. Do CMS vem só o rótulo que o
+ * visitante lê, apontado por `labelField`.
+ *
+ * O `satisfies` abaixo é o que prende as duas metades: um `labelField` que não
+ * exista entre os campos do esquema não compila.
+ */
+interface FormOption<F extends CapturaLeadFieldName> {
+  /** Valor gravado no lead. Nunca vem do CMS. */
+  readonly value: string
+  /** Campo do esquema que guarda o texto lido pelo visitante. */
+  readonly labelField: F
+}
+
+type CapturaLeadFieldName = (typeof capturaLeadSchema)['fields'][number]['name']
+
+export const PORTE_OPTIONS = [
+  { value: 'pequeno', labelField: 'portePequenoLabel' },
+  { value: 'medio', labelField: 'porteMedioLabel' },
+  { value: 'grande', labelField: 'porteGrandeLabel' },
+] as const satisfies readonly FormOption<CapturaLeadFieldName>[]
+
+export const SIM_NAO_OPTIONS = [
+  { value: 'sim', labelField: 'opcaoSimLabel' },
+  { value: 'nao', labelField: 'opcaoNaoLabel' },
+] as const satisfies readonly FormOption<CapturaLeadFieldName>[]
+
+/** O código da resposta afirmativa — o que abre o campo "qual produto Virbac". */
+export const OPCAO_SIM = 'sim'

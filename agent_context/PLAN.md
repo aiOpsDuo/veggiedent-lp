@@ -326,24 +326,21 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Toca documentação: sim — README descreve o injetor e como trocar de plataforma.
 - Status: pendente
 
-### T16 — Publicação
-- **Identificador (v1.5.0):** `publicacao/ambiente` — origem: planejada. O rótulo histórico `T16` é mantido nas referências cruzadas deste documento e do CHANGELOG.
-- Descrição: publicar o produto num ambiente real, servindo o **mesmo mapa de caminhos** que o desenvolvimento já usa desde a T20 e que a T21 empacota: `/` a LP, `/admin` o painel, `/api/*` a API — tudo em um domínio.
-- **Reescrita em 2026-09-03.** A versão original desta tarefa dizia "rotas, variáveis e aposentadoria do relay antigo" e pressupunha encaixar o CMS na hospedagem existente. Duas coisas a tornaram obsoleta: (a) o usuário informou que **a hospedagem atual é apenas de teste e será descontinuada**, então não há o que encaixar; (b) a aposentadoria do relay saiu do escopo dela — a T26 removeu o RD Station inteiro, incluindo o diretório `serverless/`.
-- Rastreável a: SDD § D-04, § D-06, § "Visão de tiers"; `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre entrada única.
-- **Pré-requisito de decisão do usuário, ainda em aberto:** onde publicar. A escolha nunca foi feita neste projeto — o repositório nunca teve configuração de deploy, e o README da função serverless declarava a plataforma como indefinida desde antes do CMS. A T21 (Docker + proxy reverso) reduz muito o custo dessa escolha, porque entrega o produto empacotado e independente de provedor; **levar a decisão ao usuário faz parte desta tarefa**, com as opções e os trade-offs, não presumi-la.
-- Critério de "pronto": no ambiente publicado, `/` serve a LP com o CSS aplicado (conferir o **conteúdo**, não só o código HTTP), `/admin` e `/admin/` exigem login, `/api/health` responde `200`, e `/admin` **sem barra final** funciona — o defeito que a T10 encontrou; um envio real do formulário grava o lead e ele aparece na tela e na exportação; os metadados chegam no HTML inicial, verificável sem executar JavaScript; nenhuma credencial de servidor aparece nos artefatos de navegador.
-- Dependências: T21, T15, T17 não — T17 é a revisão final e vem depois.
-- Execução: sequencial
-- Toca documentação: sim — README ganha a seção de publicação, o procedimento e as variáveis por ambiente.
-- Status: pendente
+### T16 — Publicação — **REMOVIDA DO ESCOPO**
+- **Identificador (v1.5.0):** `publicacao/ambiente` — origem: pedido do usuário.
+- **Removida em 2026-09-05, por decisão do usuário:** "a publicação será feita por mim mesmo sem ajuda de um agente". A tarefa não será executada e não conta como pendência.
+- O que ela entregaria e agora é responsabilidade do usuário: escolher o provedor, configurar o mapa de caminhos do domínio único (`/` a LP, `/admin` o painel, `/api/*` a API), declarar as variáveis por ambiente e fazer o primeiro envio real.
+- **O que o projeto entrega para essa publicação acontecer:** `publicacao/orquestracao-docker` empacota as três aplicações atrás de um proxy reverso com **exatamente o mesmo mapa de caminhos** que já roda em desenvolvimento — inclusive `/admin` sem barra final, o defeito que a T10 encontrou. Publicar passa a ser apontar isso para um servidor, não redesenhar roteamento.
+- **Atenção obrigatória do usuário ao publicar:** rotacionar a chave secreta do Supabase, a senha do banco e a senha do operador — as três trafegaram por chat. O usuário declarou em 2026-09-05 que fará isso no momento da publicação.
+- Status: **fora de escopo**
+
 
 ### T17 — Revisão final: documentação e vazamento de credenciais
 - **Identificador (v1.5.0):** `publicacao/revisao-final` — origem: planejada. O rótulo histórico `T17` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: revisar o `README.md` de ponta a ponta contra o que foi de fato implementado (comandos, variáveis, endpoints, ambientes) e verificar que nenhuma credencial de banco ou armazenamento entrou nos artefatos de build da LP ou do painel.
 - Rastreável a: SDD § R-09; PRD § "Critérios de release — Portabilidade & Manutenção"
-- Critério de "pronto": `npm run build` passa e uma busca por segredos nos diretórios `dist` da LP e do painel não retorna ocorrência da chave secreta do Supabase nem do token do RD Station; todo comando e variável citados no README foram executados ou conferidos, não apenas escritos.
-- Dependências: T16
+- Critério de "pronto": `npm run build` passa e uma busca por segredos nos diretórios `dist` da LP e do painel não retorna ocorrência da chave secreta do Supabase nem do token do RD Station; todo comando e variável citados no README foram executados ou conferidos, não apenas escritos. O item sobre "ambientes publicados" sai do critério: a publicação é do usuário.
+- Dependências: nenhuma — a dependência da T16 caiu quando a publicação saiu do escopo (2026-09-05). A revisão do README contra a realidade e a varredura por credencial nos artefatos de navegador valem por si, publicando ou não.
 - Execução: sequencial
 - Toca documentação: sim — é a própria revisão final do README.
 - Status: pendente

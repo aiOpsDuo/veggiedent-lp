@@ -195,37 +195,6 @@
       ],
       "heading": "Perguntas frequentes"
     },
-    "educacao": {
-      "cards": [
-        {
-          "body": "Tártaro não aparece do dia para a noite. Por isso, um cuidado constante vale mais do que uma ação isolada de vez em quando.",
-          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/ef48280e-5095-4b26-aa3a-037f3b5f06e9/tartaro-alerta.jpg",
-          "ordem": 0,
-          "title": "Devagar, mas sempre",
-          "visivel": true,
-          "imageAlt": "Cachorro deitado observando de perto, ilustrando o acúmulo silencioso de tártaro"
-        },
-        {
-          "body": "Mau hálito, desconforto ao mastigar, mudança na hora de comer. Vale conversar com o veterinário quando notar qualquer um desses sinais.",
-          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/67674f69-1138-4d87-908d-1e59da6cdee2/sinais-mau-halito.jpg",
-          "ordem": 1,
-          "title": "Sinais que valem atenção",
-          "visivel": true,
-          "imageAlt": "Ilustração oficial Virbac sobre o mau hálito como primeiro sinal de acúmulo de placa e tártaro"
-        },
-        {
-          "body": "Escovação, petiscos funcionais como o Veggiedent® e visitas regulares ao veterinário formam a base de uma boa rotina bucal.",
-          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9dbf24ca-45e4-40fc-8c66-e96d5879906e/prevencao-diaria.jpg",
-          "ordem": 2,
-          "title": "Prevenção no dia a dia",
-          "visivel": true,
-          "imageAlt": "Embalagem de Veggiedent® Fr3sh com a mensagem oficial \"a prevenção deve ser diária\""
-        }
-      ],
-      "intro": "A boca do seu cachorro muda aos poucos. Ninguém percebe de um dia para o outro: placa e o tártaro se acumulam devagar, até que um dia o hálito muda ou a mordida parece diferente. A boa notícia é que é possível cuidar da saúde oral do seu melhor amigo com hábitos simples, no dia a dia. O médico-veterinário é uma referência importante na escolha do cuidado oral do seu cachorro.",
-      "heading": "Por que a saúde oral do seu cachorro importa",
-      "researchHighlight": "E, segundo a Pesquisa Ipsos 2026, Veggiedent® é a marca mais recomendada pelos profissionais entrevistados."
-    },
     "captura_lead": {
       "body": "Descubra como tornar o cuidado oral parte da rotina do seu cão, com informações sobre prevenção, controle do tártaro, mau hálito e os diferenciais de Veggiedent® FR3SH. Preencha o formulário ao lado e receba o guia por e-mail.",
       "heading": "Baixe o guia gratuito sobre cuidados diários com os pets",
@@ -266,46 +235,17 @@
       "errorEmail": "Digite um e-mail válido.",
       "optInLabel": "Quero receber novidades e conteúdos da Virbac sobre cuidado com o meu cão.",
       "submitLabel": "Quero o guia gratuito",
-      "porteOptions": [
-        {
-          "label": "Pequeno",
-          "ordem": 0,
-          "value": "pequeno",
-          "visivel": true
-        },
-        {
-          "label": "Médio",
-          "ordem": 1,
-          "value": "medio",
-          "visivel": true
-        },
-        {
-          "label": "Grande",
-          "ordem": 2,
-          "value": "grande",
-          "visivel": true
-        }
-      ],
       "formNomeLabel": "Nome",
-      "simNaoOptions": [
-        {
-          "label": "Sim",
-          "ordem": 0,
-          "value": "sim",
-          "visivel": true
-        },
-        {
-          "label": "Não",
-          "ordem": 1,
-          "value": "nao",
-          "visivel": true
-        }
-      ],
+      "opcaoNaoLabel": "Não",
+      "opcaoSimLabel": "Sim",
       "formEmailLabel": "E-mail",
       "errorAceiteLgpd": "É preciso aceitar a Política de Privacidade para continuar.",
+      "porteMedioLabel": "Médio",
+      "porteGrandeLabel": "Grande",
       "successModalBody": "Confirmamos seu cadastro. Clique no botão abaixo para acessar o guia agora.",
       "errorToastMessage": "Não foi possível enviar seu cadastro agora. Tente novamente em alguns instantes.",
       "formTelefoneLabel": "WhatsApp",
+      "portePequenoLabel": "Pequeno",
       "successModalTitle": "Guia a caminho!",
       "submitLoadingLabel": "Enviando...",
       "formNomePlaceholder": "Seu nome",
@@ -317,20 +257,48 @@
       "formTelefonePlaceholder": "(00) 00000-0000",
       "formUsaProdutoVirbacLabel": "Você já utiliza algum produto Virbac?",
       "formQualProdutoVirbacLabel": "Qual produto Virbac você utiliza? (opcional)",
-      "successModalCloseAriaLabel": "Fechar",
       "formCidadeEstadoPlaceholder": "Ex.: São Paulo, SP",
       "formNomeCachorroPlaceholder": "Ex.: Bidu",
       "formConheceVirbacPlaceholder": "Selecione uma opção",
       "formPorteCachorroPlaceholder": "Selecione o porte",
       "successModalDownloadCtaLabel": "Baixar o guia agora",
-      "successModalEmailModeMessage": "Enviamos o guia para o seu e-mail. Se não encontrar, confira a caixa de spam.",
       "formUsaProdutoVirbacPlaceholder": "Selecione uma opção",
       "formQualProdutoVirbacPlaceholder": "Digite o nome do produto"
+    },
+    "educacao": {
+      "cards": [
+        {
+          "body": "Tártaro não aparece do dia para a noite. Por isso, um cuidado constante vale mais do que uma ação isolada de vez em quando.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/ef48280e-5095-4b26-aa3a-037f3b5f06e9/tartaro-alerta.jpg",
+          "ordem": 0,
+          "title": "Devagar, mas sempre",
+          "visivel": true,
+          "imageAlt": "Cachorro deitado observando de perto, ilustrando o acúmulo silencioso de tártaro"
+        },
+        {
+          "body": "Mau hálito, desconforto ao mastigar, mudança na hora de comer. Vale conversar com o veterinário quando notar qualquer um desses sinais.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/67674f69-1138-4d87-908d-1e59da6cdee2/sinais-mau-halito.jpg",
+          "ordem": 1,
+          "title": "Sinais que valem atenção",
+          "visivel": true,
+          "imageAlt": "Ilustração oficial Virbac sobre o mau hálito como primeiro sinal de acúmulo de placa e tártaro"
+        },
+        {
+          "body": "Escovação, petiscos funcionais como o Veggiedent® e visitas regulares ao veterinário formam a base de uma boa rotina bucal.",
+          "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9dbf24ca-45e4-40fc-8c66-e96d5879906e/prevencao-diaria.jpg",
+          "ordem": 2,
+          "title": "Prevenção no dia a dia",
+          "visivel": true,
+          "imageAlt": "Embalagem de Veggiedent® Fr3sh com a mensagem oficial \"a prevenção deve ser diária\""
+        }
+      ],
+      "intro": "A boca do seu cachorro muda aos poucos. Ninguém percebe de um dia para o outro: placa e o tártaro se acumulam devagar, até que um dia o hálito muda ou a mordida parece diferente. A boa notícia é que é possível cuidar da saúde oral do seu melhor amigo com hábitos simples, no dia a dia. O médico-veterinário é uma referência importante na escolha do cuidado oral do seu cachorro.",
+      "heading": "Por que a saúde oral do seu cachorro importa",
+      "researchHighlight": "E, segundo a Pesquisa Ipsos 2026, Veggiedent® é a marca mais recomendada pelos profissionais entrevistados."
     }
   },
   "metadata": {
     "title": "Veggiedent — Rotina de cuidado bucal para cachorros | Virbac",
-    "description": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario.",
-    "canonicalUrl": "https://p.virbac.com.br/"
+    "description": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario."
   }
 }

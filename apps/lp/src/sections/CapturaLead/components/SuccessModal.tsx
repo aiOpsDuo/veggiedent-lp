@@ -4,6 +4,23 @@ import { env, hasEbookDownloadUrl } from '../../../config/env'
 import { useTracking } from '../../../hooks/useTracking'
 import type { SectionContent } from '../../../content/published-content'
 
+/**
+ * Dois textos que saíram do CMS na T25 e voltaram para o código, com o mesmo
+ * valor que estava publicado:
+ *
+ * - o rótulo do botão de fechar é acessibilidade de um **controle de
+ *   interface**, não conteúdo — um valor ruim degrada o leitor de tela sem
+ *   ninguém perceber;
+ * - o aviso de entrega por e-mail só aparece quando `VITE_EBOOK_URL` está
+ *   vazia, um modo que quem edita o conteúdo não controla e não tem como
+ *   descobrir. **Ressalva registrada:** este é texto visível ao visitante, e
+ *   alterá-lo passa a exigir deploy. Decisão do usuário, 2026-09-03.
+ */
+const CLOSE_ARIA_LABEL = 'Fechar'
+
+const EMAIL_MODE_MESSAGE =
+  'Enviamos o guia para o seu e-mail. Se não encontrar, confira a caixa de spam.'
+
 interface SuccessModalProps {
   content: SectionContent<'captura_lead'>
   onClose: () => void
@@ -56,7 +73,7 @@ export function SuccessModal({ content, onClose, triggerRef }: SuccessModalProps
               onClose()
               triggerRef.current?.focus()
             }}
-            aria-label={content.successModalCloseAriaLabel}
+            aria-label={CLOSE_ARIA_LABEL}
             className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
           >
             <X size={20} />
@@ -64,7 +81,7 @@ export function SuccessModal({ content, onClose, triggerRef }: SuccessModalProps
         </div>
 
         <p className="mt-2 text-base text-ink-700">
-          {showDownloadButton ? content.successModalBody : content.successModalEmailModeMessage}
+          {showDownloadButton ? content.successModalBody : EMAIL_MODE_MESSAGE}
         </p>
 
         {showDownloadButton && (

@@ -74,7 +74,6 @@ describe('rotas administrativas de metadados', () => {
     expect(response.body.fields).toMatchObject({
       'metadata.title': 'Campo obrigatório.',
       'metadata.description': 'Campo obrigatório.',
-      'metadata.canonicalUrl': 'Campo obrigatório.',
     })
   })
 
