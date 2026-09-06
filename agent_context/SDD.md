@@ -68,6 +68,16 @@ T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço 
 - Nenhum acesso ao Supabase acontece fora da camada de Infraestrutura — nem em controller, nem em caso de uso.
 - A LP e o painel nunca falam com o Supabase para ler ou gravar conteúdo; falam sempre com a API. A única exceção declarada é o **envio dos bytes** de um arquivo direto do navegador para o armazenamento, com credencial temporária emitida pela API (justificativa em D-05).
 
+### Ponto único de entrada (exigência da skill 1.5.0)
+
+Este sistema tem **duas aplicações consumidas por usuário final** no mesmo domínio — a landing page e o painel — mais a API que as serve. A skill 1.5.0 passou a exigir que, nesse caso, o SDD declare desde a primeira versão um **ponto único de entrada de desenvolvimento** e como cada aplicação se registra nele, em vez de deixar a costura para o fim da Fase 4.
+
+**Declaração, registrada retroativamente em 2026-09-05:** o desenvolvimento expõe **um endereço só** — `http://localhost:5173` —, com o mesmo mapa de caminhos que a publicação usa: `/` serve a LP, `/admin` serve o painel, `/api/*` alcança a API. Os três processos existem por trás, mas nenhum é acessado por porta própria. O servidor de desenvolvimento da LP é o ponto de entrada e encaminha `/admin` e `/api`; `npm run dev` na raiz sobe os três.
+
+**Por que isso é regra e não conveniência:** o mapa de caminhos é a parte que o usuário enxerga e a que mais facilmente quebra. Servindo cada aplicação em sua própria porta durante o desenvolvimento, o roteamento só seria exercitado na tarefa de publicação — a última. Neste projeto isso já custou um defeito real: `/admin` sem barra final devolvia 404, e só apareceu ao acessar pelo endereço de verdade, com a suíte inteira verde.
+
+**Dívida registrada:** esta declaração deveria ter existido na primeira versão do SDD. Ela foi construída tarde, na tarefa `fundacao/entrada-unica` (T20), depois de o usuário apontar que lidava com três endereços diferentes. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-03.
+
 ### Estrutura de pastas do repositório
 
 O usuário confirmou repositório único com pastas separadas. O repositório passa a ser um monorepo de workspaces:

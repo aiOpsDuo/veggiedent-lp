@@ -486,3 +486,25 @@ Motivo: depois da T36 aceita, o usuário pediu um ajuste cosmético — o campo 
 **Correção já aplicada, no pedido seguinte do usuário** (troca de `object-cover` para `object-contain`, mesma classe de mudança): a delegação seguinte foi escrita explicitamente como "verificação leve" — só o workspace do painel nos testes (não os 4), sem exigir login em dois temas nem todos os estados, com instrução explícita de não repetir o ciclo completo. É a correção proposta abaixo, já em prática antes mesmo de ser formalizada aqui.
 
 Impacto: nenhum dano ao produto — a mudança foi entregue corretamente, só demorou mais do que deveria e queimou tokens à toa. Regra derivada para a skill: **a profundidade da verificação exigida numa delegação deve ser proporcional ao tipo de mudança, não ao tipo de projeto/tarefa em que ela vive.** Uma tarefa de painel/LP continua exigindo navegador real para qualquer mudança de **comportamento** (dado que persiste, estado que muda, fluxo que avança) — isso não muda. Mas uma mudança **puramente cosmética** (classe CSS de tamanho/cor/espaçamento, sem lógica nova) pode e deve ser verificada com uma checagem visual mínima e o teste do workspace afetado, não a suíte inteira dos quatro workspaces nem o ciclo completo de login em dois temas por todos os estados. Cabe a quem delega (o orquestrador) classificar a mudança antes de escrever o critério de "pronto" — não delegar a mesma régua pesada por hábito.
+
+## 2026-09-05 — Skill atualizada para 1.5.0 e aplicada retroativamente ao projeto
+
+Documentos afetados: PLAN.md, SDD.md, README.md, /docs
+
+Motivo: o usuario forneceu a versao 1.5.0 da skill `orquestrador-projeto`. O changelog dela declara ter sido derivado de dogfooding **deste projeto**, usando este `agent_context/CHANGELOG.md` como fonte primaria de evidencia — e os numeros confirmam: ela cita "README de mais de 1100 linhas" (o nosso tinha **1132**), "mais de 150 commits em branches nunca mergeadas" (**157**, em 34 branches) e "plano real de 36 tarefas" (**36**). Os erros registrados aqui viraram regra la.
+
+Aplicacao das dez mudancas, autorizada pelo usuario:
+
+1. **README com teto de 4 secoes** — de **1132 para 53 linhas**; 1007 linhas movidas para sete arquivos em `/docs`, todos alcancaveis pelo README. Nada perdido, exceto dois blocos descartados de proposito: a nota de "scaffold da Fase 3" (obsoleta) e a secao "Estado verificado" (85 linhas de narrativa de verificacao, que a skill proibe em documentacao tecnica e que ja vive tarefa a tarefa no PLAN.md).
+2. **Classificacao cosmetica x comportamental** e **3. verificacao pelo consumidor** — acrescentadas ao PLAN como regras de execucao.
+4. **Retomada nao confia em status nao verificado** — aplicada, e **pegou um erro real na hora**: o orquestrador ia integrar `feat/T26-remove-rdstation` como ponta da cadeia, mas a branch havia mudado enquanto a sessao estava pausada. Outra conversa levou o projeto de T27 ate **T36**, com nove branches desconhecidas. A ponta real era `feat/T36-acoes-e-dropzone`. Sem a verificacao, o merge teria descartado dez tarefas.
+5. **Ponto unico de entrada declarado no SDD**, com a divida registrada: deveria existir na primeira versao e so nasceu na T20.
+6. **Recurso fisico ampliado** (lockfile, arvore de trabalho do git, banco, porta) — formalizado no PLAN; os tres primeiros foram descobertos por acidente aqui, um de cada vez.
+7. Roteiro de kickoff — retrospectivo, sem acao.
+8. Projeto existente documentado por inteiro — auditado, sem divergencia.
+9. **Merge e push como 4a camada de aceite** — executado: `main` avancou por fast-forward preservando os 157 commits e as fronteiras de tarefa, `70cfb61..8297d57` enviado ao remoto, **34 branches e 4 worktrees removidos**. O repositorio passou de 34 branches para uma.
+10. **Identificadores `{fase}/{nome}`** — acrescentados as 36 tarefas com tabela de equivalencia. **Decisao do orquestrador:** o rotulo `T{n}` foi mantido nas referencias cruzadas, porque renomear as centenas de citacoes espalhadas por PLAN e CHANGELOG corromperia a rastreabilidade historica — que e o motivo de o registro existir — em troca de forma. Tarefas novas usam apenas o esquema novo.
+
+**Auditoria da regra 4, resultado:** nenhuma divergencia entre o que o PLAN afirma e o codigo real. Zero `*.content.ts`, zero referencias ao RD Station, 9 secoes no esquema (Ingredientes, Header e Footer removidos), tipo "legenda" removido. E confirmou o fechamento do **risco R-01**: os tres campos que se perdiam a cada envio agora sao enviados pela LP — corrigido na outra conversa, depois de o orquestrador ter registrado, aqui, o proprio erro de te-lo dado como resolvido verificando so a API.
+
+Correcao de conteudo feita junto: `docs/OPERACAO.md` carregava, movida verbatim do README, a afirmacao vencida de que "ate la as tabelas estao vazias" a espera da T9 — que ja foi executada. O subagente sinalizou em vez de corrigir, por ser tarefa de reorganizacao; corrigido pelo orquestrador.

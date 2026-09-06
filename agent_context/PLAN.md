@@ -11,6 +11,70 @@ Porte declarado no SDD: **Médio**. Conforme `references/git-workflow.md` § "Po
 - **Revisão obrigatória antes do merge**, além do critério de "pronto" automatizado. Os dois são complementares: build verde não dispensa revisão.
 - **Commits em Conventional Commits**, sem exceção. Nunca `git push --force` em branch compartilhada.
 
+
+## Regras de execução adotadas da skill 1.5.0
+
+Aplicadas retroativamente em 2026-09-05. Valem para toda tarefa nova.
+
+**Classificação da mudança, antes de fixar o critério de "pronto":**
+- **Cosmética** — altera visual ou texto, sem tocar dado, estado, fluxo ou contrato. Verificação leve, só do pacote afetado.
+- **Comportamental** — altera dado, estado, fluxo ou contrato. Exige o ciclo completo, incluindo verificação pela perspectiva de quem consome a interface.
+
+Motivo registrado no `CHANGELOG.md`: uma tarefa de três linhas de CSS consumiu duas horas de ciclo completo de verificação. Proporcionalidade também vale para verificar.
+
+**Critério de "pronto" exige verificação pelo consumidor.** Tarefa que expõe endpoint ou tela precisa de ao menos uma verificação pela perspectiva de quem consome — a interface que lê a resposta, o visitante que preenche o formulário. Teste verde do produtor não prova contrato com quem consome: **seis defeitos** deste projeto passaram por suítes inteiramente verdes e só apareceram exercitando o sistema de verdade.
+
+**Paralelismo é propriedade física, não lógica.** Duas tarefas nunca são paralelizáveis se tocam o mesmo **recurso físico**: arquivo ou módulo; lockfile ou manifesto de dependências; **a árvore de trabalho do git** (branches diferentes não bastam — cada tarefa concorrente precisa do próprio worktree); o banco ou schema que ambas escrevem; e a porta de rede que ambas ocupam. Antes de paralelizar, listar os recursos físicos de cada uma. Os três primeiros itens desta lista foram descobertos por acidente neste projeto, um de cada vez.
+
+**Uma tarefa só é `concluída` após merge em `main` e push ao remoto.** Commit local ou branch aberta é `em andamento`, mesmo com o critério de "pronto" satisfeito. Motivo: este projeto acumulou **157 commits em 34 branches** nunca integradas — corrigido em 2026-09-05.
+
+## Identificadores de tarefa (v1.5.0)
+
+A skill 1.5.0 substituiu a numeração sequencial por `{fase}/{nome-da-tarefa}`, porque numeração quebra quando uma tarefa é inserida no meio — foi exatamente o que aconteceu aqui (T24 antes de T23, T26 antes de T25, e T18–T28 inseridas fora de ordem).
+
+**Decisão de migração, tomada pelo orquestrador:** os 36 cabeçalhos ganharam o identificador novo, mas o rótulo `T{n}` **foi mantido** nas referências cruzadas. Renomear as centenas de citações de `T6`, `T14`, `T26` espalhadas por este plano e pelo `CHANGELOG.md` corromperia a rastreabilidade histórica — que é justamente o que o registro existe para preservar — em troca de forma. **Tarefas novas usam apenas o esquema `{fase}/{nome}`, sem número.**
+
+| Histórico | Identificador | Fase |
+|---|---|---|
+| `T1` | `fundacao/monorepo` | fundacao |
+| `T2` | `esquema/secoes` | esquema |
+| `T3` | `dados/schema-supabase` | dados |
+| `T4` | `api/esqueleto` | api |
+| `T5` | `api/autenticacao` | api |
+| `T6` | `api/conteudo-e-metadados` | api |
+| `T7` | `api/midia` | api |
+| `T8` | `api/leads` | api |
+| `T9` | `dados/carga-inicial` | dados |
+| `T10` | `painel/base-e-login` | painel |
+| `T11` | `painel/formulario-por-esquema` | painel |
+| `T12` | `painel/campos-de-midia` | painel |
+| `T13` | `painel/metadados-e-leads` | painel |
+| `T14` | `lp/consumo-da-api` | lp |
+| `T15` | `lp/injetor-de-seo` | lp |
+| `T16` | `publicacao/ambiente` | publicacao |
+| `T17` | `publicacao/revisao-final` | publicacao |
+| `T18` | `ajustes/remove-aceite-lgpd` | ajustes |
+| `T19` | `esquema/ativos-de-componente` | esquema |
+| `T20` | `fundacao/entrada-unica` | fundacao |
+| `T21` | `publicacao/orquestracao-docker` | publicacao |
+| `T22` | `esquema/texto-rico` | esquema |
+| `T23` | `dados/carga-do-instantaneo` | dados |
+| `T24` | `esquema/midia-de-video` | esquema |
+| `T25` | `ajustes/campos-de-desenvolvedor` | ajustes |
+| `T26` | `ajustes/remove-rdstation` | ajustes |
+| `T27` | `ajustes/corrige-desligar-secao` | ajustes |
+| `T28` | `ajustes/remove-ingredientes-e-header` | ajustes |
+| `T29` | `painel/gestao-de-operadores` | painel |
+| `T30` | `ajustes/usabilidade-do-painel` | ajustes |
+| `T31` | `ajustes/remove-legendas` | ajustes |
+| `T32` | `ajustes/remove-rodape` | ajustes |
+| `T33` | `painel/navegacao-e-login` | painel |
+| `T34` | `painel/criar-operador` | painel |
+| `T35` | `painel/identidade-visual` | painel |
+| `T36` | `ajustes/barra-de-acao-e-dropzone` | ajustes |
+
+Fases usadas: `fundacao`, `esquema`, `dados`, `api`, `painel`, `lp`, `publicacao` e a fase de cauda `ajustes`, sempre aberta para correções e pedidos do usuário descobertos durante a execução.
+
 ## Convenções de verificação
 
 Comandos rodados a partir da raiz do repositório, após a reestruturação da T1:
@@ -45,6 +109,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 ## Tarefas
 
 ### T1 — Reestruturar o repositório em monorepo
+- **Identificador (v1.5.0):** `fundacao/monorepo` — origem: planejada. O rótulo histórico `T1` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: converter o repositório em workspaces npm, movendo a LP atual da raiz para `apps/lp/` e criando os diretórios `apps/admin/`, `apps/api/` e `packages/content-schema/`, com os scripts agregadores na raiz. Ajustar caminhos de build, imports de assets, `tsconfig`, `tailwind.config.ts`, `postcss.config.js` e `index.html`.
 - Rastreável a: SDD § "Estrutura de pastas do repositório"
 - Critério de "pronto": `npm run typecheck` e `npm run build` passam a partir da raiz; `apps/lp/dist/` é gerado com os mesmos assets de antes; a LP servida por `npm run preview` renderiza as 12 seções sem erro de console.
@@ -55,6 +120,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 - Nota sobre o critério: o critério dizia "renderiza as 12 seções". Na prática são 11 blocos renderizados — `Ingredientes` retorna nulo por decisão do código atual (`isContentReady: false`), que é justamente a pendência da Virbac já registrada. Não é regressão; o critério é que estava impreciso.
 
 ### T2 — Pacote de esquemas de seção
+- **Identificador (v1.5.0):** `esquema/secoes` — origem: planejada. O rótulo histórico `T2` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: criar `packages/content-schema` declarando, para as 12 seções, os campos e listas conforme o contrato do SDD (nome, tipo, rótulo em português, ajuda, obrigatoriedade), mais o esquema dos metadados da página. Exportar os tipos TypeScript derivados e a função de validação de um documento de seção.
 - Rastreável a: SDD § D-02 e § "Contrato do esquema de seção"
 - Critério de "pronto": `npm run test -w packages/content-schema` passa, com ao menos um caso válido e um inválido por seção; todo campo do tipo `imagem` tem um campo de texto alternativo obrigatório adjacente, verificado por um teste que percorre os 12 esquemas; os tipos cobrem todos os campos hoje presentes nos 12 arquivos `*.content.ts`.
@@ -65,6 +131,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 - Nota de revisão (porte Médio exige revisão antes do merge): o teste de cobertura depende de uma **tabela de tradução** entre os nomes de hoje e os do esquema, porque o esquema renomeia e achata de propósito. Ela é necessária, mas é o ponto onde um campo esquecido poderia ser silenciado no futuro. Mitigações já presentes: dois testes de guarda (entrada obsoleta e renomeação órfã) e a categorização de cada diferença por motivo. Auditei as quatro categorias e conferi manualmente os sete textos do formulário mais fáceis de perder (`lgpdLabel`, `optInLabel`, `submitLabel`, `submitLoadingLabel`, `errorToastMessage`, `porteOptions`, `simNaoOptions`): todos presentes no esquema e no conteúdo atual. **Limitação conhecida:** o teste verifica conteúdo ⊆ esquema, não o inverso — campos que existem só no esquema (`hero.image`, `header.logo`, `footer.logo`, `partners.logoAlt`) são intencionais, pois hoje essas imagens são importadas nos componentes e passam a ser editáveis.
 
 ### T3 — Esquema do banco e armazenamento no Supabase
+- **Identificador (v1.5.0):** `dados/schema-supabase` — origem: planejada. O rótulo histórico `T3` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: escrever as migrações SQL das quatro tabelas (`content_sections`, `site_metadata`, `media_assets`, `leads`), habilitar RLS sem policy permissiva em todas elas, e criar os buckets de mídia.
 - Rastreável a: SDD § "Modelo de dados"
 - Critério de "pronto": a migração aplica sem erro em um projeto Supabase limpo; uma requisição com a chave anônima a cada uma das quatro tabelas retorna erro de permissão ou conjunto vazio, nunca dados — verificado por um script de checagem versionado no repositório.
@@ -84,6 +151,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 - **A senha do banco não foi guardada no repositório nem em `apps/api/.env`**, por menor privilégio: a API nunca executa DDL. Ela ficou apenas no diretório temporário da sessão, com permissão `600`.
 
 ### T4 — Esqueleto da API NestJS
+- **Identificador (v1.5.0):** `api/esqueleto` — origem: planejada. O rótulo histórico `T4` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: criar `apps/api` com NestJS 11, configuração tipada de ambiente, pipe global de validação, tratamento de erro no formato único do SDD, endpoint de saúde e a divisão em módulos por domínio ainda vazios.
 - Rastreável a: SDD § "Visão de layers dentro da API" e § "Contratos de dados/API/interfaces"
 - Critério de "pronto": `npm run build -w apps/api` passa; `npm run test -w apps/api` passa; com a API rodando, `curl -s localhost:3000/api/health` responde `200`; um erro de validação forçado responde no formato `{ statusCode, error, fields }`.
@@ -97,6 +165,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 - Pendências deixadas para tarefas seguintes: CORS validado mas não ligado (T5 ou T16); `RDSTATION_*` opcional até a T8; mensagens do `class-validator` em inglês por padrão, a T6 precisa de teste de guarda para forçar português.
 
 ### T5 — Autenticação e guarda global
+- **Identificador (v1.5.0):** `api/autenticacao` — origem: planejada. O rótulo histórico `T5` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar a verificação do token do Supabase Auth por JWKS, com guarda global do NestJS que nega por padrão e decorador explícito para liberar endpoints públicos.
 - Rastreável a: SDD § D-03 e § C-01
 - Critério de "pronto": `npm run test -w apps/api` passa, incluindo testes que verificam `401` sem token, `401` com token inválido ou expirado, `200` com token válido, e que **um endpoint novo criado sem marcação nasce protegido**; a chave secreta do Supabase não aparece em nenhuma resposta nem log.
@@ -113,6 +182,7 @@ Encerrar processo **pela porta em escuta**, nunca com `pkill -f` cujo padrão a 
 A T3 foi executada em worktree isolado, então suas migrações não estavam disponíveis para a T6. Mesclei `feat/T3-supabase-schema` em `feat/T5-auth-guard` (merge local entre branches de feature, **nunca** em `main`). Único conflito: `README.md`, em três blocos, resolvido mantendo os dois lados — seção da API (T4/T5) e seção de banco (T3), com o `[PENDENTE]` corrigido para dizer que o bloqueio real é *aplicar* as migrações no projeto hospedado, não escrevê-las. Após o merge: 201 testes passando, zero erros de tipo.
 
 ### T6 — Módulo de conteúdo e metadados
+- **Identificador (v1.5.0):** `api/conteudo-e-metadados` — origem: planejada. O rótulo histórico `T6` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar repositórios, casos de uso e endpoints de seções e metadados: `GET /api/content`, `GET /api/seo`, `GET/PUT /api/admin/sections`, `PATCH .../visibility`, `GET/PUT /api/admin/metadata`. Validação contra o pacote de esquemas em toda escrita.
 - Rastreável a: SDD § "Contratos de dados/API/interfaces", § D-01, § C-03, C-04, C-05, C-08, C-09, C-10
 - Critério de "pronto": `npm run test -w apps/api` passa, incluindo: escrita com documento inválido recusada com `422` e erros por campo; seção despublicada ausente de `GET /api/content`; item de lista despublicado ausente; ordem dos itens preservada; e um teste que confirma que `GET /api/content` executa **uma única consulta** ao banco (risco R-05).
@@ -132,6 +202,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Desvios de camada declarados: (a) `shared/presentation/error-response.factory.ts` passou a conhecer também `ResourceNotFoundError`, mesma exceção já aceita na T4 para `FieldValidationError` — é o que mantém `404` fora dos controllers; (b) `content/application` injeta a porta de metadados, exportada pelo `MetadataModule`, porque `GET /api/content` entrega conteúdo e metadados na mesma resposta por contrato do SDD.
 
 ### T7 — Módulo de mídia
+- **Identificador (v1.5.0):** `api/midia` — origem: planejada. O rótulo histórico `T7` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar emissão de credencial temporária de upload, registro da mídia após confirmação, consulta e remoção com recusa quando referenciada. Suportar imagem, vídeo e legenda.
 - Rastreável a: SDD § D-05, § "Modelo de dados", § C-06, C-07
 - Critério de "pronto": `npm run test -w apps/api` passa, incluindo: emissão de credencial exige autenticação; tipo de arquivo não suportado recusado; remoção de mídia referenciada por uma seção responde `409`; registro só é criado após confirmação. Verificação manual registrada: um arquivo de vídeo de porte equivalente aos que já existem em `public/videos/` é enviado com sucesso sem que os bytes passem pela API.
@@ -146,6 +217,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Desvio de camada declarado, no mesmo espírito dos já aceitos na T4 e na T6: `RegisterMediaDto` (apresentação) importa a lista de naturezas de mídia do domínio, em vez de repeti-la — duplicar a lista seria pior do que o desvio.
 
 ### T8 — Módulo de leads
+- **Identificador (v1.5.0):** `api/leads` — origem: planejada. O rótulo histórico `T8` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar `POST /api/leads` (validação, honeypot, gravação, repasse ao RD Station), a listagem administrativa com filtro por período, a exportação em CSV e a exclusão. Migrar a lógica de `serverless/rdstation-lead/handler.ts` para um adaptador de infraestrutura, **incluindo os três campos hoje descartados**.
 - Rastreável a: SDD § D-07, § R-01, § R-08, § C-11, C-12
 - Critério de "pronto": `npm run test -w apps/api` passa, incluindo: lead gravado com os três campos antes ausentes; RD Station recusando ainda grava o lead, responde sucesso ao visitante e marca `rdstation_status` como falha; honeypot preenchido não grava nem repassa e responde sucesso; validação de nome, e-mail e consentimento reproduz a do handler atual; listagem e exportação exigem autenticação; CSV abre com acentuação correta.
@@ -160,6 +232,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - **Pendência aberta, precisa de decisão do produto:** o filtro `from`/`to` usa dias em **UTC**, e o operador está em UTC−3 — um lead enviado depois das 21h de Brasília cai no dia seguinte para o filtro. O SDD não fixou o fuso do produto. Documentado no README e comentado no código.
 
 ### T9 — Migração do conteúdo atual para o CMS
+- **Identificador (v1.5.0):** `dados/carga-inicial` — origem: planejada. O rótulo histórico `T9` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: script versionado que lê os 12 arquivos `*.content.ts` e os assets de `src/assets` e `public/videos`, envia as mídias ao armazenamento e grava os documentos de seção e os metadados no banco, preservando a ordem dos itens e traduzindo os controles atuais (`isReadyForProduction`, `isContentReady`, blocos comentados) em visibilidade.
 - Rastreável a: SDD § "Linguagem ubíqua" (Visibilidade), § C-04, C-08
 - Critério de "pronto": após rodar o script, `GET /api/content` devolve conteúdo equivalente ao dos arquivos atuais — verificado por um teste de comparação campo a campo entre o conteúdo servido e os `*.content.ts`; a pergunta do FAQ com espaço reservado e a seção de Ingredientes chegam como não publicadas; o script é idempotente (rodar duas vezes não duplica mídia nem itens).
@@ -174,6 +247,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - **Item extra entregue junto:** o filtro `from`/`to` dos leads passou a recortar o dia em horário de Brasília (UTC−3), fechando a pendência aberta na T8. A data no CSV exportado continua em UTC — é escopo da T18.
 
 ### T10 — Painel: base, login e proteção de rota
+- **Identificador (v1.5.0):** `painel/base-e-login` — origem: planejada. O rótulo histórico `T10` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: criar `apps/admin` como aplicação Vite servida sob `/admin`, com login por e-mail e senha no Supabase Auth, sessão persistente, logout e guarda que impede renderizar qualquer tela sem sessão válida.
 - Rastreável a: SDD § D-04, § C-01, C-02
 - Critério de "pronto": `npm run build -w apps/admin` e `npm run test -w apps/admin` passam; teste confirma que acessar uma rota interna sem sessão redireciona ao login sem renderizar conteúdo administrativo; sessão sobrevive a recarregar a página; logout invalida o acesso; credenciais inválidas não revelam se o e-mail existe.
@@ -183,6 +257,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: **concluída e ACEITA** (data original não registrada — corrigido nesta retomada). `apps/admin` existe, servido sob `/admin`, com login por e-mail/senha via Supabase Auth, sessão persistente, logout e guarda de rota — pré-requisito de que T11, T12 e T13 (todas aceitas, todas dependentes desta) são prova indireta, e verificado de novo diretamente nesta sessão em múltiplas tarefas (T27, T29, T33, T34, T35) com login real do operador.
 
 ### T11 — Painel: formulário gerado a partir do esquema
+- **Identificador (v1.5.0):** `painel/formulario-por-esquema` — origem: planejada. O rótulo histórico `T11` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: renderizar, a partir do pacote de esquemas, o formulário de cada seção — campos simples, textos longos, listas com adicionar, remover e reordenar, e o controle de visibilidade de seção e de item. Incluir confirmação visível de sucesso e de erro ao salvar.
 - Rastreável a: SDD § D-02, § C-03, C-04, C-05, C-08
 - Critério de "pronto": `npm run test -w apps/admin` passa, incluindo: as 12 seções aparecem na ordem da página; um campo novo adicionado ao esquema aparece no formulário sem nenhuma alteração no código do painel; reordenar itens persiste a ordem; erro de validação da API é exibido no campo correspondente; salvar com sucesso mostra confirmação.
@@ -198,6 +273,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Campos de mídia renderizam somente leitura com o identificador já guardado e a nota de que o envio chega na T12. O valor volta intacto na gravação, provado por teste. O operador **não** pode digitar identificador à mão, que é o que o SDD proíbe.
 
 ### T12 — Painel: campos de mídia
+- **Identificador (v1.5.0):** `painel/campos-de-midia` — origem: planejada. O rótulo histórico `T12` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar os campos de imagem, vídeo e legenda com envio direto ao armazenamento, prévia do arquivo, progresso visível e upload retomável em blocos para vídeos grandes. Texto alternativo obrigatório ao lado de cada imagem.
 - Rastreável a: SDD § D-05, § C-06, C-07
 - Critério de "pronto": `npm run test -w apps/admin` passa; verificação manual registrada de que um vídeo de porte equivalente aos existentes é enviado com progresso visível e passa a ser reproduzido na LP; salvar imagem sem texto alternativo é recusado no próprio painel.
@@ -215,6 +291,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Peso: o pacote do painel foi de 425 KB para **494 KB** com o cliente de envio retomável. Não afeta a LP.
 
 ### T13 — Painel: metadados e leads
+- **Identificador (v1.5.0):** `painel/metadados-e-leads` — origem: planejada. O rótulo histórico `T13` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: tela de edição dos metadados da página e tela de leads com listagem do mais recente ao mais antigo, filtro por período, exportação em CSV e exclusão com confirmação.
 - Rastreável a: SDD § C-09, C-12
 - Critério de "pronto": `npm run test -w apps/admin` passa, incluindo: listagem ordenada do mais recente ao mais antigo; filtro por período recorta o conjunto; exportação dispara com os filtros aplicados; exclusão pede confirmação e remove o registro; nenhuma das duas telas é alcançável sem sessão.
@@ -230,6 +307,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Achado menor não corrigido: `/favicon.ico` dá 404 no console do painel — o `index.html` dele não declara ícone. Pré-existente desde a T10.
 
 ### T14 — LP consumindo a API, com instantâneo de reserva
+- **Identificador (v1.5.0):** `lp/consumo-da-api` — origem: planejada. O rótulo histórico `T14` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: substituir a leitura dos `*.content.ts` pelo consumo de `GET /api/content` nas 12 seções, **incluindo os três componentes que hoje importam imagem direto**: `ProvaAutoridade.tsx` (Kit de imagens), `LeadFormMosaic.tsx` (as 6 fotos, agora uma lista) e `VideoHeroBanner.tsx` (que passa a usar a miniatura do primeiro vídeo em vez do arquivo estático). `grupo-bandeiras.png` e os três infográficos SVG **continuam importados no código, de propósito** — ver "Decisões registradas de escopo", e embutir no build um instantâneo do conteúdo publicado usado quando a busca falha. Remover os arquivos de conteúdo após a substituição.
 - Rastreável a: SDD § D-08, § C-10
 - Critério de "pronto": `npm run typecheck` e `npm run build` passam; `grep -r "content" apps/lp/src --include="*.content.ts"` não retorna nenhum arquivo; teste confirma que, com a API indisponível, a LP renderiza o instantâneo em vez de tela vazia; comparação visual da página contra o estado atual não acusa diferença perceptível.
@@ -239,6 +317,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: **concluída e ACEITA** (data original não registrada — corrigido nesta retomada). A LP lê de `GET /api/content`, com `content-snapshot.json` como reserva; nenhum arquivo `*.content.ts` resta no repositório. Verificado de novo nesta sessão: `apps/lp/src/content/PublishedContentProvider.tsx` e a suíte `App.test.tsx` ("LP com a API de conteúdo indisponível"/"respondendo") exercitam exatamente esse contrato, e passaram em toda verificação de T27 a T35.
 
 ### T15 — Injetor de SEO na borda
+- **Identificador (v1.5.0):** `lp/injetor-de-seo` — origem: planejada. O rótulo histórico `T15` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: implementar a função de borda que intercepta a requisição do documento, busca os metadados em `GET /api/seo` com cache curto, injeta no HTML e devolve; em erro ou expiração do tempo limite, devolve o HTML estático intacto. Implementação da plataforma isolada em um único arquivo.
 - Rastreável a: SDD § D-06, § "Contrato do injetor de SEO", § C-09
 - Critério de "pronto": após alterar o título no painel, `curl -s <url>` (sem executar JavaScript) traz o novo título; com a API derrubada, o mesmo `curl` devolve `200` com os metadados padrão do HTML estático, nunca erro; teste automatizado cobre os dois caminhos.
@@ -248,6 +327,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: pendente
 
 ### T16 — Publicação
+- **Identificador (v1.5.0):** `publicacao/ambiente` — origem: planejada. O rótulo histórico `T16` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: publicar o produto num ambiente real, servindo o **mesmo mapa de caminhos** que o desenvolvimento já usa desde a T20 e que a T21 empacota: `/` a LP, `/admin` o painel, `/api/*` a API — tudo em um domínio.
 - **Reescrita em 2026-09-03.** A versão original desta tarefa dizia "rotas, variáveis e aposentadoria do relay antigo" e pressupunha encaixar o CMS na hospedagem existente. Duas coisas a tornaram obsoleta: (a) o usuário informou que **a hospedagem atual é apenas de teste e será descontinuada**, então não há o que encaixar; (b) a aposentadoria do relay saiu do escopo dela — a T26 removeu o RD Station inteiro, incluindo o diretório `serverless/`.
 - Rastreável a: SDD § D-04, § D-06, § "Visão de tiers"; `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre entrada única.
@@ -259,6 +339,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: pendente
 
 ### T17 — Revisão final: documentação e vazamento de credenciais
+- **Identificador (v1.5.0):** `publicacao/revisao-final` — origem: planejada. O rótulo histórico `T17` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: revisar o `README.md` de ponta a ponta contra o que foi de fato implementado (comandos, variáveis, endpoints, ambientes) e verificar que nenhuma credencial de banco ou armazenamento entrou nos artefatos de build da LP ou do painel.
 - Rastreável a: SDD § R-09; PRD § "Critérios de release — Portabilidade & Manutenção"
 - Critério de "pronto": `npm run build` passa e uma busca por segredos nos diretórios `dist` da LP e do painel não retorna ocorrência da chave secreta do Supabase nem do token do RD Station; todo comando e variável citados no README foram executados ou conferidos, não apenas escritos.
@@ -268,6 +349,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Status: pendente
 
 ### T18 — Remover a persistência do aceite LGPD e fixar a regra da exportação
+- **Identificador (v1.5.0):** `ajustes/remove-aceite-lgpd` — origem: correção. O rótulo histórico `T18` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: remover a coluna `aceite_lgpd` da tabela `leads` e todo o caminho que a persiste (migração, repositório, DTO, view, gerador de CSV, testes). A **validação que exige o consentimento permanece** — sem ele o envio continua sendo recusado com `422`; o que deixa de existir é a gravação do resultado. Ajustar a exportação para atender a regra de negócio **RN-01** do SDD.
 - Rastreável a: SDD § "Modelo de dados" (nota sobre a ausência da coluna), § RN-01, § C-12; `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre o erro de modelagem do orquestrador.
 - Critério de "pronto": `npm run test` e `npm run typecheck` passam a partir da raiz; a migração aplica no projeto hospedado e `node supabase/scripts/verify-isolation.mjs` continua com exit 0; `POST /api/leads` **sem** o consentimento continua respondendo `422` (teste de regressão obrigatório — é a garantia de que a remoção não afrouxou a regra); o CSV exportado não tem coluna de aceite LGPD e tem uma coluna por campo do formulário, conforme RN-01; a data de envio no CSV sai em horário de Brasília.
@@ -280,6 +362,7 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - **Recusa fundamentada de uma instrução minha, e ela estava certa** (registrada no CHANGELOG): pedi remover o campo "do DTO", e o subagente manteve `SubmitLeadDto`. O pipe global roda com `forbidNonWhitelisted`, então campo ausente do DTO é recusado antes do domínio — removê-lo faria o envio **com** consentimento ser rejeitado. Provado por mutação: 17 dos 22 testes de `POST /api/leads` caem. O campo saiu do registro persistido e da view de saída, e permaneceu na entrada da requisição, que é onde precisa estar.
 
 ### T19 — Levar ao esquema as imagens que hoje vivem nos componentes
+- **Identificador (v1.5.0):** `esquema/ativos-de-componente` — origem: planejada. O rótulo histórico `T19` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: acrescentar ao esquema e à carga inicial os ativos que a decisão do usuário de 2026-09-03 tornou gerenciáveis, e retirar do código o pôster do banner de vídeo.
   1. `prova_autoridade`: campo de imagem para o **Kit de imagens**, com texto alternativo obrigatório ao lado (invariante do esquema).
   2. `captura_lead`: **lista** `mosaico`, cada item com imagem e texto alternativo, reordenável — mesma mecânica das demais listas. O layout pressupõe 6 fotos; documentar isso como orientação ao operador, sem travar a quantidade.
@@ -304,6 +387,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Os três infográficos da Prova de Autoridade** (`01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg`) permanecem em código, junto com o texto que os acompanha, hoje escrito dentro de `ProductDifferentials.tsx`. São claims de produto e seguem sob controle de quem edita o código.
 
 ### T20 — Entrada única em desenvolvimento
+- **Identificador (v1.5.0):** `fundacao/entrada-unica` — origem: planejada. O rótulo histórico `T20` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: fazer o ambiente de desenvolvimento expor **um único endereço**, espelhando o modelo de produção do SDD: `/` serve a LP, `/admin` serve o painel, `/api/*` alcança a API. Os três processos continuam existindo por trás, mas quem usa não lida mais com portas separadas. A recarga automática da LP e do painel precisa continuar funcionando através do proxy.
 - Rastreável a: SDD § "Visão de tiers" e § D-04; `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre entrada única.
 - Critério de "pronto": a partir de **um só endereço**, `/` devolve a LP com o CSS aplicado (verificar o conteúdo servido, não só o código HTTP), `/admin` **e** `/admin/` devolvem o painel, `/api/health` responde `200`, e uma edição em arquivo da LP e outra em arquivo do painel chegam ao navegador sem reinício manual. `npm run test`, `npm run typecheck` e `npm run build` continuam passando a partir da raiz.
@@ -313,6 +397,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Status: **concluída e ACEITA.** A nota de aceitação não havia sido escrita; corrigido nesta retomada, após verificar tudo de novo. `apps/lp/vite.config.ts` implementa o proxy da entrada única (`/admin` → 5174 com `ws: true` para o HMR do painel, `/api` → 3000), com comentário citando a própria T20. Verificado pelo orquestrador, com os três processos já em pé: `http://localhost:5173/` devolve a LP (`<title>Veggiedent — Rotina de cuidado bucal para cachorros | Virbac</title>`); `http://localhost:5173/admin/` devolve o painel (`<title>Painel — Veggiedent</title>`) e `/admin` sem barra redireciona para `/admin/` com `200` ao seguir — o defeito que a T10 havia encontrado não voltou; `http://localhost:5173/api/health` responde `200 {"status":"ok"}`.
 
 ### T21 — Orquestração com Docker e proxy reverso
+- **Identificador (v1.5.0):** `publicacao/orquestracao-docker` — origem: planejada. O rótulo histórico `T21` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: subir as três aplicações com um comando, atrás de um proxy reverso que expõe **uma porta única** com o mesmo mapa de caminhos de produção (`/`, `/admin`, `/api/*`). Serve para desenvolvimento e como ambiente de homologação, e é o que a T16 usa como base para publicar em vez de desenhar o roteamento do zero. Alvo declarado pelo usuário em 2026-09-03.
 - Rastreável a: SDD § "Visão de tiers", § D-04, § D-06; `agent_context/CHANGELOG.md`, entrada de 2026-09-03.
 - Critério de "pronto": um comando sobe tudo; a mesma bateria de verificação da T20 passa contra a porta única do proxy, incluindo `/admin` sem barra final; as credenciais continuam fora da imagem e fora do repositório, entrando por variáveis de ambiente; a chave secreta do Supabase **não** aparece em nenhum artefato de navegador; `verify-isolation.mjs` continua com exit 0.
@@ -322,6 +407,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Status: pendente
 
 ### T22 — Campo de texto rico (Lexical)
+- **Identificador (v1.5.0):** `esquema/texto-rico` — origem: planejada. O rótulo histórico `T22` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: acrescentar ao esquema um tipo de campo **texto rico**, que guarda HTML, e implementá-lo no painel com **Lexical** (MIT). O operador cria quebra de linha e marca trechos em **negrito**; o negrito é o que a LP renderiza como destaque visual. Aplicar ao título da Prova de Autoridade, restaurando a quebra forçada no desktop e o destaque em turquesa extra-bold que a T14 perdeu.
 - Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre as decisões do usuário; SDD § "Contrato do esquema de seção"; critério C-04.
 - **Requisito de segurança inegociável:** HTML vindo do banco e renderizado na página pública precisa ser **sanitizado**. Só as marcações que fazem sentido para título passam (negrito, itálico, quebra de linha); qualquer outra é removida. Sem isso, um operador com acesso comprometido injeta script na LP. Cobrir com teste que tenta injetar `<script>` e um manipulador de evento em atributo, e prova que nada disso chega à página.
@@ -338,6 +424,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Peso: painel de 494 KB para **853 KB** com o Lexical. O subagente declarou não ter medido o baseline da LP antes da mudança, em vez de afirmar um delta que não mediu.
 
 ### T24 — Mídia do banner: vídeo ou imagem, com pré-carregamento derivado
+- **Identificador (v1.5.0):** `esquema/midia-de-video` — origem: planejada. O rótulo histórico `T24` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: o banner da seção Demonstração passa a aceitar **vídeo ou imagem**, à escolha do operador. **Não existe campo de imagem de pré-carregamento** — é conceito de quem constrói a página, não de quem escreve conteúdo. Quando a mídia for vídeo, a imagem exibida antes do carregamento vem do **primeiro quadro do próprio arquivo**, derivada automaticamente.
 - Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03 sobre a interpretação errada do orquestrador; SDD § C-07.
 - **Princípio declarado pelo usuário, que vale além deste caso:** não se pede a um operador leigo um dado que ele não tem como entender. Campo que só faz sentido para desenvolvedor não deve existir no painel.
@@ -357,6 +444,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - O subagente apontou que o critério **C-07 do SDD** ficara desatualizado ("Miniatura e legendas de cada vídeo também são enviáveis") e **não o alterou**, por ser documento de processo. Corrigido pelo orquestrador.
 
 ### T23 — Recriar a migração de conteúdo a partir do instantâneo
+- **Identificador (v1.5.0):** `dados/carga-do-instantaneo` — origem: planejada. O rótulo histórico `T23` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: restaurar a capacidade de popular um ambiente novo, que a T14 removeu junto com `apps/api/src/migration/`. O módulo volta lendo `apps/lp/src/content/content-snapshot.json` em vez dos `*.content.ts` apagados — sem duplicar conteúdo, porque o instantâneo já é a cópia versionada do que está publicado.
 - Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; SDD § D-08; nota de status da T14.
 - Critério de "pronto": `npm run test`, `npm run typecheck` e `npm run build` passam; a migração roda contra um CMS vazio e o popula; é **idempotente**, provado por contagem antes/depois da segunda execução; o conteúdo semeado bate campo a campo com o instantâneo.
@@ -366,6 +454,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Status: pendente
 
 ### T26 — Remover o RD Station do projeto
+- **Identificador (v1.5.0):** `ajustes/remove-rdstation` — origem: correção. O rótulo histórico `T26` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: a integração foi **descontinuada** (decisão do usuário em 2026-09-03). Sai tudo o que se refere a ela; permanece **apenas a exportação dos leads em CSV**. Alcance medido: **33 arquivos**, as colunas `rdstation_status` e `rdstation_error` da tabela `leads`, duas colunas do CSV ("Status RD Station" e "Erro RD Station"), as variáveis `RDSTATION_API_TOKEN` e `RDSTATION_CONVERSION_IDENTIFIER`, e o diretório `serverless/rdstation-lead/` inteiro.
 - Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-03; PRD § "Premissas, restrições e dependências"; SDD § D-07 (agora histórica), § R-08 (extinto), § C-11.
 - **O que NÃO pode ser removido junto:** a validação do envio (nome, e-mail, consentimento, porte), o **honeypot**, a gravação do lead, a listagem, o filtro por período em horário de Brasília, a exclusão por pedido do titular, e a exportação em CSV conforme a RN-01.
@@ -380,6 +469,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Regressão provada contra a API real, não só lida no código: `POST /api/leads` sem `aceite_lgpd` respondeu `422` com `{"aceite_lgpd":"Consentimento LGPD é obrigatório."}`; `POST` com o campo `website` (honeypot) preenchido respondeu `200 {"success":true}` **sem gravar** — `GET` direto à tabela por `SUPABASE_SECRET_KEY` confirmou **0 leads** após as duas tentativas. Banco seguiu vazio.
 
 ### T25 — Remover do painel os campos que só fazem sentido para quem constrói a página
+- **Identificador (v1.5.0):** `ajustes/campos-de-desenvolvedor` — origem: correção. O rótulo histórico `T25` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: quatro grupos de campos violam o princípio declarado pelo usuário e saem do painel (decisão de 2026-09-03, detalhada no CHANGELOG):
   1. **`captura_lead.porteOptions[].value` e `simNaoOptions[].value`** — o "Código da opção" sai; o **rótulo** de cada opção permanece editável, porque é texto visível. O valor passa a viver em código, coerente com a linha do PRD que mantém a **estrutura** do formulário em código e deixa apenas os **textos** no CMS. Editar o valor corrompia a série de dados em silêncio.
   2. **`header.menuButtonAriaLabel`, `header.mainNavAriaLabel`, `captura_lead.successModalCloseAriaLabel`** — rótulos de acessibilidade de controles de interface, não de conteúdo.
@@ -393,6 +483,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Status: pendente
 
 ### T27 — Corrigir o desligar de seção
+- **Identificador (v1.5.0):** `ajustes/corrige-desligar-secao` — origem: correção. O rótulo histórico `T27` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: o usuário relatou que desligar uma seção não funciona, e que ligar funciona. **Investigar as duas pontas antes de corrigir** — não assumir a hipótese abaixo.
 - **O que o orquestrador já verificou, para não ser refeito:** a **API está correta** — `PATCH /api/admin/sections/:key/visibility` com `false` responde `200`, a seção some de `GET /api/content` e o banco grava `is_published = false`; com `true` ela volta. O caminho no painel (`SectionEditorScreen` → `admin-api-client` → `editor-state`) foi lido e parece correto.
 - **Hipótese principal, sustentada por medição:** o instantâneo embutido na LP tinha **11 seções** enquanto a API devolvia **12**. A LP renderiza o instantâneo primeiro e depois troca pela resposta da API — o que explicaria a assimetria: ligar faz aparecer, desligar não faz sumir, porque a página segue exibindo a cópia antiga. Se for isso, o defeito é de **consumo na LP**, não do painel.
@@ -412,6 +503,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Achado à parte, relatado e não corrigido:** não existe campo honeypot (`website`) em lugar nenhum de `apps/lp/src/sections/CapturaLead/` — nem no formulário, nem no payload. A defesa anti-bot que a API já implementa nunca pode ser acionada por um envio real do visitante. Fora do escopo declarado da T27; decisão de acrescentar fica para o usuário.
 
 ### T28 — Remover a seção Ingredientes e tirar o Header do CMS
+- **Identificador (v1.5.0):** `ajustes/remove-ingredientes-e-header` — origem: correção. O rótulo histórico `T28` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 - Descrição: duas remoções decididas pelo usuário em 2026-09-04 (detalhadas no CHANGELOG).
   1. **A seção `ingredientes` sai do projeto inteiro** — esquema, componente, montagem da página, instantâneo e o registro no banco. Ela nunca teve conteúdo além do título: o material técnico da Virbac que a destravaria nunca chegou.
   2. **O `header` sai do CMS**, mas **permanece na página**. Todos os seus dados voltam a ser fixos em código, com **exatamente os textos de hoje** — links de navegação, rótulos de botão e textos de acessibilidade. Não inventar nem "melhorar" texto nenhum: copiar os valores atuais do banco.
@@ -434,6 +526,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Achado de produto (não implementado, só proposto):** ver `agent_context/CHANGELOG.md`, entrada de 2026-09-04, e o relatório final da tarefa — aviso ao operador ao publicar seção sem conteúdo além do título.
 
 ### T29 — Gestão de operadores dentro do painel
+- **Identificador (v1.5.0):** `painel/gestao-de-operadores` — origem: planejada. O rótulo histórico `T29` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: o usuário decidiu reverter o trade-off da D-03 (operadores criados só pelo painel do Supabase) e trazer isso para dentro do CMS. Nova tela no painel: listar operadores, convidar um novo por e-mail (gera link de ativação de uso único, mostrado uma vez, sem envio automático — ver D-09 e o motivo de não usar `inviteUserByEmail`), e remover um operador existente. Endpoints novos: `GET/POST /api/admin/operators`, `DELETE /api/admin/operators/:id`, todos atrás da guarda global já existente.
 - Rastreável a: SDD § D-09 (nova), § D-03 (trade-off revisto), § C-13, § R-10; `agent_context/CHANGELOG.md`, entrada de 2026-09-04 sobre a reversão da decisão.
@@ -449,6 +542,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Segunda verificação em navegador real (ponta a ponta, pela jornada de convite → clique no link de verdade → tela de senha nova → login), feita pelo subagente da correção, aceita pelo orquestrador com base na evidência acima (banco limpo, testes provando os casos de token válido/ausente/inválido por mutação).
 
 ### T30 — Revisão de usabilidade do painel administrativo (proposta, sem implementação)
+- **Identificador (v1.5.0):** `ajustes/usabilidade-do-painel` — origem: correção. O rótulo histórico `T30` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: o usuário relatou que a interface do painel "está muito ruim" para facilitar o uso, sem detalhar o quê especificamente. Antes de qualquer mudança de UI, um levantamento: navegar o painel em navegador real, tela por tela (login, lista de seções, edição de cada tipo de campo, mídia, metadados, leads, e a nova tela de operadores da T29 se já existir), contra os critérios de usabilidade já aprovados no PRD (§ "Usabilidade": "um operador de marketing sem conhecimento técnico consegue localizar e alterar um texto específico da página sem treinamento além de uma explicação inicial curta"), e listar problemas concretos com evidência (print ou descrição precisa), não impressão geral.
 - Rastreável a: PRD § "Usabilidade"; `agent_context/CHANGELOG.md`, entrada de 2026-09-04.
@@ -460,6 +554,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Status: **concluída** em 2026-09-04. Entregou 6 achados reais em navegador real, logado (login: contraste do botão, validação em inglês; pós-login: tela "Início" redundante, edição perdida sem aviso, código bruto na tela/CSV de leads, coluna de ações escondida). Todos os 6 corrigidos na T33. Não é mais uma proposta em aberto — virou trabalho entregue.
 
 ### T31 — Remover os campos "Arquivo de legendas" (tipo de mídia `legenda`)
+- **Identificador (v1.5.0):** `ajustes/remove-legendas` — origem: correção. O rótulo histórico `T31` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: o usuário decidiu que o campo "Arquivo de legendas" (`captions`, na lista `videos` da seção Demonstração) é desnecessário e deve ser removido inteiramente — não só o campo, o **tipo de mídia inteiro** (`legenda`/`caption`), incluindo o bucket de armazenamento `veggiedent-captions`. Hoje **não há nenhum arquivo de legenda cadastrado** (0 registros com `kind = 'caption'` em `media_assets`, confirmado pelo orquestrador antes de escrever esta tarefa) — a remoção não perde conteúdo de operador nenhum.
 - **Ressalva de acessibilidade, registrada para o usuário decidir com essa informação em mãos, não para bloquear:** o PRD (`agent_context/PRD.md` § "Fluxo de UX & notas de design" / critérios de release) listava legendas de vídeo como parte do requisito de acessibilidade preservada. Como o campo nunca foi usado (0 registros), o custo real desta remoção é baixo hoje, mas ela tira do CMS a capacidade de legendar vídeo se isso vier a ser necessário depois. Documentar essa troca no PRD, não escondê-la.
@@ -473,6 +568,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **ACEITA pelo orquestrador**, verificação própria: `npm run test` (644 testes), typecheck e build limpos, rodados de novo do zero. `grep -ril "legenda\|caption"` só achou os dois arquivos de teste que a própria tarefa já declarou como limitação conhecida e o `<caption>` de tabela alheio em `LeadsScreen.tsx`. Banco hospedado consultado direto: `media_assets.kind` só tem `image`/`video` (24 registros), buckets só `veggiedent-images`/`veggiedent-videos`.
 
 ### T32 — Tirar o Rodapé (Footer) do CMS
+- **Identificador (v1.5.0):** `ajustes/remove-rodape` — origem: correção. O rótulo histórico `T32` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: o usuário decidiu, mesmo tratamento dado ao Header na T28: o Rodapé sai do CMS e volta a ser fixo em código, **com exatamente os textos de hoje** — logo, `logoAlt`, os três links (`href`/`label`/ordem), o copyright, o texto de fonte da pesquisa (`claimSource`) e o aviso de espécie (`speciesDisclaimer`). Nada inventado nem "melhorado".
 - **Conteúdo atual a copiar literalmente** (capturado pelo orquestrador via `GET /api/content` antes de qualquer alteração, para servir de fonte da verdade e conferência posterior):
@@ -491,6 +587,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **ACEITA pelo orquestrador**, verificação própria: `npm run test` (644 testes), typecheck e build limpos, rodados de novo do zero. `content_sections` no banco hospedado com **9** linhas exatas (`hero`, `educacao`, `rotina`, `produto`, `demonstracao`, `prova_autoridade`, `captura_lead`, `onde_comprar`, `faq` — nenhuma outra). `Footer.tsx` conferido linha a linha contra o `GET /api/content` que eu mesmo havia capturado antes da mudança: logo, alt, os 3 links, claimSource, speciesDisclaimer e copyright idênticos. Serviços no ar em `:5173` com conteúdo correto. **Correção de bookkeeping feita pelo orquestrador:** o glossário do SDD (`§ Linguagem ubíqua`, termo "Seção") ainda listava 12 seções incluindo `header`/`ingredientes`/`footer` — drift que já vinha da T28 e que nem T28 nem T31/T32 corrigiram (declarado explicitamente pelo subagente da T32 como fora do escopo que lhe foi dado). Atualizado agora para as 9 seções reais.
 
 ### T33 — Navegação lateral, redesenho do login e os 6 achados de usabilidade da T30
+- **Identificador (v1.5.0):** `painel/navegacao-e-login` — origem: planejada. O rótulo histórico `T33` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: pedido do usuário em 2026-09-04, dois eixos.
   1. **Os 6 achados da auditoria de usabilidade (T30)**, todos com evidência real em navegador — ver `agent_context/CHANGELOG.md`, entrada da T30, para o relato completo de cada um:
@@ -514,6 +611,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Decisão declarada e aceita: `ActivateScreen.tsx` manteve o botão de marca e a validação nativa (fora do escopo explícito da T33, que só citava `LoginScreen.tsx`) — revisitar se a T34 (abaixo) tornar essa tela órfã.
 
 ### T34 — Criar operador direto (e-mail, senha e nome), sem convite por link
+- **Identificador (v1.5.0):** `painel/criar-operador` — origem: planejada. O rótulo histórico `T34` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: o usuário decidiu trocar o fluxo de criação de operador (T29/D-09) de "convite por link de uso único" para "criação direta": quem cria preenche e-mail, senha e **nome** (campo novo) na tela, e a conta já nasce pronta para logar.
 - Rastreável a: SDD § D-09 (revista 2026-09-04), § C-13; `agent_context/CHANGELOG.md`, entrada de 2026-09-04.
@@ -532,6 +630,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Desvio declarado e aceito: o subagente também removeu `ADMIN_APP_URL` do schema de ambiente (ficaria variável morta, só servia ao redirect do convite) e da cadeia `activate`/`setPassword` em `AuthGateway`/`AuthProvider` — consequência direta de "sem chamador", mesmo critério da remoção principal, não escopo inventado. Confirmado que o `.env` real manter a variável extra não quebra nada (schema Zod ignora chaves desconhecidas por padrão).
 
 ### T35 — Identidade visual, tema, dashboard e polimento dos módulos do painel
+- **Identificador (v1.5.0):** `painel/identidade-visual` — origem: planejada. O rótulo histórico `T35` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: lista extensa pedida pelo usuário em 2026-09-04, de uma vez. Tarefa grande — organize a execução internamente por item, com commits separados, mas é uma tarefa só no plano porque foi pedida como um conjunto coeso (a identidade visual nova é a base sobre a qual os outros itens são construídos).
   1. **Identidade visual alinhada à LP.** O painel hoje tem sua própria paleta mínima (`apps/admin/tailwind.config.ts`, só `brand.primary`/`brand.hover`), por decisão deliberada de não duplicar os tokens da LP (comentário no próprio arquivo, citando a regra G5 de não-duplicação). Essa decisão está **revertida** (ver PRD, seção "Notas de design", revisão de 2026-09-04) — mas a forma de aplicar precisa **honrar a mesma regra G5**: não copie os valores hex de `apps/lp/tailwind.config.ts` para dentro de `apps/admin/tailwind.config.ts` à mão. Extraia os tokens de cor para um lugar compartilhado pelos dois apps (ex.: um módulo TypeScript simples em `packages/content-schema` não é o lugar certo — ele é sobre esquema de conteúdo, não design; prefira um pacote novo e pequeno, ex. `packages/design-tokens`, ou reference direto o `theme.extend.colors` exportado de `apps/lp/tailwind.config.ts` a partir do `tailwind.config.ts` do admin, se o build permitir sem acoplar os dois apps de forma indevida). Decida e declare a abordagem escolhida.
@@ -556,6 +655,7 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Achado real corrigido durante a retomada, que "já pronto" não cobria: `LoginScreen.tsx`, `SessionCheck.tsx` e `UnsavedChangesGuard.tsx` não tinham nenhuma classe `dark:` — ficariam brancas em tema escuro. Mesmo padrão de defeito já visto neste projeto (a T33 também corrigiu algo que o handoff dizia estar pronto e não estava) — reforça a regra derivada em 2026-09-04: depois de uma interrupção, "já feito" é hipótese até o arquivo confirmar.
 
 ### T36 — Barra de ação com "Voltar"/"Salvar", e campo de imagem em estilo de dropzone (com variante múltipla)
+- **Identificador (v1.5.0):** `ajustes/barra-de-acao-e-dropzone` — origem: correção. O rótulo histórico `T36` é mantido nas referências cruzadas deste documento e do CHANGELOG.
 
 - Descrição: dois pedidos específicos do usuário em 2026-09-04, refinando a T35.
   1. **Reorganizar a barra de ação fixa** (`apps/admin/src/shared/ActionBar.tsx`, já existe e é usada em `SectionEditorScreen.tsx`/`MetadataScreen.tsx`). Hoje "Voltar para a lista de seções" é um link solto acima do formulário (`SectionEditorScreen.tsx`, ocorre em 3 lugares — telas de carregando/erro/pronta) e "Salvar e publicar"/"Salvar metadados" fica sozinho dentro do `ActionBar`. Passa a ser: os dois **na mesma barra fixa**, "Voltar" à **esquerda** com um ícone de seta (voltar), "Salvar e publicar" à **direita** com um ícone de disquete (salvar) — em vez de reformular o texto, mantenha os rótulos atuais, só adicione o ícone e reposicione. Aplique nas duas telas que usam `ActionBar`.

@@ -98,7 +98,7 @@ Para conferir os builds de produção, que não passam pela entrada única: `npm
 
 A LP não depende da API para renderizar (SDD § D-08): com a API fora do ar, `/` continua servindo a página.
 
-As migrações **já foram aplicadas no projeto hospedado** (o registro de execução está em [`../agent_context/PLAN.md`](../agent_context/PLAN.md)). O que ainda falta para a API servir conteúdo de verdade é a migração inicial do conteúdo atual para o CMS, que é a T9: até lá as tabelas estão vazias, e `GET /api/content` responde `200` com `{"sections":{},"metadata":null}` — vazio é o estado correto, não erro.
+As migrações **já foram aplicadas no projeto hospedado** (o registro de execução está em [`../agent_context/PLAN.md`](../agent_context/PLAN.md)).A carga inicial de conteúdo já foi executada: o banco tem as seções, as mídias e os metadados publicados.
 
 ## Alterações, testes e validações
 
