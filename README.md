@@ -48,6 +48,7 @@ Os outros comandos da raiz — `npm run build`, `npm run typecheck`, `npm run te
 - Como o painel funciona, tela a tela: [`docs/PAINEL.md`](docs/PAINEL.md)
 - Rotas da API, envio de mídia e exportação de leads: [`docs/API.md`](docs/API.md)
 - Migrações, RLS e verificação de isolamento: [`docs/BANCO-DE-DADOS.md`](docs/BANCO-DE-DADOS.md)
+- Passo a passo para migrar para um projeto Supabase novo, de produção: [`docs/MIGRAR-PARA-NOVO-SUPABASE.md`](docs/MIGRAR-PARA-NOVO-SUPABASE.md)
 - Como a LP consome o conteúdo e o instantâneo de reserva: [`docs/CONTEUDO-DA-LP.md`](docs/CONTEUDO-DA-LP.md)
 - Estrutura de pastas de cada aplicação: [`docs/ESTRUTURA-DO-CODIGO.md`](docs/ESTRUTURA-DO-CODIGO.md)
 - Adicionar um campo, excluir um lead (LGPD), limpar mídia órfã: [`docs/MANUTENCAO.md`](docs/MANUTENCAO.md)
