@@ -1,0 +1,21 @@
+# O que NÃO entra no contexto de build.
+#
+# `.env` está aqui por segurança, não por peso: o `.env` da API contém a chave
+# secreta do Supabase, e todo arquivo do contexto pode virar camada de imagem.
+# As variáveis chegam por argumento de build (as públicas, do navegador) e por
+# variável de ambiente do contêiner (as secretas) — nunca por arquivo copiado.
+
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+**/*.log
+
+.git
+.github
+.claude
+.vercel
+
+agent_context
+docs
+supabase

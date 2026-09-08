@@ -93,7 +93,7 @@ curl -s http://localhost:5173/api/health                                 # -> {"
 
 Para conferir os builds de produção, que não passam pela entrada única: `npm run build && npm run preview` serve a LP em http://localhost:4173, e `npm run build -w apps/admin && npm run preview -w apps/admin` serve o painel em http://localhost:4174/admin/.
 
-`/admin` sem a barra final é redirecionado para `/admin/` — no servidor de desenvolvimento, no `preview` e, através da entrada única, no endereço que se digita. Em produção, a configuração de rotas do domínio único (T16) precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele.
+`/admin` sem a barra final é redirecionado para `/admin/` — no servidor de desenvolvimento, no `preview` e, através da entrada única, no endereço que se digita. Em produção, a configuração de rotas do domínio único precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele — é o que a pilha de [`DOCKER.md`](DOCKER.md) já entrega e exercita, com `/admin` sem barra respondendo `301` para `/admin/`.
 
 **O painel precisa da API no ar** para fazer qualquer coisa além de autenticar: ele lê e grava conteúdo, mídia e leads sempre pela API, nunca direto no Supabase (SDD § "Camadas e padrão arquitetural"). Como painel e API respondem no mesmo endereço, o painel chama caminhos relativos e não existe requisição entre origens a liberar — é o mesmo desenho do domínio único de produção. Com a API fora do ar, o painel entra normalmente e avisa na tela que não conseguiu falar com ela.
 
@@ -119,5 +119,5 @@ As migrações **já foram aplicadas no projeto hospedado** (o registro de execu
 ## Atualização e monitoramento
 
 - **Processo de merge:** PR com revisão aprovada e critério de "pronto" da tarefa verificado (comando de teste/build rodado, não apenas relatado). Ver [`agent_context/PLAN.md`](../agent_context/PLAN.md).
-- **Publicação:** **[PENDENTE]** — documentar na T16 as rotas do domínio único (`/`, `/admin`, `/api/*`) e o procedimento de deploy de cada peça.
+- **Publicação:** o **empacotamento e o roteamento do domínio único estão prontos e verificados** — `/`, `/admin`, `/api/*` atrás de uma porta única, com um comando, em [`DOCKER.md`](DOCKER.md), que também lista o que quem publicar precisa ajustar (TLS na frente, `ALLOWED_ORIGINS`, migrações). **Escolher o provedor e publicar continua com o usuário**, por decisão dele: a publicação saiu do escopo dos agentes.
 - **Logs e monitoramento:** **[PENDENTE]** — definir na T16. A disponibilidade da API precisa ser monitorada: é dela que depende o envio do formulário (risco R-02 do SDD).
