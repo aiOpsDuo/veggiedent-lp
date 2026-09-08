@@ -688,6 +688,21 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Decisão aceita sobre a variante múltipla: **não migrar `mosaico`** — o componente existe pronto, testado e verificado de verdade num harness dedicado, sem tocar em nenhum dado ou esquema existente. Correto: migrar dado publicado por uma tarefa de polimento visual seria desproporcional, e a decisão foi declarada, não escondida atrás de "não deu tempo".
 - Decisão aceita sobre Metadados: a tela não ganhou um link "Voltar" (só o ícone no botão de salvar) porque Metadados é rota de topo do menu, não sub-tela de lista — inventar um destino de volta ali seria um link sem propósito real.
 
+### ajustes/documentar-migracao-de-projeto
+- **Identificador (v1.5.0):** `ajustes/documentar-migracao-de-projeto` — origem: pedido do usuário.
+- Descrição: documentar o roteiro de 7 passos para migrar de um Supabase de desenvolvimento para um novo, de produção — resposta direta à pergunta do usuário sobre dependência do Supabase.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-08.
+- Status: **concluída e ACEITA** em 2026-09-08, commit `5ab74a8` (merge de worktree isolado). Verificação do orquestrador: **achado central confirmado no código** — `OPERATORS_PATH` está de fato aninhado sob `<RequireSession />` em `apps/admin/src/App.tsx`, confirmando que a tela de criar operador dentro do próprio painel exige sessão e **não resolve o operador zero** de um projeto novo — só o Supabase Auth direto resolve esse caso. É a informação mais fácil de esquecer no roteiro, e o documento a captura corretamente, com a origem histórica citada em vez de reinventada.
+- Todo comando citado no documento foi conferido pelo subagente por leitura de código-fonte ou `--help`, nunca executado contra um projeto Supabase real — nem o de desenvolvimento, nem um novo. README permanece com 4 seções; só um item novo em "Saiba mais".
+
+### ajustes/logo-fixo-em-codigo
+- **Identificador (v1.5.0):** `ajustes/logo-fixo-em-codigo` — origem: pedido do usuário.
+- Descrição: o logo do Veggiedent no Header e no Footer deixa de vir do CMS — passa a ser `import` de arquivo local (`apps/lp/src/assets/logos/veggiedent-fresh-edc-logo.svg`), eliminando a última dependência de mídia que uma migração de banco não alcança.
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada de 2026-09-08.
+- Status: **concluída e ACEITA** em 2026-09-08, commit `5ab9922`. Verificação do orquestrador: **821 testes**, typecheck e build limpos, o SVG presente no bundle da LP como asset local, e o servidor de desenvolvimento resolvendo o módulo para `/src/assets/logos/...svg` (`200`) — nenhuma URL do Supabase envolvida. `GET /api/content` seguiu sem `header`/`footer`, como já era desde T28/T32.
+- **Escopo real era menor do que o planejado, e o subagente verificou antes de agir:** `header` e `footer` já haviam saído inteiramente do esquema do CMS nas tarefas T28/T32. O problema não era um campo editável no painel — era que o valor do logo tinha sido congelado como URL literal do Supabase de desenvolvimento ao sair do CMS, em vez de virar `import`. Não havia campo de esquema para remover nem migração de banco a fazer; o subagente confirmou isso por três vias independentes (grep no esquema, `GET /api/content` real, e leitura de como o painel deriva a lista de seções) em vez de executar passos que a descoberta tinha tornado desnecessários.
+- **Prova de que o arquivo é idêntico ao publicado, não uma versão nova:** o subagente baixou o SVG da URL antiga do Supabase e comparou `md5sum` com o arquivo local — hashes idênticos. Não há diferença visual possível.
+
 ## Ordem de execução
 
 ```
