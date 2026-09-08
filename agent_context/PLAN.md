@@ -324,7 +324,9 @@ A T3 foi executada em worktree isolado, então suas migrações não estavam dis
 - Dependências: T6
 - Execução: paralelizável com T14 — arquivos distintos, nenhum arquivo compartilhado.
 - Toca documentação: sim — README descreve o injetor e como trocar de plataforma.
-- Status: pendente
+- Status: **adiada** por decisão do usuário em 2026-09-08 ("a do SEO esqueça por enquanto"). Não conta como pendência do escopo atual.
+- Registro do que fica em aberto, para quando voltar: hoje os metadados só existem depois de o JavaScript rodar, então **previews de link de WhatsApp, Facebook e LinkedIn não os enxergam** — esses crawlers não executam JavaScript. Buscadores executam, mas com atraso e menos confiabilidade. O endpoint `GET /api/seo` **já existe e funciona** desde a T6; falta apenas quem o consuma no servidor.
+- A tarefa se divide em duas partes de naturezas diferentes: a **lógica** (buscar os metadados, substituir as tags, devolver o HTML intacto se a API falhar) é código puro e testável; o **adaptador de plataforma** (middleware no Vercel, Edge Function no Netlify, Worker no Cloudflare, processo Node num servidor próprio) são poucas linhas e só podem ser escritas depois de a plataforma ser escolhida — o que é responsabilidade do usuário desde que a publicação saiu do escopo.
 
 ### T16 — Publicação — **REMOVIDA DO ESCOPO**
 - **Identificador (v1.5.0):** `publicacao/ambiente` — origem: pedido do usuário.
@@ -477,7 +479,11 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T26 — a saída do RD Station muda o peso do argumento do item 1, e as duas tarefas tocam o módulo de leads.
 - Execução: sequencial
 - Toca documentação: sim — README, na lista do que é editável.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-08. Verificação do orquestrador: **735 testes**, typecheck e build limpos, `/`, `/admin/` e `/api/health` respondendo pela entrada única.
+- **Verificação pelo caminho do consumidor**, que era o risco real: os três portes gravam `pequeno`, `medio` e `grande` corretamente ao serem enviados pelo endpoint que a página usa. Se o pareamento valor↔rótulo tivesse ficado errado ao sair do CMS, o lead gravaria lixo em silêncio — foi exatamente isso que verifiquei, e está certo.
+- Desenho aceito: `PORTE_OPTIONS` e `SIM_NAO_OPTIONS` fecham os **valores** em código (`{ value, labelField }`), e o **rótulo** de cada opção continua editável no CMS por campo próprio. Separa o que o operador entende (o texto) do que ele não tem como avaliar (o código gravado).
+- Nota de contexto: a tarefa foi interrompida pelo usuário antes desta verificação, **já com a migração aplicada no banco**. O orquestrador commitou o estado por segurança (`b70db49`) em vez de descartar — descartar deixaria o código commitado inconsistente com o banco, que já não tinha a coluna `canonical_url`.
+- Achado durante a verificação, sem relação com a tarefa: existe **1 lead real** na tabela (`rodrigo.oliveira.xavier151@gmail.com`, origem `lp-veggiedent`, 04/09), vindo do usuário testando o formulário na página. **Não é resíduo e não deve ser apagado.** As verificações futuras precisam saber que a tabela não parte mais de zero.
 
 ### T27 — Corrigir o desligar de seção
 - **Identificador (v1.5.0):** `ajustes/corrige-desligar-secao` — origem: correção. O rótulo histórico `T27` é mantido nas referências cruzadas deste documento e do CHANGELOG.
