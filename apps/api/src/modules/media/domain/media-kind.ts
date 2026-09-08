@@ -70,6 +70,16 @@ export function policyForMimeType(mimeType: string): MediaKindPolicy | undefined
   )
 }
 
+/**
+ * A política do bucket em que um arquivo está guardado. É o inverso de
+ * `policy.bucket`, e existe porque a carga do instantâneo parte de uma URL
+ * pública — que diz o bucket — e precisa chegar à natureza da mídia, que é o
+ * que a confirmação de upload exige. Bucket desconhecido devolve `undefined`.
+ */
+export function policyForBucket(bucket: string): MediaKindPolicy | undefined {
+  return Object.values(MEDIA_KIND_POLICIES).find((policy) => policy.bucket === bucket)
+}
+
 /** Todos os tipos aceitos, em uma lista só, para a mensagem de recusa. */
 export const ACCEPTED_MIME_TYPES: readonly string[] = Object.values(
   MEDIA_KIND_POLICIES,
