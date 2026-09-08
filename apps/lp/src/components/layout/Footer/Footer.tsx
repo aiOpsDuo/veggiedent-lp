@@ -1,14 +1,20 @@
+import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
+
 // Footer/Legal — Design System v1.2, secao 9.13.
 //
 // O rodape saiu do CMS (decisao do usuario, 2026-09-04, mesmo tratamento do
-// Header na T28): logo, links institucionais, fonte da pesquisa, aviso de
-// especie e copyright agora sao fixos em codigo, com exatamente os valores
-// que estavam publicados no painel no momento da remocao — nada foi
-// reescrito. `legalData` (CNPJ e demais dados legais da Virbac Brasil) nunca
-// foi preenchido no CMS — segue pendente, sem nada renderizado em seu lugar,
+// Header na T28): links institucionais, fonte da pesquisa, aviso de especie
+// e copyright agora sao fixos em codigo, com exatamente os valores que
+// estavam publicados no painel no momento da remocao — nada foi reescrito.
+// `legalData` (CNPJ e demais dados legais da Virbac Brasil) nunca foi
+// preenchido no CMS — segue pendente, sem nada renderizado em seu lugar,
 // igual ao estado de hoje (ver README, "Pendencias herdadas").
-const LOGO_SRC =
-  "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg";
+//
+// O logo saiu do CMS por completo (decisao do usuario, 2026-09-08): e ativo
+// de marca que nunca muda, mesmo tratamento das bandeiras do Hero e dos 3
+// SVGs da Prova de Autoridade (ver agent_context/CHANGELOG.md). Ate aqui ele
+// ficava fixo como uma URL do Supabase (o valor publicado no momento da
+// remocao do rodape) — agora e arquivo local, importado pelo bundler.
 const LOGO_ALT = "Veggiedent, por Virbac";
 const CLAIM_SOURCE =
   "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html";
@@ -25,7 +31,7 @@ export function Footer() {
   return (
     <footer className="border-t border-black/5 bg-surface-section-alt">
       <div className="mx-auto flex max-w-content flex-col gap-6 px-4 py-12 sm:px-8 sm:flex-row sm:items-start sm:justify-between">
-        <img src={LOGO_SRC} alt={LOGO_ALT} className="h-12 w-auto" />
+        <img src={logo} alt={LOGO_ALT} className="h-12 w-auto" />
 
         <nav
           aria-label="Links institucionais"

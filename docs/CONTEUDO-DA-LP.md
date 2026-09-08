@@ -74,16 +74,16 @@ fonte, e o arquivo é só a reserva.
 
 ## O que continua importado em código, de propósito
 
-Quatro imagens não passaram para o CMS, por decisão do usuário registrada em
-`agent_context/CHANGELOG.md` (2026-09-03) — não é esquecimento:
+Cinco imagens não passaram para o CMS, por decisão do usuário — não é esquecimento:
 
 | Onde | Arquivo | Por quê |
 |---|---|---|
-| Abertura | `hero/grupo-bandeiras.png` | Arte de campanha, junto do texto "A marca N.1 no Brasil, EUA e Europa" escrito no componente |
-| Prova de autoridade | `prova-autoridade/01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg` | São claims de produto, e o texto que os acompanha ("Formato em Z:" e afins) também vive em `ProductDifferentials.tsx`. Torná-los editáveis exigiria campos de imagem **e** de texto |
+| Abertura | `hero/grupo-bandeiras.png` | Arte de campanha, junto do texto "A marca N.1 no Brasil, EUA e Europa" escrito no componente (registrado em `agent_context/CHANGELOG.md`, 2026-09-03) |
+| Prova de autoridade | `prova-autoridade/01_formato_em_z.svg`, `02_halito_causas_digestivas.svg`, `03_origem_100_vegetal.svg` | São claims de produto, e o texto que os acompanha ("Formato em Z:" e afins) também vive em `ProductDifferentials.tsx`. Torná-los editáveis exigiria campos de imagem **e** de texto (2026-09-03) |
+| Cabeçalho e rodapé | `logos/veggiedent-fresh-edc-logo.svg` | Ativo de marca que nunca muda, mesmo motivo dos dois itens acima — não faz sentido reeditar o logo pelo painel. Cabeçalho e rodapé já tinham saído do CMS inteiros (T28/T32); até então o logo ficava fixo em código como uma **URL do Supabase**, resquício da migração — passou a ser arquivo local importado (2026-09-08) |
 
-Tudo o mais que aparece na página — logos, foto da abertura, packshot, cards, passos da
-rotina, kit de imagens, mosaico do formulário, logos dos parceiros e vídeos — vem do CMS.
+Tudo o mais que aparece na página — foto da abertura, packshot, cards, passos da rotina,
+kit de imagens, mosaico do formulário, logos dos parceiros e vídeos — vem do CMS.
 
 **O pôster do banner de vídeo deixou de existir**, primeiro como arquivo e depois como campo.
 Ele era `demonstracao/video-banner-poster.jpg`; hoje o banner tem **mídia própria no CMS** —

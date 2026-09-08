@@ -3,15 +3,20 @@ import { Menu, X } from "lucide-react";
 import { MobileMenu } from "./components/MobileMenu";
 import { Button } from "../../ui/Button";
 import { useTracking } from "../../../hooks/useTracking";
+import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
 
 // Header/Sticky — Design System v1.2, secao 9.1.
 //
-// O cabecalho saiu do CMS (decisao do usuario, 2026-09-04): logo, links de
+// O cabecalho saiu do CMS (decisao do usuario, 2026-09-04): links de
 // navegacao, rotulos de botao e textos de acessibilidade agora sao fixos em
 // codigo, com exatamente os valores que estavam publicados no painel no
 // momento da remocao — nada foi reescrito.
-const LOGO_SRC =
-  "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/9f38e6e3-765f-453f-bf8f-dfa9435b42d2/veggiedent-fresh-edc-logo.svg";
+//
+// O logo saiu do CMS por completo (decisao do usuario, 2026-09-08): e ativo
+// de marca que nunca muda, mesmo tratamento das bandeiras do Hero e dos 3
+// SVGs da Prova de Autoridade (ver agent_context/CHANGELOG.md). Ate aqui ele
+// ficava fixo como uma URL do Supabase (o valor publicado no momento da
+// remocao do cabecalho) — agora e arquivo local, importado pelo bundler.
 const LOGO_ALT = "Veggiedent, por Virbac";
 const CTA_DESKTOP_LABEL = "Baixar o guia de cuidados diários";
 const CTA_MOBILE_LABEL = "Baixar o guia de cuidados diários";
@@ -71,7 +76,7 @@ export function Header() {
     >
       <div className="mx-auto flex max-w-content items-center justify-between gap-4 px-4 py-3 sm:px-8">
         <a href="#main-content" className="flex items-center gap-2">
-          <img src={LOGO_SRC} alt={LOGO_ALT} className="h-10 w-auto" />
+          <img src={logo} alt={LOGO_ALT} className="h-10 w-auto" />
         </a>
 
         <nav

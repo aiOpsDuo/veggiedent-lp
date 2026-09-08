@@ -57,7 +57,7 @@ Um campo de imagem ou vídeo guarda no banco o **identificador** da mídia, nunc
 | `GET /api/content` e `GET /api/seo` (públicas) | A **URL pública** do arquivo | Quem consome é a LP e o injetor de SEO, que precisam de um endereço para `<img src>`, `<video src>` e `og:image`. Um identificador não é renderizável, e a LP nunca fala com o Supabase para resolvê-lo (SDD § C-06, C-07 e C-10). |
 | `GET /api/admin/sections/:key` e `GET /api/admin/metadata` (com token) | O **identificador** guardado | Quem consome é o painel, que edita a referência e a devolve no `PUT`. Trocar o identificador pela URL na tela de edição faria o painel gravar um endereço digitado, exatamente o que o esquema proíbe. |
 
-A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de topo (`hero.image`, `header.logo`) quanto para campo de item de lista (vídeos, cards, passos, parceiros).
+A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de topo (`hero.image`) quanto para campo de item de lista (vídeos, cards, passos, parceiros).
 
 ```jsonc
 // GET /api/content — recorte
