@@ -403,7 +403,11 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T13 (o painel precisa estar completo para valer a pena empacotar), T20
 - Execução: sequencial — **imediatamente antes da T16**.
 - Toca documentação: sim — README ganha a seção de como subir tudo e como configurar o ambiente.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-08. Verificação do orquestrador, feita subindo a pilha de verdade (`docker compose up --build -d`): `/` `200` com CSS aplicado, `/admin` `301`→`/admin/` `200`, `/api/health` `200`, `/api/content` com 9 seções, **0 ocorrências** da chave secreta nos artefatos servidos, pilha derrubada e porta 8080 liberada. Os serviços de desenvolvimento do usuário (5173/3000) seguiram intactos durante e depois da verificação.
+- **Dois defeitos reais encontrados ao retomar, nenhum no código de origem:** (1) a imagem Docker fixava Node 20, mas `@supabase/supabase-js` exige WebSocket nativo (Node 22+) desde a v2.110 — corrigido para Node 24, o mesmo que o projeto já usa. (2) o worktree estava 2 commits atrás de `main` e faltava exatamente o commit `b70db49` que removera a coluna `canonical_url` — o subagente detectou a divergência consultando o schema ao vivo em vez de "consertar" no código, o que teria desfeito a reconciliação. Fez fast-forward para `main` em vez de reescrever.
+- Consolidado um `Cache-Control` duplicado no nginx (RFC-válido, mas frágil atrás de CDN).
+- Achado não resolvido, sinalizado com honestidade: um stack Supabase local que rodava na sessão sumiu durante o trabalho, e o subagente não pôde provar pelo log do Docker se foi ele ou a outra tarefa em paralelo — o buffer de eventos já tinha rolado. Sem impacto: nenhum dado do usuário dependia dele.
+- `package.json` declara `engines: node >=20`, hoje **factualmente permissivo demais** — o subagente não corrigiu, por ser ativo do projeto e não de infraestrutura. Fica como ajuste pequeno em aberto.
 
 ### T22 — Campo de texto rico (Lexical)
 - **Identificador (v1.5.0):** `esquema/texto-rico` — origem: planejada. O rótulo histórico `T22` é mantido nas referências cruzadas deste documento e do CHANGELOG.
@@ -450,7 +454,11 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - Dependências: T22, T24 — precisa semear conteúdo já no formato final do esquema.
 - Execução: sequencial
 - Toca documentação: sim — README, no procedimento de popular um ambiente novo.
-- Status: pendente
+- Status: **concluída e ACEITA** em 2026-09-08. Verificação do orquestrador: **417+252+42+110 testes**, typecheck e build limpos.
+- **Responde diretamente a uma pergunta do usuário** ("o projeto vai rodar normalmente em outro Supabase?"): sim, para conteúdo e mídia — a carga baixa cada arquivo da URL do instantâneo e reenvia ao projeto de destino pelo mesmo fluxo de três passos do painel (SDD § D-05). Verificado pelo subagente contra um **stack Supabase local**, nunca contra o hospedado: 1ª execução povoou um CMS vazio (21 mídias baixadas e reenviadas, 9 seções, 200 campos batendo campo a campo com o instantâneo); 2ª execução foi idempotente por medição direta, não por hash (0 mídias enviadas, contagens e conteúdo servido idênticos).
+- **Reconciliação de mídia em três caminhos**, na ordem: (1) registro já existe no destino pelo caminho de armazenamento — zero bytes movidos; (2) documento já gravado aponta para a mesma mídia pelo nome do arquivo — sustenta a 2ª execução; (3) baixar e reenviar — o caso do projeto novo, sem nenhuma mídia. Cada caminho provado por mutação (desligar o caminho 2 derruba 5 testes; o 1, 4; a guarda por nome, 2; gravar URL em vez de identificador, 32).
+- **Limite declarado com honestidade, relevante para a migração real:** o caminho (1) só reaproveita se o instantâneo usado for o do **próprio** projeto que está sendo repovoado — é exatamente o cenário de "zerei o hospedado, os arquivos ficaram". O subagente testou isso errado na primeira tentativa (usou o instantâneo do repositório contra um ambiente local diferente) e corrigiu ao perceber, deixando o limite documentado em vez de escondido.
+- **Ainda ficam de fora de uma migração de projeto**, listados para quando o usuário for de fato trocar de Supabase: itens despublicados não estão no instantâneo e não voltam; é preciso um operador **já criado** no projeto de destino antes de rodar a carga (a guarda nega por padrão); e mídia órfã deixada por uma reconciliação que não reaproveitou não é limpa por esta tarefa (risco R-04, à parte).
 
 ### T26 — Remover o RD Station do projeto
 - **Identificador (v1.5.0):** `ajustes/remove-rdstation` — origem: correção. O rótulo histórico `T26` é mantido nas referências cruzadas deste documento e do CHANGELOG.
