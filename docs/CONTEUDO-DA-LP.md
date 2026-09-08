@@ -100,17 +100,74 @@ enviado, que é o dado mais estável da seção: o título é texto editável e 
 Os identificadores mudaram em relação aos que estavam escritos em código
 (`tutor-abrindo-petisco` virou `tutorabrindopetiscoecachorrocomendo`).
 
-## Migração inicial do conteúdo (histórico — ferramenta aposentada na T14)
+## Popular um ambiente novo a partir do instantâneo
+
+Um projeto Supabase recém-criado — ou um cujas tabelas foram zeradas — deixa o painel sem
+nada, e redigitar o conteúdo à mão não é opção. A carga resolve isso lendo o **instantâneo
+versionado** e gravando **pelos mesmos endpoints administrativos que o painel usa**, com token
+de operador de verdade: não há atalho até o banco, e um documento fora de forma é recusado com
+`422` do mesmo jeito que seria para quem edita pelo painel.
+
+```bash
+npm run build -w apps/api                # compila a API e a carga
+npm run migrate:content -w apps/api      # popula o CMS
+```
+
+O que a carga precisa no ambiente (ela lê `apps/api/.env` se ele existir):
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SUPABASE_URL` | sim | Projeto Supabase de **destino**, o mesmo que a API está usando |
+| `CMS_API_URL` | não | Raiz da API, com prefixo. Padrão `http://localhost:3000/api` |
+| `CMS_ACCESS_TOKEN` | — | Token de um operador. No lugar dele, as três abaixo |
+| `CMS_OPERATOR_EMAIL`, `CMS_OPERATOR_PASSWORD` | — | Operador já criado no Supabase Auth |
+| `SUPABASE_PUBLISHABLE_KEY` | — | Chave publicável, usada só para trocar e-mail e senha por token |
+| `CONTENT_SNAPSHOT` | não | Caminho de outro instantâneo. Padrão: o do repositório |
+
+**Antes de rodar, crie um operador** — a carga escreve como um operador escreveria, e a guarda
+global da API nega por padrão. Ver [PAINEL.md, "Como criar e remover um operador"](PAINEL.md).
+
+**Rodar duas vezes não duplica nada.** A carga substitui: uma seção é uma linha só, pela chave,
+e os metadados são um registro único. As mídias são o caso que exige cuidado, porque o
+instantâneo guarda **URLs públicas** e as tabelas guardam **identificadores** — uma mídia
+enviada duas vezes viraria dois registros e dois arquivos. A conciliação tenta três caminhos,
+nesta ordem, e o relatório final diz quantas mídias vieram de cada um:
+
+| Caminho | Quando serve | O que acontece |
+|---|---|---|
+| Registro existente | O arquivo do instantâneo está no armazenamento de destino, no mesmo caminho | Reaproveita (ou registra) a mídia daquele caminho. Nenhum byte se move |
+| Documento gravado | O campo já aponta para uma mídia com o mesmo nome de arquivo | Reaproveita o identificador. É o que sustenta a segunda execução |
+| Baixar e reenviar | Nenhum dos dois — o caso do projeto novo | Baixa da URL pública do instantâneo e sobe pelo fluxo de três passos de mídia |
+
+**Depois de popular um projeto novo, regenere o instantâneo** (`npm run instantaneo`): os
+arquivos ganharam caminhos novos no projeto de destino, então as URLs do instantâneo antigo
+apontam para o projeto de origem. Com o instantâneo regenerado, uma carga futura no mesmo
+projeto reaproveita os arquivos que já estão lá em vez de reenviá-los.
+
+**Três limites conhecidos, todos por consequência de o instantâneo ser a forma publicada:**
+
+- **O que estava despublicado não está no instantâneo** — nem seção, nem item de lista. Uma
+  seção ausente do instantâneo termina desligada no CMS semeado, e seu conteúdo não é
+  inventado. Itens de lista ocultos não voltam.
+- **Os bytes precisam vir de algum lugar.** No projeto novo eles vêm das URLs públicas do
+  instantâneo, o que exige que o projeto de origem ainda esteja no ar. Não há cópia dos
+  arquivos no repositório desde a T14.
+- **Rodar contra um CMS já populado o converge para o instantâneo.** É a ferramenta de
+  popular um ambiente, não de mesclar conteúdo: uma edição feita no painel depois do último
+  `npm run instantaneo` é sobrescrita.
+
+## Migração inicial do conteúdo (histórico)
 
 O conteúdo da landing page nasceu em código: 12 arquivos `*.content.ts`, mais as imagens que
 os componentes importavam direto e dois vídeos servidos de `apps/lp/public/videos/`. A T9 e a
 T19 levaram tudo isso para o CMS **uma vez**, por um script que executava aqueles arquivos e
-gravava o resultado pelos mesmos endpoints do painel (`apps/api/src/migration/`, `npm run
-migrate:content -w apps/api`).
+gravava o resultado pelos mesmos endpoints do painel — o mesmo comando e o mesmo lugar no
+código que a carga de hoje ocupa, mas lendo os arquivos de conteúdo em vez do instantâneo.
 
 **A T14 aposentou o script junto com os arquivos que ele lia.** Sem os `*.content.ts` não há
-o que migrar: o CMS passou a ser a fonte do conteúdo, e o instantâneo acima é o que preserva
-uma cópia utilizável dele dentro do repositório. Foram removidos com ele o teste de cobertura
+o que migrar: o CMS passou a ser a fonte do conteúdo, e o instantâneo é o que preserva uma
+cópia utilizável dele dentro do repositório — é justamente a fonte que a carga de hoje lê
+(ver "Popular um ambiente novo", acima). Foram removidos com ele o teste de cobertura
 dos esquemas sobre os arquivos de conteúdo (`packages/content-schema/tests/content-coverage.test.ts`,
 critério de "pronto" da T2) e a suíte de ponta a ponta da migração — todos exercitavam
 arquivos que não existem mais. O histórico da execução continua registrado em "Estado

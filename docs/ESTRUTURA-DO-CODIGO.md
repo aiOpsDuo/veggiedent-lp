@@ -29,6 +29,7 @@ apps/api/src/
 │   ├── domain/             # erros de domínio, sem import de framework
 │   └── presentation/       # formato único de erro, pipe, prefixo, Swagger
 ├── health/                 # sonda de operação (GET /api/health)
+├── migration/              # a carga do CMS a partir do instantâneo — processo à parte, cliente HTTP da própria API
 └── modules/                # um módulo por domínio (SDD § D-03 e seguintes)
     └── <content|metadata|media|leads|auth>/
         ├── presentation/   # controllers, DTOs, guardas — traduzem HTTP
@@ -38,6 +39,8 @@ apps/api/src/
 ```
 
 Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads`, na T8.
+
+`migration/` é a exceção que confirma a regra: ele **não é um módulo do Nest** e nada em `modules/` o conhece. É um processo separado (`npm run migrate:content -w apps/api`) que fala com a API pelos endpoints administrativos, como o painel faz — é o que garante que a carga não escapa da validação de esquema. Ver [CONTEUDO-DA-LP.md, "Popular um ambiente novo"](CONTEUDO-DA-LP.md).
 
 Dentro de `apps/admin`, a mesma inversão de dependência da API aparece em escala menor — o painel não conhece o Supabase, conhece uma porta:
 

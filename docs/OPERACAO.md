@@ -63,6 +63,7 @@ npm run dev -w apps/admin           # painel sozinho
 npm run build -w apps/admin         # gera apps/admin/dist/, com os assets sob /admin/
 npm run preview -w apps/admin       # serve o build do painel em http://localhost:4174/admin/
 npm run test -w apps/admin          # testes do painel (Vitest + Testing Library, em jsdom)
+npm run migrate:content -w apps/api # popula um CMS vazio a partir do instantâneo (ver CONTEUDO-DA-LP.md)
 ```
 
 Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0; a T10 rodou em Node 24.18.0 e npm 11.16.0, e a T20 em Node 24.18.0).
