@@ -38,60 +38,11 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 | `VITE_LEAD_SUBMIT_ENDPOINT` | Endpoint que recebe o formulário. Padrão `/api/leads` — relativo, pela mesma razão de `VITE_CONTENT_ENDPOINT` |
 | `VITE_CONTENT_ENDPOINT` | De onde a LP lê o conteúdo publicado. Padrão `/api/content` — relativo porque LP e API compartilham domínio |
 
-## Comandos
+## Comandos e portas internas
 
-Todos rodam a partir da raiz. `build`, `typecheck` e `test` delegam aos workspaces (`npm run <script> --workspaces --if-present`); `dev` sobe os três processos de uma vez, atrás da entrada única (`scripts/dev.mjs`).
+O comando de todo dia é o Docker (ver [README.md](../README.md) e [DOCKER.md](DOCKER.md)). A lista completa de comandos `npm`, o modo de rodar uma aplicação isolada para depurar, a tabela de portas internas (5173/5174/3000) e as verificações rápidas por `curl` estão em [RODAR-SEM-DOCKER.md](RODAR-SEM-DOCKER.md) — não duplicados aqui.
 
-```bash
-npm install          # instala as dependências de todos os workspaces
-npm run dev          # sobe LP, painel e API — tudo em http://localhost:5173
-npm run build        # build de todos os workspaces; gera apps/lp/dist/ e apps/admin/dist/
-npm run typecheck    # checagem de tipos de todos os workspaces
-npm run test         # testes de todos os workspaces (Vitest na LP, no painel e em packages/, Jest na API)
-npm run preview      # serve o build da LP em http://localhost:4173
-npm run instantaneo  # regenera o instantâneo de conteúdo da LP (ver CONTEUDO-DA-LP.md)
-```
-
-Para um workspace só, use `-w`: `npm run build -w apps/lp`, `npm run test -w packages/content-schema`.
-
-Cada aplicação também roda isolada. Isso serve para depurar uma delas, **não é a forma de acessar o projeto** — essa é sempre a entrada única:
-
-```bash
-npm run start:dev -w apps/api       # API sozinha, com recarga automática
-npm run start -w apps/api           # roda o build já gerado (exige npm run build -w apps/api antes)
-npm run dev -w apps/admin           # painel sozinho
-npm run build -w apps/admin         # gera apps/admin/dist/, com os assets sob /admin/
-npm run preview -w apps/admin       # serve o build do painel em http://localhost:4174/admin/
-npm run test -w apps/admin          # testes do painel (Vitest + Testing Library, em jsdom)
-npm run migrate:content -w apps/api # popula um CMS vazio a partir do instantâneo (ver CONTEUDO-DA-LP.md)
-```
-
-Requer Node 20 ou superior (verificado com Node 25.6.0 e npm 11.8.0; a T10 rodou em Node 24.18.0 e npm 11.16.0, e a T20 em Node 24.18.0).
-
-## Portas internas e verificações rápidas
-
-**Por que um endereço só:** em produção as três aplicações dividem o mesmo domínio. Servir cada uma numa porta em desenvolvimento adiaria toda a costura de caminhos para a última tarefa antes de publicar — e é justamente o modelo de URL que o usuário enxerga e que mais facilmente quebra. Com a entrada única, `/admin` sem barra final, os caminhos dos assets e o encaminhamento de `/api` são exercitados todo dia, e publicar passa a ser repetir um desenho já rodado, não desenhá-lo.
-
-**As portas individuais são detalhe interno.** Servem para depurar um processo isolado, não para o dia a dia:
-
-| Processo | Porta interna | Observação |
-|---|---|---|
-| LP (servidor de desenvolvimento) | 5173 | é a própria entrada única; encaminha `/admin` e `/api` |
-| Painel | 5174 | escuta só em `localhost`; abrir `http://localhost:5174/` devolve a mensagem de base incorreta do Vite, e o painel está em `/admin/` |
-| API | 3000 | mude com `PORT` no `.env`; todas as rotas ficam sob o prefixo `/api` |
-
-Como o encaminhamento vive no servidor de desenvolvimento da LP, subir só a LP (`npm run dev -w apps/lp`) deixa `/admin` e `/api` respondendo `500` (erro de proxy) até que os outros dois processos existam. `npm run dev` na raiz sobe os três e derruba os três juntos.
-
-Verificações rápidas, todas a partir do endereço único:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5173/          # -> 200 (LP)
-curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://localhost:5173/admin   # -> 302 .../admin/
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:5173/admin/    # -> 200 (painel)
-curl -s http://localhost:5173/api/health                                 # -> {"status":"ok"}
-```
-
-Para conferir os builds de produção, que não passam pela entrada única: `npm run build && npm run preview` serve a LP em http://localhost:4173, e `npm run build -w apps/admin && npm run preview -w apps/admin` serve o painel em http://localhost:4174/admin/.
+**Por que um endereço só (vale para os dois modos):** em produção as três aplicações dividem o mesmo domínio. Servir cada uma numa porta separada em desenvolvimento adiaria toda a costura de caminhos para a última tarefa antes de publicar — e é justamente o modelo de URL que o usuário enxerga e que mais facilmente quebra. Com a entrada única, `/admin` sem barra final, os caminhos dos assets e o encaminhamento de `/api` são exercitados todo dia, e publicar passa a ser repetir um desenho já rodado, não desenhá-lo.
 
 `/admin` sem a barra final é redirecionado para `/admin/` — no servidor de desenvolvimento, no `preview` e, através da entrada única, no endereço que se digita. Em produção, a configuração de rotas do domínio único precisa fazer o mesmo, servindo o `index.html` do painel para `/admin`, `/admin/` e qualquer caminho abaixo dele — é o que a pilha de [`DOCKER.md`](DOCKER.md) já entrega e exercita, com `/admin` sem barra respondendo `301` para `/admin/`.
 

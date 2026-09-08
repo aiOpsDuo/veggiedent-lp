@@ -15,10 +15,11 @@ real (`/admin` sem barra final devolvendo 404, encontrado na T10 com a suíte
 inteira verde). Servindo aqui o mesmo mapa da publicação, quem for publicar
 **repete um desenho já exercitado em vez de desenhá-lo do zero**.
 
-Complementa, não substitui, o `npm run dev` de todo dia — esse continua sendo a
-forma de desenvolver, com recarga automática (ver [OPERACAO.md](OPERACAO.md)).
-Este aqui serve para homologar o produto construído e para entregá-lo pronto a
-um servidor.
+**Este é o caminho documentado no [README.md](../README.md)** para rodar o
+projeto — um comando, uma porta, sem instalar dependência nenhuma no
+hospedeiro além do Docker. Para editar com recarga automática ou depurar um
+processo isolado, sem Docker, veja [RODAR-SEM-DOCKER.md](RODAR-SEM-DOCKER.md);
+os dois convivem sem conflito de porta (ver "Derrubar", ao final).
 
 ## O comando
 

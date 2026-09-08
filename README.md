@@ -25,25 +25,23 @@ Padrão arquitetural, camadas, modelo de dados, decisões técnicas com trade-of
 
 ## Como rodar localmente
 
-Um comando, **um endereço**:
+Um comando, **um endereço**, via Docker:
 
 ```bash
 git clone <repositorio> && cd veggiedent-lp
-npm install
-cp apps/lp/.env.example apps/lp/.env        # opcional: todas as variáveis têm default
-cp apps/api/.env.example apps/api/.env      # e preencha as variáveis obrigatórias
-cp apps/admin/.env.example apps/admin/.env  # e preencha as duas variáveis do Supabase
-npm run dev
+cp .env.example .env   # e preencha (só na primeira vez)
+docker compose up --build -d
 ```
 
-Tudo responde em **http://localhost:5173**, com o mesmo mapa de caminhos que o domínio único terá em produção: `/` serve a LP, `/admin` serve o painel e `/api/*` alcança a API. A recarga automática vale nos dois front-ends.
+Tudo responde em **http://localhost:8080**, com o mesmo mapa de caminhos que o domínio único terá em produção: `/` serve a LP, `/admin` serve o painel e `/api/*` alcança a API. Para acompanhar os logs, `docker compose logs -f`; para derrubar, `docker compose down`. Variáveis, quando reconstruir e como verificar a pilha: [`docs/DOCKER.md`](docs/DOCKER.md).
 
-Os outros comandos da raiz — `npm run build`, `npm run typecheck`, `npm run test`, `npm run preview`, `npm run instantaneo` — delegam aos workspaces. As variáveis de ambiente estão modeladas em [`apps/api/.env.example`](apps/api/.env.example), [`apps/admin/.env.example`](apps/admin/.env.example) e [`apps/lp/.env.example`](apps/lp/.env.example); o que cada uma faz, as portas internas e as verificações rápidas estão em [`docs/OPERACAO.md`](docs/OPERACAO.md).
+Sem Docker (recarga automática, depurar um processo isolado): [`docs/RODAR-SEM-DOCKER.md`](docs/RODAR-SEM-DOCKER.md).
 
 ## Saiba mais
 
 - Arquitetura, decisões técnicas e diagramas: [`agent_context/SDD.md`](agent_context/SDD.md)
-- Ambiente, comandos, testes e publicação: [`docs/OPERACAO.md`](docs/OPERACAO.md)
+- Rodar sem Docker: instalação, comandos e portas internas: [`docs/RODAR-SEM-DOCKER.md`](docs/RODAR-SEM-DOCKER.md)
+- Ambiente, variáveis, testes e publicação: [`docs/OPERACAO.md`](docs/OPERACAO.md)
 - Subir as três aplicações com um comando, numa porta única: [`docs/DOCKER.md`](docs/DOCKER.md)
 - Como o painel funciona, tela a tela: [`docs/PAINEL.md`](docs/PAINEL.md)
 - Rotas da API, envio de mídia e exportação de leads: [`docs/API.md`](docs/API.md)
