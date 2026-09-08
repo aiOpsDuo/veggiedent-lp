@@ -1,0 +1,73 @@
+# Sobe o produto inteiro com um comando, atrás de uma porta única:
+#
+#   docker compose up --build
+#
+#   http://localhost:8080/          -> LP
+#   http://localhost:8080/admin     -> painel
+#   http://localhost:8080/api/*     -> API
+#
+# Serve para desenvolvimento sem recarga automática e como ambiente de
+# homologação. As portas 5173, 5174 e 3000 continuam livres para `npm run dev`:
+# nada aqui as ocupa, e a API do contêiner não é publicada no hospedeiro.
+#
+# Credenciais: nenhuma vive neste arquivo nem nas imagens. Elas vêm de `.env` na
+# raiz do repositório (gitignorado), a partir do modelo `.env.example`.
+
+name: veggiedent
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Segredo do servidor. Nunca é argumento de build, nunca entra numa
+      # camada de imagem: chega como variável de ambiente, em execução.
+      SUPABASE_URL: ${SUPABASE_URL:?defina SUPABASE_URL no .env da raiz}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?defina SUPABASE_SECRET_KEY no .env da raiz}
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?defina SUPABASE_JWKS_URL no .env da raiz}
+      # Painel e LP chamam caminhos relativos através do proxy, então não há
+      # requisição entre origens — a origem única é a do proxy.
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+    # Sem `ports`: a API só é alcançável pela rede do compose, através do proxy.
+    # É o mesmo isolamento do domínio único de produção.
+    expose:
+      - '3000'
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:3000/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
+      args:
+        # Todas públicas: o Vite as embute no arquivo servido ao navegador.
+        # A chave publicável do Supabase só troca e-mail e senha por um token.
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?defina VITE_SUPABASE_URL no .env da raiz}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:?defina VITE_SUPABASE_PUBLISHABLE_KEY no .env da raiz}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_CONTENT_ENDPOINT: ${VITE_CONTENT_ENDPOINT:-/api/content}
+        VITE_LEAD_SUBMIT_ENDPOINT: ${VITE_LEAD_SUBMIT_ENDPOINT:-/api/leads}
+        VITE_EBOOK_URL: ${VITE_EBOOK_URL:-}
+        VITE_EBOOK_DELIVERY_MODE: ${VITE_EBOOK_DELIVERY_MODE:-email}
+    ports:
+      - '${PORTA_PROXY:-8080}:8080'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1:8080/']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
