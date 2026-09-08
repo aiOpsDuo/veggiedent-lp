@@ -44,6 +44,7 @@ Os outros comandos da raiz — `npm run build`, `npm run typecheck`, `npm run te
 
 - Arquitetura, decisões técnicas e diagramas: [`agent_context/SDD.md`](agent_context/SDD.md)
 - Ambiente, comandos, testes e publicação: [`docs/OPERACAO.md`](docs/OPERACAO.md)
+- Subir as três aplicações com um comando, numa porta única: [`docs/DOCKER.md`](docs/DOCKER.md)
 - Como o painel funciona, tela a tela: [`docs/PAINEL.md`](docs/PAINEL.md)
 - Rotas da API, envio de mídia e exportação de leads: [`docs/API.md`](docs/API.md)
 - Migrações, RLS e verificação de isolamento: [`docs/BANCO-DE-DADOS.md`](docs/BANCO-DE-DADOS.md)
