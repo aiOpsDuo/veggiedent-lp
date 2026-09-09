@@ -53,6 +53,33 @@ export function Footer() {
         <p className="max-w-[70ch] text-xs leading-relaxed text-ink-400">{CLAIM_SOURCE}</p>
         <p className="mt-3 text-xs font-medium text-ink-700">{SPECIES_DISCLAIMER}</p>
         <p className="mt-4 text-xs text-ink-400">{COPYRIGHT}</p>
+
+        <div className="mt-6 max-w-[80ch] border-t border-black/5 pt-4">
+          <p className="break-words text-[11px] leading-[1.4] text-ink-400">
+            Fonte: <em>Pesquisa Ipsos 2026.</em> Realizada com 1,116
+            veterinários, base de dados Virbac. Acesse:{" "}
+            <a
+              href="https://br.virbac.com/home/veggie.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-2 hover:text-ink-700"
+            >
+              https://br.virbac.com/home/veggie.html
+            </a>
+          </p>
+
+          <p className="mt-2 text-[11px] leading-[1.4] text-ink-400">
+            1. EUA: Marca no 1 escolhida por veterinários de acordo com o
+            levantamento de principais produtos veterinários da DVM360 (Dados em
+            arquivo).
+          </p>
+
+          <p className="mt-2 text-[11px] leading-[1.4] text-ink-400">
+            2. Europa: Marca mais recomendada por veterinários nos 5 maiores
+            mercados europeus (Estudo Omnibus Biosat sobre produtos dentais,
+            Maio de 2025).
+          </p>
+        </div>
       </div>
     </footer>
   );

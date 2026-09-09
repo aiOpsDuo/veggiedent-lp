@@ -73,7 +73,7 @@ function EducacaoCards({ content }: { content: SectionContent<"educacao"> }) {
         {/* Desktop & Notebook Interactive Showcase (visible on lg screens, >= 1024px) */}
         <div className="edu-content-el hidden lg:grid grid-cols-12 gap-8 items-center mt-10">
           {/* Left column: Visual Showcase (spans 7 columns) */}
-          <div className="col-span-7 relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-md ring-1 ring-black/5 bg-surface-section-alt">
+          <div className="col-span-7 relative aspect-[6/7] w-full overflow-hidden rounded-2xl shadow-md ring-1 ring-black/5 bg-surface-section-alt">
             {content.cards.map((card, index) => (
               <img
                 key={card.title}
@@ -140,7 +140,7 @@ function EducacaoCards({ content }: { content: SectionContent<"educacao"> }) {
                 <div
                   className={`transition-all duration-300 ease-in-out overflow-hidden ${
                     isOpen
-                      ? "max-h-[500px] opacity-100 border-t border-black/5"
+                      ? "max-h-[600px] opacity-100 border-t border-black/5"
                       : "max-h-0 opacity-0 pointer-events-none"
                   }`}
                 >
@@ -152,7 +152,7 @@ function EducacaoCards({ content }: { content: SectionContent<"educacao"> }) {
                       src={card.image}
                       alt={card.imageAlt}
                       loading="lazy"
-                      className="aspect-[4/3] w-full rounded-xl object-cover object-[center_22%] shadow-sm ring-1 ring-black/5"
+                      className="aspect-[6/7] w-full rounded-xl object-cover object-[center_22%] shadow-sm ring-1 ring-black/5"
                     />
                   </div>
                 </div>
