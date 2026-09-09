@@ -1,6 +1,6 @@
 # Blueprint do Render — a pilha inteira num serviço só.
 #
-# Um serviço, um contêiner, uma porta, e por consequência uma origem:
+# Um serviço, um processo, uma porta, e por consequência uma origem:
 #
 #   https://<nome>.onrender.com/          -> LP        (apps/lp)
 #   https://<nome>.onrender.com/admin     -> painel    (apps/admin)
@@ -9,12 +9,13 @@
 # `<url>/admin` é requisito do produto, e é ele que dita este desenho: o painel
 # tem de dividir a origem com a LP. Serviço estático + serviço web separados
 # dariam dois endereços; dois serviços com o nginx encaminhando dariam o
-# endereço certo, mas ao custo de uma peça a mais para pagar e para cair. Quem
-# une os caminhos aqui é o próprio processo da API — ver
-# `apps/api/src/shared/presentation/static-sites.ts` e `docker/Dockerfile.render`.
+# endereço certo, ao custo de uma peça a mais para pagar e para cair. Quem une
+# os caminhos aqui é o próprio processo da API — ver
+# `apps/api/src/shared/presentation/static-sites.ts`.
 #
-# O `docker-compose.yml` da raiz continua sendo o caminho local, com nginx e as
-# duas imagens; este arquivo não o substitui.
+# Runtime `node`, e não `docker`: as duas funcionam, e a diferença está em
+# `docs/RENDER.md` § "Node nativo ou Docker". O `docker-compose.yml` da raiz
+# continua sendo o caminho local, com nginx e as duas imagens.
 #
 # Como aplicar: no painel do Render, New > Blueprint, aponte para este
 # repositório. O Render pede os valores marcados com `sync: false` — nenhum
@@ -22,23 +23,63 @@
 
 services:
   - type: web
-    name: veggiedent-homolog
-    runtime: docker
-    # Homologação: `starter` não hiberna. No `free` o serviço dorme depois de
-    # 15 min sem tráfego e a primeira visita seguinte espera o contêiner subir
-    # — aceitável para uma demonstração, ruim para quem for validar conteúdo.
-    plan: starter
+    name: veggiedent
+    runtime: node
+    # O serviço existente está no Free, e é o que este arquivo declara para não
+    # divergir dele. O preço do Free: o serviço hiberna depois de 15 min sem
+    # tráfego, e a primeira visita seguinte espera o processo subir (perto de um
+    # minuto). Para quem vai validar conteúdo no painel isso incomoda — se
+    # incomodar, `starter` não hiberna, e a troca é esta linha.
+    plan: free
     region: oregon
     # A branch de publicação. `main` não serve para o Render sem as alterações
-    # que estão aqui (ver README § "Publicar no Render").
+    # que estão aqui (ver README § "Saiba mais" -> docs/RENDER.md).
     branch: deploy-homolg
-    dockerfilePath: ./docker/Dockerfile.render
-    dockerContext: .
+
+    # `--include=dev` não é redundante: `NODE_ENV=production` abaixo vale
+    # TAMBÉM durante o build, e o npm trata essa variável como `--omit=dev`.
+    # Sem o `--include=dev` o build morre em `tsc --noEmit` com
+    #
+    #     error TS2688: Cannot find type definition file for 'vitest/globals'
+    #
+    # porque `vite`, `typescript`, `tailwindcss`, `vitest` e
+    # `@testing-library/jest-dom` são todos devDependencies — construir estas
+    # aplicações exige as dependências de desenvolvimento, por definição.
+    #
+    # Os três builds explícitos, e não o `npm run build` da raiz: aqui a lista
+    # é o contrato do deploy. Se um dia entrar um workspace novo no monorepo,
+    # é melhor ele faltar visivelmente nesta linha do que entrar sem ninguém
+    # ter decidido que ele vai para produção.
+    buildCommand: >-
+      npm ci --include=dev
+      && npm run build -w apps/lp
+      && npm run build -w apps/admin
+      && npm run build -w apps/api
+
+    # `apps/api/dist/main.js`, e não um `npm start`: um processo só, sem o npm
+    # no meio para engolir sinal de parada. O diretório de trabalho é a raiz do
+    # repositório, mas isso não importa — `static-sites.ts` acha os `dist` a
+    # partir de `__dirname`, não do diretório de trabalho.
+    startCommand: node apps/api/dist/main.js
+
     # A sonda que o Render usa para decidir se a versão nova entrou no ar. Sem
     # ela, uma publicação que sobe e morre em laço passa por saudável.
     healthCheckPath: /api/health
 
     envVars:
+      # Explícita, e não herdada de `engines.node`: `@supabase/supabase-js`
+      # (fixado em ^2.114) deixou de suportar Node 20 na versão 2.110.0, porque
+      # `realtime-js` exige o WebSocket nativo que só existe a partir do Node
+      # 22. Com Node 20 a API sobe, inicializa os módulos e morre em
+      # `createSupabaseClient` com "Node.js detected but native WebSocket not
+      # found" — em laço de reinício, sem nunca ficar saudável. 24 é a versão
+      # do `docker/Dockerfile`, e é nela que o projeto é verificado.
+      - key: NODE_VERSION
+        value: "24"
+
+      # Em execução, é o que mantém a documentação da API fora do ar
+      # (`shouldExposeApiDocs`). Em build, é o que exige o `--include=dev`
+      # acima — ver o comentário do `buildCommand`.
       - key: NODE_ENV
         value: production
 
@@ -48,9 +89,6 @@ services:
       - key: SUPABASE_URL
         sync: false
       # Chave secreta (sb_secret_...). Ignora RLS — jamais no navegador.
-      # O Render também traduz variável de ambiente em argumento de build, e é
-      # por isso que `docker/Dockerfile.render` não declara `ARG` para ela:
-      # sem `ARG` correspondente, o valor não alcança camada de imagem nenhuma.
       - key: SUPABASE_SECRET_KEY
         sync: false
       # Chaves públicas com que a API verifica o token dos operadores.
@@ -66,12 +104,15 @@ services:
       - key: ALLOWED_ORIGINS
         fromService:
           type: web
-          name: veggiedent-homolog
+          name: veggiedent
           property: host
 
       # --- Navegador: embutidas no build da LP e do painel ---------------
       # Públicas por definição — o Vite as escreve no arquivo que vai ao
       # navegador. NUNCA acrescente aqui uma chave `sb_secret_...`.
+      #
+      # No runtime `node` elas são variáveis de ambiente comuns e o Vite as lê
+      # do ambiente do build, sem precisar de `ARG` nenhum.
       - key: VITE_SUPABASE_URL
         sync: false
       # Chave PUBLICÁVEL (sb_publishable_...). Só troca e-mail e senha por um
@@ -79,8 +120,8 @@ services:
       - key: VITE_SUPABASE_PUBLISHABLE_KEY
         sync: false
 
-      # Opcionais. Os padrões estão em `docker/Dockerfile.render` e já são os
-      # caminhos relativos da origem única; declare aqui só para mudá-los.
+      # Opcionais. Os padrões já são os caminhos relativos da origem única
+      # (`/api`, `/api/content`, `/api/leads`); declare aqui só para mudá-los.
       # - key: VITE_EBOOK_URL
       #   sync: false
       # - key: VITE_EBOOK_DELIVERY_MODE
