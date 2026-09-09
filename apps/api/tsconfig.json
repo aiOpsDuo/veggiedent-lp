@@ -19,9 +19,7 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node", "jest"],
-    "rootDir": "./src",
-    "ignoreDeprecations": "6.0"
+    "types": ["node", "jest"]
   },
   "include": ["src", "test"],
   "exclude": ["node_modules", "dist"]

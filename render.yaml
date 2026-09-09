@@ -1,0 +1,87 @@
+# Blueprint do Render — a pilha inteira num serviço só.
+#
+# Um serviço, um contêiner, uma porta, e por consequência uma origem:
+#
+#   https://<nome>.onrender.com/          -> LP        (apps/lp)
+#   https://<nome>.onrender.com/admin     -> painel    (apps/admin)
+#   https://<nome>.onrender.com/api/*     -> API       (apps/api)
+#
+# `<url>/admin` é requisito do produto, e é ele que dita este desenho: o painel
+# tem de dividir a origem com a LP. Serviço estático + serviço web separados
+# dariam dois endereços; dois serviços com o nginx encaminhando dariam o
+# endereço certo, mas ao custo de uma peça a mais para pagar e para cair. Quem
+# une os caminhos aqui é o próprio processo da API — ver
+# `apps/api/src/shared/presentation/static-sites.ts` e `docker/Dockerfile.render`.
+#
+# O `docker-compose.yml` da raiz continua sendo o caminho local, com nginx e as
+# duas imagens; este arquivo não o substitui.
+#
+# Como aplicar: no painel do Render, New > Blueprint, aponte para este
+# repositório. O Render pede os valores marcados com `sync: false` — nenhum
+# segredo vive neste arquivo.
+
+services:
+  - type: web
+    name: veggiedent-homolog
+    runtime: docker
+    # Homologação: `starter` não hiberna. No `free` o serviço dorme depois de
+    # 15 min sem tráfego e a primeira visita seguinte espera o contêiner subir
+    # — aceitável para uma demonstração, ruim para quem for validar conteúdo.
+    plan: starter
+    region: oregon
+    # A branch de publicação. `main` não serve para o Render sem as alterações
+    # que estão aqui (ver README § "Publicar no Render").
+    branch: deploy-homolg
+    dockerfilePath: ./docker/Dockerfile.render
+    dockerContext: .
+    # A sonda que o Render usa para decidir se a versão nova entrou no ar. Sem
+    # ela, uma publicação que sobe e morre em laço passa por saudável.
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # --- Servidor: só o processo vê estas -----------------------------
+      # `sync: false` mantém o valor fora do repositório: o Render o pede ao
+      # aplicar o blueprint e o guarda no serviço.
+      - key: SUPABASE_URL
+        sync: false
+      # Chave secreta (sb_secret_...). Ignora RLS — jamais no navegador.
+      # O Render também traduz variável de ambiente em argumento de build, e é
+      # por isso que `docker/Dockerfile.render` não declara `ARG` para ela:
+      # sem `ARG` correspondente, o valor não alcança camada de imagem nenhuma.
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      # Chaves públicas com que a API verifica o token dos operadores.
+      # Normalmente <SUPABASE_URL>/auth/v1/.well-known/jwks.json
+      - key: SUPABASE_JWKS_URL
+        sync: false
+
+      # Origem única: a LP e o painel chamam caminhos relativos, então não
+      # existe requisição entre origens para liberar. A variável é obrigatória
+      # em `environmentSchema` e se resolve sozinha a partir do próprio
+      # serviço — sem isso seria preciso conhecer a URL antes do primeiro
+      # deploy para poder fazer o primeiro deploy.
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: veggiedent-homolog
+          property: host
+
+      # --- Navegador: embutidas no build da LP e do painel ---------------
+      # Públicas por definição — o Vite as escreve no arquivo que vai ao
+      # navegador. NUNCA acrescente aqui uma chave `sb_secret_...`.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      # Chave PUBLICÁVEL (sb_publishable_...). Só troca e-mail e senha por um
+      # token; não alcança o banco nem o armazenamento.
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
+
+      # Opcionais. Os padrões estão em `docker/Dockerfile.render` e já são os
+      # caminhos relativos da origem única; declare aqui só para mudá-los.
+      # - key: VITE_EBOOK_URL
+      #   sync: false
+      # - key: VITE_EBOOK_DELIVERY_MODE
+      #   value: email

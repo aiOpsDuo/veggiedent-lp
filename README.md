@@ -43,6 +43,7 @@ Sem Docker (recarga automática, depurar um processo isolado): [`docs/RODAR-SEM-
 - Rodar sem Docker: instalação, comandos e portas internas: [`docs/RODAR-SEM-DOCKER.md`](docs/RODAR-SEM-DOCKER.md)
 - Ambiente, variáveis, testes e publicação: [`docs/OPERACAO.md`](docs/OPERACAO.md)
 - Subir as três aplicações com um comando, numa porta única: [`docs/DOCKER.md`](docs/DOCKER.md)
+- Publicar a pilha inteira no Render, num serviço só: [`docs/RENDER.md`](docs/RENDER.md)
 - Como o painel funciona, tela a tela: [`docs/PAINEL.md`](docs/PAINEL.md)
 - Rotas da API, envio de mídia e exportação de leads: [`docs/API.md`](docs/API.md)
 - Migrações, RLS e verificação de isolamento: [`docs/BANCO-DE-DADOS.md`](docs/BANCO-DE-DADOS.md)

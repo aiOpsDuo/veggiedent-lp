@@ -1,0 +1,133 @@
+# syntax=docker/dockerfile:1
+
+# Imagem de publicação no Render: UM contêiner, UMA porta, tudo na mesma origem.
+#
+#   <url do serviço>/          -> LP
+#   <url do serviço>/admin     -> painel
+#   <url do serviço>/api/*     -> API
+#
+# Por que um Dockerfile próprio, e não um alvo a mais em `docker/Dockerfile`:
+# o Render não expõe o `--target` do Docker (o `render.yaml` tem `dockerfilePath`
+# e `dockerContext`, e nada de alvo), então lá sempre se constrói o ÚLTIMO
+# estágio do arquivo. Um alvo `render` no fim daquele Dockerfile funcionaria hoje
+# e quebraria calado no dia em que alguém acrescentasse um estágio depois dele.
+# Aqui o último estágio é o único que faz sentido ser o último.
+#
+# Diferença de arquitetura em relação ao compose: lá são dois contêineres (API +
+# nginx) e o nginx une os caminhos. Um serviço do Render é um contêiner com uma
+# porta, e `<url>/admin` precisa ser a mesma origem de `/` e `/api/*`. Manter o
+# nginx exigiria dois serviços, um encaminhando para o outro — mais uma peça
+# para pagar e para cair. Então o próprio processo da API serve os dois `dist`,
+# com o mesmo mapa de caminhos do `docker/nginx.conf`; a implementação está em
+# `apps/api/src/shared/presentation/static-sites.ts`.
+#
+# Nenhum segredo entra aqui. O Render traduz as variáveis de ambiente do serviço
+# em argumentos de build, e por isso só as `VITE_*` — públicas por definição, o
+# Vite as embute no arquivo servido ao navegador — têm `ARG` correspondente.
+# `SUPABASE_SECRET_KEY` não tem, de propósito: ela só existe em variável de
+# ambiente, em execução, e nunca numa camada de imagem.
+
+# Node 24, não 20: `@supabase/supabase-js` (fixado em ^2.114) deixou de suportar
+# Node 20 na versão 2.110.0, porque `realtime-js` exige o WebSocket nativo que só
+# existe a partir do Node 22. Mesma versão do `docker/Dockerfile` — as duas
+# imagens precisam subir o mesmo código.
+ARG NODE_VERSION=24-alpine
+
+# ---------------------------------------------------------------------------
+# Dependências de desenvolvimento — o que os builds precisam. Copiar só os
+# manifestos antes do código faz esta camada sobreviver a qualquer alteração de
+# fonte, e é o que mantém o build do Render curto na maioria das publicações.
+# ---------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS deps
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+COPY apps/lp/package.json apps/lp/
+COPY packages/content-schema/package.json packages/content-schema/
+COPY packages/design-tokens/package.json packages/design-tokens/
+RUN npm ci
+
+# ---------------------------------------------------------------------------
+# Dependências de execução — as mesmas versões do lockfile, sem as de
+# desenvolvimento. É a base da imagem final.
+# ---------------------------------------------------------------------------
+FROM node:${NODE_VERSION} AS deps-producao
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/admin/package.json apps/admin/
+COPY apps/lp/package.json apps/lp/
+COPY packages/content-schema/package.json packages/content-schema/
+COPY packages/design-tokens/package.json packages/design-tokens/
+RUN npm ci --omit=dev
+
+# ---------------------------------------------------------------------------
+# Código-fonte sobre as dependências de desenvolvimento.
+# ---------------------------------------------------------------------------
+FROM deps AS fonte
+COPY . .
+
+# ---------------------------------------------------------------------------
+# Build da API. `npm run build -w apps/api` dispara o `prebuild`, que constrói
+# packages/content-schema antes — a API o consome pelo `dist`.
+# ---------------------------------------------------------------------------
+FROM fonte AS build-api
+RUN npm run build -w apps/api
+
+# ---------------------------------------------------------------------------
+# Build da LP e do painel.
+#
+# O painel sai com `base: '/admin/'` (SDD § D-04), que é justamente o que faz
+# `<url do serviço>/admin` funcionar sem reescrever caminho nenhum em execução.
+#
+# Os padrões relativos (`/api`, `/api/content`, ...) valem sem ajuste: com
+# origem única não existe requisição entre origens, e é por isso que a API não
+# precisa liberar CORS para o Render.
+# ---------------------------------------------------------------------------
+FROM fonte AS build-web
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_PUBLISHABLE_KEY
+ARG VITE_API_BASE_URL=/api
+ARG VITE_CONTENT_ENDPOINT=/api/content
+ARG VITE_LEAD_SUBMIT_ENDPOINT=/api/leads
+ARG VITE_EBOOK_URL=
+ARG VITE_EBOOK_DELIVERY_MODE=email
+ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
+    VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY} \
+    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_CONTENT_ENDPOINT=${VITE_CONTENT_ENDPOINT} \
+    VITE_LEAD_SUBMIT_ENDPOINT=${VITE_LEAD_SUBMIT_ENDPOINT} \
+    VITE_EBOOK_URL=${VITE_EBOOK_URL} \
+    VITE_EBOOK_DELIVERY_MODE=${VITE_EBOOK_DELIVERY_MODE}
+RUN npm run build -w apps/lp && npm run build -w apps/admin
+
+# ---------------------------------------------------------------------------
+# Imagem final.
+#
+# Parte de `deps-producao` em vez de copiar node_modules para uma imagem limpa:
+# num monorepo o npm nem sempre iça tudo para a raiz — `jose`, por exemplo, fica
+# em `apps/api/node_modules` porque há outra versão dele em outro workspace.
+# Copiar só `/repo/node_modules` deixaria a API subindo e morrendo em
+# `Cannot find module 'jose'`. Herdar o estágio traz a árvore inteira, no lugar
+# em que o `npm ci` a deixou.
+#
+# Os `dist` da LP e do painel vão para o lugar em que o repositório os deixa
+# (`apps/lp/dist`, `apps/admin/dist`), porque é ali que `static-sites.ts` os
+# procura — relativo ao próprio arquivo compilado, sem variável de ambiente no
+# caminho.
+#
+# Sem `EXPOSE` e sem porta fixa: o Render injeta `PORT` e descobre a porta pelo
+# processo que escuta. `environmentSchema` lê `PORT`, e `main.ts` escuta em
+# 0.0.0.0 — em localhost o Render não acharia porta aberta nenhuma.
+# ---------------------------------------------------------------------------
+FROM deps-producao AS render
+WORKDIR /repo/apps/api
+ENV NODE_ENV=production
+COPY --from=build-api /repo/apps/api/dist /repo/apps/api/dist
+# O pacote de esquemas é uma dependência de workspace: `npm ci` deixou um link
+# simbólico em node_modules apontando para cá, então o `dist` precisa existir.
+COPY --from=build-api /repo/packages/content-schema/dist /repo/packages/content-schema/dist
+COPY --from=build-web /repo/apps/lp/dist /repo/apps/lp/dist
+COPY --from=build-web /repo/apps/admin/dist /repo/apps/admin/dist
+CMD ["node", "dist/main.js"]
