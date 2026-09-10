@@ -6,7 +6,7 @@ import type { ButtonHTMLAttributes, AnchorHTMLAttributes, ReactNode } from 'reac
 // Tipografia: Inter SemiBold (600) via font-ui — metricas mais estaveis
 // que Manjari em tamanhos de CTA, garantindo centralizacao vertical precisa.
 
-type Variant = 'primary' | 'secondary' | 'link'
+type Variant = 'primary' | 'secondary' | 'link' | 'cta'
 
 interface CommonProps {
   variant?: Variant
@@ -27,6 +27,10 @@ const variantClasses: Record<Variant, string> = {
   secondary:
     'border border-brand-primary text-brand-primary bg-transparent hover:bg-brand-primary/5 active:scale-[0.98] disabled:opacity-40',
   link: 'text-brand-primary underline-offset-2 hover:underline focus-visible:underline bg-transparent p-0 h-auto min-h-0 leading-normal',
+  // brand.primary-hover, nao brand.primary: e o tom que o tailwind.config.ts ja
+  // reserva para uso com texto (contraste insuficiente do brand.primary puro
+  // com texto branco), entao e o correto para um botao solido com texto branco.
+  cta: 'bg-brand-primary-hover text-white hover:brightness-90 active:scale-[0.98] disabled:opacity-40',
 }
 
 const baseClasses =

@@ -139,7 +139,9 @@
           "ordem": 1,
           "title": "Escove os dentes na frequência que o veterinário indicar",
           "visivel": true,
-          "imageAlt": "Mão próxima à boca do cão, ilustrando a rotina de higiene oral orientada por veterinário"
+          "imageAlt": "Mão próxima à boca do cão, ilustrando a rotina de higiene oral orientada por veterinário",
+          "ctaLabel": "Conheça a C.E.T pasta da Virbac",
+          "ctaHref": "https://br.virbac.com/products/linha-dental/kit-saude-oral-1"
         },
         {
           "body": "Ofereça uma tira mastigável por dia.\n\nVeggiedent® pode fazer parte da rotina junto com a pasta C.E.T. ou ser utilizado isoladamente quando houver dificuldade com a escovação.",

@@ -65,7 +65,7 @@ function HeroBanner({ content }: { content: SectionContent<"hero"> }) {
         src={content.image}
         alt={content.imageAlt}
         fetchPriority="high"
-        className="bg-image-el absolute inset-0 -z-10 h-full w-full object-cover object-[65%_center] 3xl:object-[65%_15%]"
+        className="bg-image-el absolute inset-0 -z-10 h-full w-full object-cover object-[65%_center] 3xl:object-[65%_center]"
       />
       {/* Overlay em gradiente — garante contraste AA do texto sobre a foto oficial */}
       <div
@@ -84,7 +84,7 @@ function HeroBanner({ content }: { content: SectionContent<"hero"> }) {
           {content.headline}
         </h1>
         {/* Destaque da pesquisa */}
-        <div className="research-el mt-5 max-w-[60ch] text-white">
+        <div className="research-el max-w-[60ch] text-white">
           <p className="text-base font-bold sm:text-lg">Pesquisa Ipsos 2026</p>
 
           <p className="mt-1 text-base font-semibold sm:text-lg">
@@ -101,34 +101,6 @@ function HeroBanner({ content }: { content: SectionContent<"hero"> }) {
         <p className="subtitle-el mt-4 max-w-[60ch] text-lg text-white/90">
           {content.subheadline}
         </p>
-
-        {/* Referências */}
-        <div className="references-el mt-3 max-w-[120ch] text-[10px] leading-[1.4] text-white/80 sm:text-[11px]">
-          <p>
-            Fonte: <em>Pesquisa Ipsos 2026.</em> Realizada com 1,116
-            veterinários, base de dados Virbac. Acesse:{" "}
-            <a
-              href="https://br.virbac.com/home/veggie.html"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              https://br.virbac.com/home/veggie.html
-            </a>
-          </p>
-
-          <p className="mt-1">
-            1. EUA: Marca no 1 escolhida por veterinários de acordo com o
-            levantamento de principais produtos veterinários da DVM360 (Dados em
-            arquivo).
-          </p>
-
-          <p className="mt-1">
-            2. Europa: Marca mais recomendada por veterinários nos 5 maiores
-            mercados europeus (Estudo Omnibus Biosat sobre produtos dentais,
-            Maio de 2025).
-          </p>
-        </div>
 
         <div className="cta-el mt-6 flex flex-wrap items-center gap-4">
           <Button

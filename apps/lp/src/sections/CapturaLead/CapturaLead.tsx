@@ -73,7 +73,7 @@ function CapturaLeadSecao({ content }: { content: SectionContent<'captura_lead'>
   return (
     <div ref={containerRef}>
       <SectionShell id="formulario" aria-labelledby="captura-lead-heading">
-        <div className="grid gap-8 md:grid-cols-2 md:items-center">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:items-center">
           <div>
             <div className="lead-header-el">
               <SectionHeading id="captura-lead-heading">{content.heading}</SectionHeading>
