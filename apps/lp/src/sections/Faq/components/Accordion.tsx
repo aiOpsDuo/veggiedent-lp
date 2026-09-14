@@ -85,7 +85,6 @@ function AccordionItem({ item, index, isOpen, onToggle }: AccordionItemProps) {
         opacity: isOpen ? 1 : 0,
         overflow: 'hidden',
       })
-      if (iconRef.current) gsap.set(iconRef.current, { rotate: isOpen ? 45 : 0 })
       return
     }
 
@@ -104,10 +103,6 @@ function AccordionItem({ item, index, isOpen, onToggle }: AccordionItemProps) {
           if (panelRef.current) gsap.set(panelRef.current, { height: 'auto', overflow: 'visible' })
         },
       })
-
-      if (iconRef.current) {
-        gsap.to(iconRef.current, { rotate: 45, duration: 0.25, ease: 'power2.out' })
-      }
     } else {
       gsap.to(panelRef.current, {
         height: 0,
@@ -115,10 +110,6 @@ function AccordionItem({ item, index, isOpen, onToggle }: AccordionItemProps) {
         duration: 0.35,
         ease: 'power2.out',
       })
-
-      if (iconRef.current) {
-        gsap.to(iconRef.current, { rotate: 0, duration: 0.25, ease: 'power2.out' })
-      }
     }
   }, { dependencies: [isOpen], scope: panelRef })
 
