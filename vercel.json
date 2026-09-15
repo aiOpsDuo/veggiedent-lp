@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci --include=dev",
+  "buildCommand": "npm run build -w apps/lp",
+  "outputDirectory": "apps/lp/dist",
+  "rewrites": [
+    {
+      "source": "/api/:caminho*",
+      "destination": "https://veggiedent.onrender.com/api/:caminho*"
+    }
+  ]
+}
