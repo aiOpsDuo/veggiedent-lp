@@ -17,7 +17,7 @@ import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
 // SVGs da Prova de Autoridade (ver agent_context/CHANGELOG.md). Ate aqui ele
 // ficava fixo como uma URL do Supabase (o valor publicado no momento da
 // remocao do cabecalho) — agora e arquivo local, importado pelo bundler.
-const LOGO_ALT = "Veggiedent, por Virbac";
+const LOGO_ALT = "Veggiedent®, por Virbac";
 const CTA_DESKTOP_LABEL = "Baixar o guia de cuidados diários";
 const CTA_MOBILE_LABEL = "Baixar o guia de cuidados diários";
 const MAIN_NAV_ARIA_LABEL = "Menu principal";

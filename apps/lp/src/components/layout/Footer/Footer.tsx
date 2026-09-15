@@ -15,7 +15,7 @@ import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
 // SVGs da Prova de Autoridade (ver agent_context/CHANGELOG.md). Ate aqui ele
 // ficava fixo como uma URL do Supabase (o valor publicado no momento da
 // remocao do rodape) — agora e arquivo local, importado pelo bundler.
-const LOGO_ALT = "Veggiedent, por Virbac";
+const LOGO_ALT = "Veggiedent®, por Virbac";
 const CLAIM_SOURCE =
   "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html";
 const SPECIES_DISCLAIMER = "Produto indicado exclusivamente para cães.";

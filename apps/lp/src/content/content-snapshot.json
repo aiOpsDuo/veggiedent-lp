@@ -3,14 +3,14 @@
     "hero": {
       "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/53c77460-f784-4705-b485-2c6237fca02e/virbac-kv-hero.png",
       "headline": "A marca mais recomendada pelos médicos veterinários entrevistados.",
-      "imageAlt": "Beagle recebendo Veggiedent das mãos de uma médica-veterinária em consultório, com selo N.1 Veggiedent Fr3sh e logo Virbac",
+      "imageAlt": "Beagle recebendo Veggiedent® das mãos de uma médica-veterinária em consultório, com selo N.1 Veggiedent® Fr3sh e logo Virbac",
       "overline": "SAÚDE ORAL CANINA",
-      "subheadline": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tártaro e no hálito fresco, sempre com a orientação do médico-veterinário.",
+      "subheadline": "Veggiedent® entra na rotina do seu cachorro para ajudar no controle de tártaro e no hálito fresco, sempre com a orientação do médico-veterinário.",
       "ctaPrimaryLabel": "Baixar o guia de cuidados diários",
       "ctaSecondaryLabel": "Ver a rotina completa"
     },
     "onde_comprar": {
-      "intro": "A Virbac não vende diretamente ao consumidor final. Encontre Veggiedent com os parceiros abaixo.",
+      "intro": "A Virbac não vende diretamente ao consumidor final. Encontre Veggiedent® com os parceiros abaixo.",
       "heading": "Onde encontrar Veggiedent®",
       "partners": [
         {
@@ -100,7 +100,7 @@
       ],
       "ctaLabel": "Ver onde comprar",
       "packshot": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/31c2b08d-2f9d-454e-8a95-7422d491ba59/veggiedent-packshot.jpg",
-      "packshotAlt": "Cachorro segurando na boca a embalagem oficial do Veggiedent Fr3sh, em ambiente doméstico"
+      "packshotAlt": "Cachorro segurando na boca a embalagem oficial do Veggiedent® Fr3sh, em ambiente doméstico"
     },
     "prova_autoridade": {
       "kit": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/84d9117f-e075-4787-8af2-0fc9fdcf6375/kit-de-imagens.png",
@@ -118,7 +118,7 @@
           "visivel": true
         }
       ],
-      "kitAlt": "Veggiedent, selo número 1 e recomendação veterinária",
+      "kitAlt": "Veggiedent®, selo número 1 e recomendação veterinária",
       "source": "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html",
       "heading": "A recomendação dos<br><strong>médicos-veterinários,</strong> em números"
     },
@@ -147,7 +147,7 @@
           "body": "Ofereça uma tira mastigável por dia.\n\nVeggiedent® pode fazer parte da rotina junto com a pasta C.E.T. ou ser utilizado isoladamente quando houver dificuldade com a escovação.",
           "image": "https://wkcioegorxdvqtrzapem.supabase.co/storage/v1/object/public/veggiedent-images/6708a0eb-fe07-4fce-8449-2a807b9e59a2/veggiedent-na-rotina.jpg",
           "ordem": 2,
-          "title": "Coloque o Veggiedent na rotina",
+          "title": "Coloque o Veggiedent® na rotina",
           "visivel": true,
           "imageAlt": "Embalagem oficial do Veggiedent® Fr3sh com selo N.1 de marca mais recomendada"
         },
@@ -186,7 +186,7 @@
           "ordem": 4,
           "answer": "Sim. A composição de Veggiedent® é 100% vegetal, livre de conservantes ou ingredientes transgênicos.",
           "visivel": true,
-          "question": "VeggieDent pode ser oferecido ao meu cão se ele for alérgico?"
+          "question": "Veggiedent® pode ser oferecido ao meu cão se ele for alérgico?"
         },
         {
           "ordem": 6,
@@ -300,7 +300,7 @@
     }
   },
   "metadata": {
-    "title": "Veggiedent — Rotina de cuidado bucal para cachorros | Virbac",
-    "description": "Veggiedent entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario."
+    "title": "Veggiedent® — Rotina de cuidado bucal para cachorros | Virbac",
+    "description": "Veggiedent® entra na rotina do seu cachorro para ajudar no controle de tartaro e no halito fresco, sempre com a orientacao do medico-veterinario."
   }
 }
