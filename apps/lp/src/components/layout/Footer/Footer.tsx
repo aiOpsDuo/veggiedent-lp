@@ -16,8 +16,6 @@ import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
 // ficava fixo como uma URL do Supabase (o valor publicado no momento da
 // remocao do rodape) — agora e arquivo local, importado pelo bundler.
 const LOGO_ALT = "Veggiedent®, por Virbac";
-const CLAIM_SOURCE =
-  "*Pesquisa IPSOS 2026. Fonte: Pesquisa Ipsos 2026. Realizada com 1.116 veterinários, base de dados Virbac. Acesse: https://br.virbac.com/home/veggie.html";
 const SPECIES_DISCLAIMER = "Produto indicado exclusivamente para cães.";
 const COPYRIGHT = "© 2026 Virbac. Todos os direitos reservados.";
 
@@ -50,7 +48,6 @@ export function Footer() {
       </div>
 
       <div className="mx-auto max-w-content px-4 pb-8 sm:px-8">
-        <p className="max-w-[70ch] text-xs leading-relaxed text-ink-400">{CLAIM_SOURCE}</p>
         <p className="mt-3 text-xs font-medium text-ink-700">{SPECIES_DISCLAIMER}</p>
         <p className="mt-4 text-xs text-ink-400">{COPYRIGHT}</p>
 
