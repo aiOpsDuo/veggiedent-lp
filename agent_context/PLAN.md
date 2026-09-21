@@ -811,7 +811,10 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/autenticacao-propria, migracao-mysql/modulo-midia
 - Execução: sequencial (único ponto de escrita nos dois arquivos do painel que hoje falam com Supabase)
 - Toca documentação: sim — `docs/PAINEL.md` se a descrição do fluxo de login/upload citar o Supabase por nome
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#8](https://github.com/aiOpsDuo/veggiedent-lp/pull/8) squash-mergeado em `main` (commit `830deef`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: revisei `ApiAuthGateway` linha a linha (decodificação de JWT documentada como não-verificação de assinatura, `observeSession` com primeiro aviso síncrono a partir do armazenamento, `signOut` sem chamada de rede por design stateless) e confirmei que `AdminApiClient` já usa o `accessToken` do estado de sessão para o cabeçalho `Bearer`, sem depender de uma segunda leitura do `localStorage`. Rodei eu mesmo `npm run test -w apps/admin` (260/260) e `npm run typecheck -w apps/admin` (limpo). Conferi o diff de `docker-compose.yml` — só remove os dois `VITE_SUPABASE_*`, sem tocar em mais nada.
+- **Verificação por consumidor (login real + upload real) não foi feita** — nem pelo subagente (ambiente sob contenção de recursos, sem `.env` de teste), nem por mim nesta rodada; fica coberta pela tarefa `migracao-mysql/revisao-final`, que já previa esse passo de ponta a ponta.
+- **Gap de documentação, mesma decisão já tomada para `autenticacao-propria`:** `docs/PAINEL.md` e `docs/ESTRUTURA-DO-CODIGO.md` ainda descrevem o fluxo de login via Supabase; deferido para `migracao-mysql/documentacao`, que já cobre esses arquivos.
 
 #### migracao-mysql/migrar-conteudo-e-remover-supabase — Conteúdo inicial em MySQL e limpeza da dependência
 - Origem: planejada
