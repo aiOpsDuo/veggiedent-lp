@@ -786,7 +786,9 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/persistencia-orm (tabela `operators` já precisa existir)
 - Execução: paralelizável com modulo-conteudo, modulo-metadados, modulo-leads e modulo-midia (`modules/auth/`, diretório próprio)
 - Toca documentação: sim — `docs/API.md` ganha o endpoint de login; `docs/OPERACAO.md` explica a variável `AUTH_JWT_SECRET`
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#6](https://github.com/aiOpsDuo/veggiedent-lp/pull/6) squash-mergeado em `main` (commit `581f0dd`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: revisei a separação de portas (`OperatorCredentialsReader` estreito, distinto do futuro `OperatorDirectory`), o hashing exportado como funções soltas (reuso planejado por `gestao-operadores`), e o não-revelar qual credencial falhou (`InvalidCredentialsError` único). Rodei eu mesmo `npm run test -w apps/api -- auth` (41/41), `test/login.e2e-spec.ts` isolado (5/5) e `npm run typecheck -w apps/api` (restam só os 3 erros do módulo `media`, que a tarefa `modulo-midia` resolve à parte). `jwks-token-verifier.ts` confirmado removido.
+- **Gap de documentação encontrado na revisão, não bloqueante:** apesar de "Toca documentação: sim", o PR não tocou `docs/API.md` nem `docs/OPERACAO.md` — os dois ainda descrevem autenticação via Supabase Auth/JWKS (`docs/OPERACAO.md` linhas 9-11, 24, 29-30, 49, 59, 63-65; `docs/API.md` linha 17). Decisão do orquestrador: **não** abrir um PR de correção isolado agora — a tarefa `migracao-mysql/documentacao`, já planejada para o fim da fase, cobre exatamente esses dois arquivos por inteiro (junto de `docs/BANCO-DE-DADOS.md`, `docs/DOCKER.md`, `docs/MANUTENCAO.md`, `README.md`); corrigir só o pedaço de auth agora seria reescrever a mesma seção duas vezes. Registrado aqui para a tarefa `documentacao` não deixar essas linhas passarem batido.
 
 #### migracao-mysql/gestao-operadores — Diretório de operadores em MySQL e bootstrap
 - Origem: planejada
