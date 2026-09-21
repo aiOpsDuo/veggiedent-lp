@@ -16,6 +16,67 @@
 name: veggiedent
 
 services:
+  mysql:
+    image: mysql:8
+    environment:
+      # Credencial de administração do próprio contêiner MySQL — nunca usada
+      # pela API (a API conecta com o usuário de aplicação abaixo).
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?defina MYSQL_ROOT_PASSWORD no .env da raiz}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina MYSQL_DATABASE no .env da raiz}
+      # Usuário e senha de aplicação: é o que a API usa para conectar.
+      MYSQL_USER: ${MYSQL_USER:?defina MYSQL_USER no .env da raiz}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina MYSQL_PASSWORD no .env da raiz}
+    # Volume nomeado próprio: os dados sobrevivem a `docker compose down` (sem
+    # `-v`) e a `--build`, e são apagados só com `docker compose down -v`.
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # Sem `ports`: o MySQL só é alcançável pela rede do compose, pela API.
+    # Mesmo isolamento já aplicado a `api` — nenhum cliente externo à rede do
+    # compose tem endereço, porta ou credencial deste banco (SDD § "Isolamento
+    # de acesso").
+    expose:
+      - '3306'
+    healthcheck:
+      # $$ escapa o `$` da interpolação do compose: quem resolve a variável é
+      # o shell dentro do contêiner, contra o ambiente que `environment:` já
+      # define ali — a senha nunca aparece na linha de comando do host.
+      test:
+        [
+          'CMD-SHELL',
+          'mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      # Credencial de acesso ao armazenamento. Nunca vai para o navegador — o
+      # painel só recebe URLs pré-assinadas emitidas pela API (SDD § D-05).
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env da raiz}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env da raiz}
+    # Volume nomeado próprio: os arquivos de mídia sobrevivem a
+    # `docker compose down` (sem `-v`) e a `--build`.
+    volumes:
+      - minio_data:/data
+    # Sem `ports`: mesmo isolamento do MySQL acima — só a API fala com o
+    # MinIO pela rede do compose. A porta 9001 é o console administrativo,
+    # também não publicado no hospedeiro por padrão.
+    expose:
+      - '9000'
+      - '9001'
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+
   api:
     build:
       context: .
@@ -26,12 +87,24 @@ services:
       PORT: 3000
       # Segredo do servidor. Nunca é argumento de build, nunca entra numa
       # camada de imagem: chega como variável de ambiente, em execução.
-      SUPABASE_URL: ${SUPABASE_URL:?defina SUPABASE_URL no .env da raiz}
-      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:?defina SUPABASE_SECRET_KEY no .env da raiz}
-      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:?defina SUPABASE_JWKS_URL no .env da raiz}
+      # A API conecta com o usuário de aplicação, nunca com o root do MySQL.
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina MYSQL_DATABASE no .env da raiz}
+      MYSQL_USER: ${MYSQL_USER:?defina MYSQL_USER no .env da raiz}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina MYSQL_PASSWORD no .env da raiz}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env da raiz}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env da raiz}
+      MINIO_BUCKET_IMAGES: ${MINIO_BUCKET_IMAGES:-veggiedent-images}
+      MINIO_BUCKET_VIDEOS: ${MINIO_BUCKET_VIDEOS:-veggiedent-videos}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?defina AUTH_JWT_SECRET no .env da raiz}
       # Painel e LP chamam caminhos relativos através do proxy, então não há
       # requisição entre origens — a origem única é a do proxy.
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
     # Sem `ports`: a API só é alcançável pela rede do compose, através do proxy.
     # É o mesmo isolamento do domínio único de produção.
     expose:
