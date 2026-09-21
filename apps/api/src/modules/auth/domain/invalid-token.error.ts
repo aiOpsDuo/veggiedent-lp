@@ -9,12 +9,10 @@
 export const TOKEN_REJECTION_REASONS = {
   ausente: 'token ausente na requisição',
   expirado: 'token expirado',
-  assinaturaInvalida: 'assinatura não confere com nenhuma chave do JWKS',
-  chaveDesconhecida: 'nenhuma chave do JWKS corresponde ao token',
+  assinaturaInvalida: 'assinatura não confere com o segredo da aplicação',
   algoritmoNaoAceito: 'algoritmo de assinatura fora do conjunto aceito',
   malformado: 'token malformado',
   claimInvalido: 'claim obrigatório ausente ou fora do esperado',
-  jwksIndisponivel: 'JWKS não pôde ser consultado',
   desconhecido: 'token recusado pelo verificador',
 } as const
 

@@ -2,26 +2,18 @@ import { Controller, Get, HttpStatus, Logger } from '@nestjs/common'
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
 import type { AuthenticatedOperator } from '../src/modules/auth/domain/authenticated-operator'
-import { issuerFor } from '../src/modules/auth/infrastructure/jwks-token-verifier'
 import { CurrentOperator } from '../src/modules/auth/presentation/current-operator.decorator'
 import { Public } from '../src/modules/auth/presentation/public.decorator'
-import { createTestApp } from './create-test-app'
-import {
-  createSigningKey,
-  signToken,
-  startJwksServer,
-  type JwksServer,
-  type TestSigningKey,
-} from './signing-keys'
+import { createAuthTestApp } from './create-auth-test-app'
+import { signOperatorToken } from './operator-tokens'
 
 const OPERATOR_ID = '11111111-2222-3333-4444-555555555555'
 const OPERATOR_EMAIL = 'operadora@veggiedent.test'
-const AUDIENCE = 'authenticated'
 const SECRET_CONTENT = 'rascunho administrativo que ninguém deslogado pode ler'
+const AUTH_JWT_SECRET = process.env.AUTH_JWT_SECRET as string
+const OUTRO_SEGREDO = 'outro-segredo-de-teste-com-32-ou-mais-caracteres'
 
-const issuer = issuerFor(process.env.SUPABASE_URL as string)
-const inSeconds = (offset: number): number =>
-  Math.floor(Date.now() / 1000) + offset
+const inSeconds = (offset: number): number => Math.floor(Date.now() / 1000) + offset
 
 /**
  * ESTE controller é o coração do critério C-01: "um endpoint administrativo
@@ -30,7 +22,7 @@ const inSeconds = (offset: number): number =>
  * Ele é declarado aqui, no teste, e não existe em `src/`. Ninguém o listou em
  * lugar nenhum, nenhum `@UseGuards` o alcança e nenhum arquivo da aplicação
  * sabe que ele existe — exatamente a situação de quem vai criar um endpoint
- * novo na T6, T7 ou T8 e esquecer de pensar em autenticação.
+ * novo e esquecer de pensar em autenticação.
  *
  * Ele só responde 401 se a guarda for de fato global (`APP_GUARD`). Trocar a
  * guarda global por `@UseGuards(AuthenticationGuard)` aplicado rota a rota nos
@@ -68,16 +60,11 @@ class SondaPublicaController {
 
 describe('guarda global de autenticação', () => {
   let app: INestApplication
-  let jwksServer: JwksServer
-  let projectKey: TestSigningKey
-  let intruderKey: TestSigningKey
   let warned: jest.SpyInstance
 
   const validClaims = () => ({
     sub: OPERATOR_ID,
     email: OPERATOR_EMAIL,
-    aud: AUDIENCE,
-    iss: issuer,
     exp: inSeconds(3600),
     iat: inSeconds(-10),
   })
@@ -88,25 +75,17 @@ describe('guarda global de autenticação', () => {
   }
 
   beforeAll(async () => {
-    projectKey = await createSigningKey('chave-do-projeto')
-    intruderKey = await createSigningKey('chave-de-outro-emissor')
-    jwksServer = await startJwksServer([projectKey])
-
-    app = await createTestApp(
-      {
-        controllers: [
-          EndpointRecemCriadoController,
-          SondaProtegidaController,
-          SondaPublicaController,
-        ],
-      },
-      { SUPABASE_JWKS_URL: jwksServer.url },
-    )
+    app = await createAuthTestApp({
+      controllers: [
+        EndpointRecemCriadoController,
+        SondaProtegidaController,
+        SondaPublicaController,
+      ],
+    })
   })
 
   afterAll(async () => {
     await app.close()
-    await jwksServer.close()
   })
 
   beforeEach(() => {
@@ -126,7 +105,7 @@ describe('guarda global de autenticação', () => {
     })
 
     it('só responde depois que alguém apresenta um token válido', async () => {
-      const token = await signToken(projectKey, validClaims())
+      const token = await signOperatorToken(validClaims())
 
       const response = await get(
         '/api/admin/endpoint-recem-criado',
@@ -155,7 +134,7 @@ describe('guarda global de autenticação', () => {
     })
 
     it('responde 401 com token expirado', async () => {
-      const token = await signToken(projectKey, {
+      const token = await signOperatorToken({
         ...validClaims(),
         iat: inSeconds(-7200),
         exp: inSeconds(-3600),
@@ -166,30 +145,8 @@ describe('guarda global de autenticação', () => {
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
     })
 
-    it('responde 401 com token assinado por chave errada', async () => {
-      const token = await signToken(intruderKey, validClaims())
-
-      const response = await get('/api/admin/sonda-protegida', `Bearer ${token}`)
-
-      expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
-    })
-
-    it('responde 401 com token de outro emissor', async () => {
-      const token = await signToken(projectKey, {
-        ...validClaims(),
-        iss: 'https://outro-projeto.supabase.co/auth/v1',
-      })
-
-      const response = await get('/api/admin/sonda-protegida', `Bearer ${token}`)
-
-      expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
-    })
-
-    it('responde 401 com token de outro público', async () => {
-      const token = await signToken(projectKey, {
-        ...validClaims(),
-        aud: 'outro-publico',
-      })
+    it('responde 401 com token assinado com segredo errado', async () => {
+      const token = await signOperatorToken(validClaims(), OUTRO_SEGREDO)
 
       const response = await get('/api/admin/sonda-protegida', `Bearer ${token}`)
 
@@ -197,7 +154,7 @@ describe('guarda global de autenticação', () => {
     })
 
     it('responde 401 quando o esquema não é Bearer', async () => {
-      const token = await signToken(projectKey, validClaims())
+      const token = await signOperatorToken(validClaims())
 
       const response = await get('/api/admin/sonda-protegida', `Basic ${token}`)
 
@@ -207,7 +164,7 @@ describe('guarda global de autenticação', () => {
 
   describe('aceitação', () => {
     it('responde 200 com token válido e entrega o operador ao handler', async () => {
-      const token = await signToken(projectKey, validClaims())
+      const token = await signOperatorToken(validClaims())
 
       const response = await get('/api/admin/sonda-protegida', `Bearer ${token}`)
 
@@ -257,17 +214,14 @@ describe('guarda global de autenticação', () => {
     })
 
     it('não distingue os motivos de recusa para o cliente', async () => {
-      const expirado = await signToken(projectKey, {
-        ...validClaims(),
-        exp: inSeconds(-1),
-      })
-      const chaveErrada = await signToken(intruderKey, validClaims())
+      const expirado = await signOperatorToken({ ...validClaims(), exp: inSeconds(-1) })
+      const segredoErrado = await signOperatorToken(validClaims(), OUTRO_SEGREDO)
 
       const respostas = [
         await get('/api/admin/sonda-protegida'),
         await get('/api/admin/sonda-protegida', 'Bearer isto-nao-e-um-jwt'),
         await get('/api/admin/sonda-protegida', `Bearer ${expirado}`),
-        await get('/api/admin/sonda-protegida', `Bearer ${chaveErrada}`),
+        await get('/api/admin/sonda-protegida', `Bearer ${segredoErrado}`),
       ]
 
       for (const resposta of respostas) {
@@ -279,23 +233,18 @@ describe('guarda global de autenticação', () => {
     })
 
     it('não vaza credencial, token nem detalhe interno', async () => {
-      const token = await signToken(intruderKey, validClaims())
+      const token = await signOperatorToken(validClaims(), OUTRO_SEGREDO)
 
       const response = await get('/api/admin/sonda-protegida', `Bearer ${token}`)
 
       expect(response.text).not.toContain(token)
-      expect(response.text).not.toContain('SUPABASE')
+      expect(response.text).not.toContain(AUTH_JWT_SECRET)
       expect(response.text).not.toContain('jose')
-      expect(response.text).not.toContain('JWKS')
-      expect(response.text).not.toContain(jwksServer.url)
       expect(response.text).not.toMatch(/\bat .+:\d+:\d+/)
     })
 
     it('registra o motivo no log do servidor sem escrever o token', async () => {
-      const token = await signToken(projectKey, {
-        ...validClaims(),
-        exp: inSeconds(-1),
-      })
+      const token = await signOperatorToken({ ...validClaims(), exp: inSeconds(-1) })
 
       await get('/api/admin/sonda-protegida', `Bearer ${token}`)
 
