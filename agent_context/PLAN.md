@@ -763,7 +763,8 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/persistencia-orm
 - Execução: paralelizável com modulo-conteudo, modulo-metadados e modulo-midia (`modules/leads/infrastructure/`)
 - Toca documentação: não
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#4](https://github.com/aiOpsDuo/veggiedent-lp/pull/4) squash-mergeado em `main` (commit `fe5144f`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: revisei o adaptador linha a linha (period passado sem recalcular fuso, `$transaction([findMany, count])` para página+total, `P2025` engolido só no `delete`, id nunca gerado no repositório); rodei eu mesmo `npm run test -w apps/api -- leads` (**206/206 testes passando**, incluindo o teste de guarda do horário de Brasília) e `npm run typecheck -w apps/api` (7 erros, os mesmos 5 arquivos Supabase de módulos ainda não migrados). **A parte do critério sobre `POST /api/leads` → `GET /api/admin/leads/export` via HTTP real fica para `migracao-mysql/revisao-final`**, já que a suíte e2e só volta a subir depois de `autenticacao-propria`; o subagente verificou o equivalente por dentro (record → list → export → delete) contra um MySQL real descartável, fora do e2e.
 
 #### migracao-mysql/modulo-midia — Armazenamento MinIO e repositório de mídia em MySQL
 - Origem: planejada
