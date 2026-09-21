@@ -18,17 +18,22 @@ export interface UploadRequest {
   readonly sizeBytes: number
 }
 
-/** Passo 1 de 3: o direito temporário de escrever em um caminho, e o caminho. */
+/**
+ * Passo 1 de 3: o direito temporário de escrever em um caminho, e o caminho.
+ *
+ * **Revisto em 2026-09-21 (SDD § D-05):** com o MinIO no lugar do Supabase
+ * Storage, a credencial deixa de trazer `signedUrl`/`token`/`resumableEndpoint`
+ * (dois protocolos, um por natureza de mídia) e passa a trazer uma única
+ * `uploadUrl` — uma URL `PUT` pré-assinada do protocolo S3, válida tanto para
+ * imagem quanto para vídeo. Não há mais upload retomável em blocos (ver
+ * `media-transfer.ts`).
+ */
 export interface UploadCredential {
   readonly kind: MediaKind
   readonly bucket: string
   readonly path: string
-  /** Endereço de envio direto, para arquivo que cabe em uma requisição. */
-  readonly signedUrl: string
-  /** O mesmo direito de escrita, na forma que o upload retomável usa. */
-  readonly token: string
-  /** Endereço do protocolo retomável, para vídeo enviado em blocos. */
-  readonly resumableEndpoint: string
+  /** Endereço de envio direto: um `PUT` só, para qualquer natureza de mídia. */
+  readonly uploadUrl: string
   readonly expiresInSeconds: number
   readonly maxBytes: number
 }
