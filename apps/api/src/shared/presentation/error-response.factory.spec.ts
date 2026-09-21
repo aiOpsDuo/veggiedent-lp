@@ -66,7 +66,7 @@ describe('toErrorResponse', () => {
 
   it('não expõe detalhe de exceção desconhecida', () => {
     const response = toErrorResponse(
-      new Error('falha ao ler SUPABASE_SECRET_KEY do adaptador do Supabase'),
+      new Error('falha ao ler AUTH_JWT_SECRET do adaptador de autenticação'),
     )
 
     expect(response).toEqual({

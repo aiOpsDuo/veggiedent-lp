@@ -4,9 +4,11 @@ import { Type } from 'class-transformer'
 import { IsNotEmpty, IsObject, ValidateNested } from 'class-validator'
 import request from 'supertest'
 import { Public } from '../src/modules/auth/presentation/public.decorator'
+import { MINIO_CLIENT } from '../src/modules/media/infrastructure/minio-client'
 import { createTestApp } from './create-test-app'
+import { FakeMinioClient } from './fake-storage'
 
-const INTERNAL_DETAIL = 'falha ao ler SUPABASE_SECRET_KEY do adaptador do Supabase'
+const INTERNAL_DETAIL = 'falha ao ler AUTH_JWT_SECRET do adaptador de autenticação'
 
 class HeroProbeDto {
   @IsNotEmpty({ message: 'Campo obrigatório.' })
@@ -46,7 +48,12 @@ describe('formato único de erro', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    app = await createTestApp({ controllers: [ErrorProbeController] })
+    // `MinioMediaStorage` (`MediaModule`) verifica o bucket ao subir
+    // (`OnModuleInit`); sem um dublê aqui, a suíte tentaria alcançar um MinIO de
+    // verdade só para exercitar o formato de erro, que não depende de mídia.
+    app = await createTestApp({ controllers: [ErrorProbeController] }, {}, [
+      { provide: MINIO_CLIENT, useValue: new FakeMinioClient() },
+    ])
   })
 
   afterAll(async () => {
@@ -103,7 +110,7 @@ describe('formato único de erro', () => {
     })
 
     const rawBody = response.text
-    expect(rawBody).not.toContain('SUPABASE')
+    expect(rawBody).not.toContain('AUTH_JWT_SECRET')
     expect(rawBody).not.toContain(INTERNAL_DETAIL)
     expect(rawBody).not.toContain('apps/api')
     expect(rawBody).not.toMatch(/\bat .+:\d+:\d+/)

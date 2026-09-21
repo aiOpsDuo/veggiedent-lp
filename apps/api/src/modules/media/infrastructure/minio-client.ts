@@ -38,8 +38,7 @@ export interface MinioObjectStorageClient {
 const REGION = 'us-east-1'
 
 /**
- * Cliente MinIO do servidor — substitui `supabase-client.ts`/`SUPABASE_CLIENT`
- * para o módulo de mídia (SDD § D-05).
+ * Cliente MinIO do servidor, para o módulo de mídia (SDD § D-05).
  *
  * `MINIO_ENDPOINT` chega validado como URL completa (`environment.schema.ts`),
  * mas o construtor do `minio` pede host, porta e protocolo separados — daí o

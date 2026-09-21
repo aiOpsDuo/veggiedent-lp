@@ -4,14 +4,12 @@ import type { PrismaClient } from '../../generated/prisma/client'
 import { PRISMA_CLIENT, createPrismaClient } from './prisma-client'
 
 /**
- * Um único cliente Prisma para o processo inteiro — substitui `SupabaseModule`
- * (SDD § D-10).
+ * Um único cliente Prisma para o processo inteiro (SDD § D-10).
  *
- * Global pelo mesmo motivo de `SupabaseModule`: os módulos de conteúdo,
- * metadados, mídia, leads e operadores precisam do mesmo cliente: declará-lo
- * em um só lugar mantém a leitura de `DATABASE_URL` em um só lugar. O que é
- * global é o *cliente*, não o acesso: continuam sendo apenas os adaptadores de
- * infraestrutura que o injetam.
+ * Global porque os módulos de conteúdo, metadados, mídia, leads e operadores
+ * precisam do mesmo cliente: declará-lo em um só lugar mantém a leitura de
+ * `DATABASE_URL` em um só lugar. O que é global é o *cliente*, não o acesso:
+ * continuam sendo apenas os adaptadores de infraestrutura que o injetam.
  *
  * Desligamento gracioso: o módulo fecha o pool de conexões em
  * `onModuleDestroy`, para não deixar conexões penduradas no MySQL quando o

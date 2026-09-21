@@ -31,7 +31,6 @@
     "@nestjs/swagger": "^11.4.7",
     "@prisma/adapter-mariadb": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "@supabase/supabase-js": "^2.114.0",
     "@types/jsdom": "^21.1.7",
     "@veggiedent/content-schema": "*",
     "argon2": "^0.45.1",

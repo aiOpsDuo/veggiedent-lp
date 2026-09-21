@@ -18,10 +18,10 @@ import type { MediaOrigin } from './media-reconciliation'
  * novo":
  *
  *   CMS_API_URL           raiz da API, com prefixo (padrão: http://localhost:3000/api)
- *   SUPABASE_URL          projeto Supabase de destino, o mesmo que a API usa
+ *   MINIO_ENDPOINT        endereço do MinIO de destino, o mesmo que a API usa
  *   CMS_ACCESS_TOKEN      token de um operador; ou, no lugar dele:
- *   CMS_OPERATOR_EMAIL    e-mail e senha de um operador já criado no Supabase Auth,
- *   CMS_OPERATOR_PASSWORD junto de SUPABASE_PUBLISHABLE_KEY.
+ *   CMS_OPERATOR_EMAIL    e-mail e senha de um operador já criado (via
+ *   CMS_OPERATOR_PASSWORD `seed:operator`), trocados por `POST /api/auth/login`.
  *   CONTENT_SNAPSHOT      caminho de outro instantâneo (padrão: o do repositório)
  *
  * Este é o único arquivo da carga que lê variáveis de ambiente e escreve na
@@ -39,14 +39,13 @@ function required(name: string): string {
   return value
 }
 
-async function resolveAccessToken(supabaseUrl: string): Promise<string> {
+async function resolveAccessToken(apiBaseUrl: string): Promise<string> {
   const token = process.env.CMS_ACCESS_TOKEN
   if (token !== undefined && token.trim() !== '') {
     return token
   }
   return signInOperator({
-    supabaseUrl,
-    publishableKey: required('SUPABASE_PUBLISHABLE_KEY'),
+    apiBaseUrl,
     email: required('CMS_OPERATOR_EMAIL'),
     password: required('CMS_OPERATOR_PASSWORD'),
   })
@@ -71,17 +70,17 @@ function summary(report: SnapshotLoadReport): string {
 
 async function run(): Promise<void> {
   const baseUrl = process.env.CMS_API_URL ?? DEFAULT_API_URL
-  const supabaseUrl = required('SUPABASE_URL')
+  const minioEndpoint = required('MINIO_ENDPOINT')
   const snapshotPath = process.env.CONTENT_SNAPSHOT ?? defaultSnapshotPath()
 
   process.stdout.write(`Carregando ${snapshotPath}\n`)
   process.stdout.write(`no CMS em ${baseUrl}\n`)
 
   const report = await loadSnapshotIntoCms({
-    api: new CmsApi({ baseUrl, accessToken: await resolveAccessToken(supabaseUrl) }),
+    api: new CmsApi({ baseUrl, accessToken: await resolveAccessToken(baseUrl) }),
     source: new HttpMediaSource(),
     uploader: new SignedUrlUploader(),
-    targetStorage: new PublicStorageProbe(supabaseUrl),
+    targetStorage: new PublicStorageProbe(minioEndpoint),
     snapshot: loadContentSnapshot(snapshotPath),
     onProgress: (message) => process.stdout.write(`  ${message}\n`),
   })

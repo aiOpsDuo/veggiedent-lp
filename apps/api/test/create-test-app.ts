@@ -16,10 +16,11 @@ import { configureApp } from '../src/shared/presentation/configure-app'
  * importado, cedo demais para um `beforeAll` alcançar. É o que permite apontar a
  * verificação de token a um JWKS local sem tocar em nenhum arquivo de `src/`.
  *
- * `providerOverrides` troca um provider por um dublê — na prática, o cliente
- * Supabase. Só a fronteira externa é substituída: controllers, guarda, casos de
- * uso e repositórios continuam sendo os de produção, e é isso que permite à
- * suíte rodar sem rede sem virar um teste de dublês conversando entre si.
+ * `providerOverrides` troca um provider por um dublê — na prática, o banco em
+ * memória e o armazenamento de mídia. Só a fronteira externa é substituída:
+ * controllers, guarda, casos de uso e repositórios continuam sendo os de
+ * produção, e é isso que permite à suíte rodar sem rede sem virar um teste de
+ * dublês conversando entre si.
  */
 export interface ProviderOverride {
   readonly provide: unknown
