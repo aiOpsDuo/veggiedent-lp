@@ -5,6 +5,12 @@ dist
 *.log
 .vercel
 
+# Prisma Client gerado (apps/api/prisma/schema.prisma § generator client) —
+# artefato de build, como `dist/`: nasce de `prisma generate`, nunca é escrito
+# à mão. Fica dentro de `src/` só para o `tsc`/`nest build` incluí-lo na
+# compilação (SDD § D-10).
+apps/api/src/generated
+
 # Arquivos de ferramental do agente, deixados na raiz do repositorio.
 # Nao pertencem ao produto e nao devem ser versionados.
 orquestrador-projeto.skill

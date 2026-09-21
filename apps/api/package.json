@@ -7,15 +7,19 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "nest build",
-    "prebuild": "npm run build --prefix ../../packages/content-schema",
+    "prebuild": "npm run build --prefix ../../packages/content-schema && npm run prisma:generate",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
     "typecheck": "tsc --noEmit",
-    "pretypecheck": "npm run build --prefix ../../packages/content-schema",
+    "pretypecheck": "npm run build --prefix ../../packages/content-schema && npm run prisma:generate",
     "test": "jest",
-    "pretest": "npm run build --prefix ../../packages/content-schema",
+    "pretest": "npm run build --prefix ../../packages/content-schema && npm run prisma:generate",
     "premigrate:content": "npm run build",
-    "migrate:content": "node --env-file-if-exists=.env dist/migration/main.js"
+    "migrate:content": "node --env-file-if-exists=.env dist/migration/main.js",
+    "prisma:generate": "prisma generate",
+    "migrate:db": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "verify:schema": "node --env-file-if-exists=.env scripts/verify-schema.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
@@ -23,6 +27,8 @@
     "@nestjs/core": "^11.2.3",
     "@nestjs/platform-express": "^11.2.3",
     "@nestjs/swagger": "^11.4.7",
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/client": "^7.10.0",
     "@supabase/supabase-js": "^2.114.0",
     "@types/jsdom": "^21.1.7",
     "@veggiedent/content-schema": "*",
@@ -42,7 +48,10 @@
     "@types/jest": "^29.5.14",
     "@types/node": "^20.19.43",
     "@types/supertest": "^6.0.3",
+    "dotenv": "^18.0.1",
     "jest": "^29.7.0",
+    "mariadb": "^3.4.5",
+    "prisma": "^7.10.0",
     "supertest": "^7.2.2",
     "ts-jest": "^29.4.12",
     "typescript": "^5.4.5"
