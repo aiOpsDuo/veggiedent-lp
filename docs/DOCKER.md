@@ -36,7 +36,7 @@ nunca `ports`; ver "O que quem for publicar precisa saber", item 1):
 | Serviço | Imagem | Porta interna | Função |
 |---|---|---|---|
 | `mysql` | `mysql:8` | `3306` | Banco relacional. A API conecta com o usuário de aplicação (`MYSQL_USER`), nunca com o `root` |
-| `minio` | `minio/minio` | `9000` (API S3) e `9001` (console administrativo) | Armazenamento de imagens e vídeos, compatível com S3 |
+| `minio` | `quay.io/minio/minio` | `9000` (API S3) e `9001` (console administrativo) | Armazenamento de imagens e vídeos, compatível com S3 |
 
 Cada um tem healthcheck próprio (`mysqladmin ping` para o `mysql`, `mc ready
 local` para o `minio`), no mesmo padrão já usado por `api`/`proxy`, e a `api`
