@@ -6,8 +6,8 @@ import type { Environment } from '../../config/environment.schema'
 export const PRISMA_CLIENT = Symbol('PrismaClient')
 
 /**
- * Cliente Prisma do servidor — substitui `supabase-client.ts` (SDD § D-10).
- * Todo acesso ao MySQL passa por aqui, através dos repositórios de
+ * Cliente Prisma do servidor (SDD § D-10). Todo acesso ao MySQL passa por
+ * aqui, através dos repositórios de
  * infraestrutura de cada módulo (`content`, `metadata`, `media`, `leads`,
  * `operators`); nenhuma outra camada importa `PrismaClient` diretamente.
  *

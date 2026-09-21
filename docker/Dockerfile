@@ -6,15 +6,12 @@
 # dependências do monorepo — separá-los faria o `npm ci` rodar duas vezes.
 #
 # Nenhum segredo entra aqui. As variáveis do navegador (`VITE_*`) chegam como
-# argumentos de build e são todas públicas por definição; a chave secreta do
-# Supabase só existe em variável de ambiente do contêiner da API, em execução.
+# argumentos de build e são todas públicas por definição; as credenciais do
+# MySQL, do MinIO e `AUTH_JWT_SECRET` só existem em variável de ambiente do
+# contêiner da API, em execução.
 
-# Node 24, não 20: `@supabase/supabase-js` (fixado em ^2.114) deixou de suportar
-# Node 20 na versão 2.110.0, porque `realtime-js` exige o WebSocket nativo que só
-# existe a partir do Node 22. Com Node 20 a API subia, inicializava os módulos e
-# morria em `createSupabaseClient` com "Node.js detected but native WebSocket not
-# found" — em laço de reinício, sem nunca ficar saudável. 24 é também a versão do
-# hospedeiro em que o projeto é verificado (ver docs/OPERACAO.md).
+# Node 24: é a versão do hospedeiro em que o projeto é verificado
+# (ver docs/OPERACAO.md).
 ARG NODE_VERSION=24-alpine
 ARG NGINX_VERSION=1.27-alpine
 
@@ -84,21 +81,17 @@ CMD ["node", "dist/main.js"]
 # Build da LP e do painel.
 #
 # Todo `VITE_*` entra no arquivo servido ao navegador — é o contrato do Vite, e
-# por isso nenhuma destas variáveis é segredo. A chave secreta do Supabase não
-# aparece aqui de propósito: ela não tem argumento de build correspondente, e
-# um `docker build --build-arg` que a passasse seria ignorado.
+# por isso nenhuma destas variáveis é segredo. Nenhuma chave secreta aparece
+# aqui de propósito: nenhuma delas tem argumento de build correspondente, e um
+# `docker build --build-arg` que a passasse seria ignorado.
 # ---------------------------------------------------------------------------
 FROM fonte AS build-web
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_API_BASE_URL=/api
 ARG VITE_CONTENT_ENDPOINT=/api/content
 ARG VITE_LEAD_SUBMIT_ENDPOINT=/api/leads
 ARG VITE_EBOOK_URL=
 ARG VITE_EBOOK_DELIVERY_MODE=email
-ENV VITE_SUPABASE_URL=${VITE_SUPABASE_URL} \
-    VITE_SUPABASE_PUBLISHABLE_KEY=${VITE_SUPABASE_PUBLISHABLE_KEY} \
-    VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_CONTENT_ENDPOINT=${VITE_CONTENT_ENDPOINT} \
     VITE_LEAD_SUBMIT_ENDPOINT=${VITE_LEAD_SUBMIT_ENDPOINT} \
     VITE_EBOOK_URL=${VITE_EBOOK_URL} \

@@ -20,16 +20,10 @@ export interface ProviderOverride {
  * `AuthModule` (que já importa `PrismaModule`) — em vez do `AppModule`
  * inteiro.
  *
- * Por quê: `AppModule` também importa `SupabaseModule`
- * (`src/shared/infrastructure/supabase-client.ts`), que hoje não compila
- * contra o `environment.schema.ts` já revisado por esta fase — as variáveis
- * `SUPABASE_URL`/`SUPABASE_SECRET_KEY` saíram do esquema (SDD § D-10) e
- * `supabase-client.ts` só será atualizado pelas tarefas em paralelo que ainda
- * migram os outros módulos (ver `agent_context/PLAN.md`). Esse arquivo está
- * fora do escopo desta tarefa (`autenticacao-propria` só toca
- * `modules/auth/`), então este harness evita `AppModule` para que a suíte de
- * autenticação rode e prove o comportamento real, sem esperar a migração dos
- * módulos irmãos.
+ * Por quê: `autenticacao-propria` só toca `modules/auth/`, então este harness
+ * evita depender dos demais módulos de domínio (conteúdo, metadados, mídia,
+ * leads, operadores) para que a suíte de autenticação rode isolada, sem
+ * precisar de um dublê para cada um deles.
  *
  * Mesmo pipe, mesmo filtro, mesmo prefixo de `configure-app.ts`/`AppModule` —
  * só o conjunto de módulos de domínio é menor.

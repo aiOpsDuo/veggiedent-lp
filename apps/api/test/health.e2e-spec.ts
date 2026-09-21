@@ -1,12 +1,17 @@
 import type { INestApplication } from '@nestjs/common'
 import request from 'supertest'
+import { MINIO_CLIENT } from '../src/modules/media/infrastructure/minio-client'
 import { createTestApp } from './create-test-app'
+import { FakeMinioClient } from './fake-storage'
 
 describe('GET /api/health', () => {
   let app: INestApplication
 
   beforeAll(async () => {
-    app = await createTestApp()
+    // `MinioMediaStorage` (`MediaModule`) verifica o bucket ao subir
+    // (`OnModuleInit`); sem um dublê aqui, a suíte tentaria alcançar um MinIO
+    // de verdade só para exercitar a sonda de saúde, que não depende de mídia.
+    app = await createTestApp({}, {}, [{ provide: MINIO_CLIENT, useValue: new FakeMinioClient() }])
   })
 
   afterAll(async () => {

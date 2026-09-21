@@ -1,5 +1,4 @@
 import type { UploadCredentialView } from '../modules/media/application/media-view'
-import { publicObjectUrl } from './public-object-url'
 
 /**
  * As três conversas com arquivos que a carga precisa, cada uma como uma porta
@@ -97,12 +96,23 @@ const OK_STATUS = 200
  * Pergunta ao próprio armazenamento de destino, pela URL pública, se o objeto
  * está lá. `HEAD` porque a resposta que interessa é o código, não os bytes —
  * são até dezenas de MB por vídeo.
+ *
+ * O destino é o MinIO (SDD § D-05, reescrita em 2026-09-21): a URL segue o
+ * mesmo formato que `MinioMediaStorage.publicUrlFor` usa para servir o
+ * conteúdo (`${MINIO_ENDPOINT}/${bucket}/${path}`), não mais o formato do
+ * Supabase Storage de `publicObjectUrl` — esse continua correto como está,
+ * mas interpreta URLs **do instantâneo** (histórico, nunca muda), não as do
+ * destino. `bucket` aqui já chega como o nome físico do bucket
+ * (`veggiedent-images`/`veggiedent-videos`, SDD § "Modelo de dados"): é o
+ * mesmo nome que o domínio declara e que a configuração padrão do MinIO usa
+ * para os dois buckets, então nenhuma tradução adicional é necessária.
  */
 export class PublicStorageProbe implements TargetStorage {
-  constructor(private readonly supabaseUrl: string) {}
+  constructor(private readonly minioEndpoint: string) {}
 
   async hasObject(bucket: string, objectPath: string): Promise<boolean> {
-    const response = await fetch(publicObjectUrl(this.supabaseUrl, bucket, objectPath), {
+    const endpoint = this.minioEndpoint.replace(/\/+$/, '')
+    const response = await fetch(`${endpoint}/${bucket}/${objectPath}`, {
       method: 'HEAD',
     })
     return response.status === OK_STATUS
