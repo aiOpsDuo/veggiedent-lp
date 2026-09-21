@@ -703,6 +703,132 @@ Registrado aqui para não ser "corrigido" no futuro como se fosse esquecimento (
 - **Escopo real era menor do que o planejado, e o subagente verificou antes de agir:** `header` e `footer` já haviam saído inteiramente do esquema do CMS nas tarefas T28/T32. O problema não era um campo editável no painel — era que o valor do logo tinha sido congelado como URL literal do Supabase de desenvolvimento ao sair do CMS, em vez de virar `import`. Não havia campo de esquema para remover nem migração de banco a fazer; o subagente confirmou isso por três vias independentes (grep no esquema, `GET /api/content` real, e leitura de como o painel deriva a lista de seções) em vez de executar passos que a descoberta tinha tornado desnecessários.
 - **Prova de que o arquivo é idêntico ao publicado, não uma versão nova:** o subagente baixou o SVG da URL antiga do Supabase e comparou `md5sum` com o arquivo local — hashes idênticos. Não há diferença visual possível.
 
+### Fase: migracao-mysql
+
+Origem da fase: decisão de arquitetura registrada em `agent_context/CHANGELOG.md`, entrada de 2026-09-21 — Supabase sai, MySQL + MinIO + autenticação própria entram. Cada tarefa é rastreável a uma seção do `SDD.md` já revisada nesta mesma data (D-01, D-03, D-05, D-09, D-10, "Modelo de dados", diagramas, contratos, dependências, riscos). Não é fase `ajustes` porque não é correção nem pedido pontual — é a decomposição de uma mudança de arquitetura já registrada no SDD, mesmo critério que já vale para as fases `dados`, `api`, `painel` originais.
+
+Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimento (ver `docs/MIGRAR-PARA-NOVO-SUPABASE.md`, que fica obsoleto ao final desta fase). O conteúdo inicial nasce de novo pelo script de migração de conteúdo (`migrate:content`, adaptado na tarefa `migrar-conteudo-e-remover-supabase`), e o primeiro operador nasce pelo script de bootstrap novo (`seed:operator`, tarefa `gestao-operadores`) — não há backup/restauração de linha real a fazer.
+
+#### migracao-mysql/infraestrutura — MySQL e MinIO no docker-compose
+- Origem: planejada
+- Descrição: acrescentar os serviços `mysql` e `minio` a `docker-compose.yml`, com volume próprio para cada um (persistência entre `docker compose down`/`up`); atualizar `.env.example` com as variáveis novas (`MYSQL_ROOT_PASSWORD`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_ENDPOINT`, `AUTH_JWT_SECRET`) e remover as do Supabase; atualizar `apps/api/src/config/environment.schema.ts` (validação tipada do ambiente) para exigir as novas e não mais as antigas.
+- Rastreável a: SDD § "Camadas e padrão arquitetural" (T5 — Plataforma de dados), § "Dependências externas"
+- Critério de "pronto": `docker compose up --build -d` sobe `mysql` e `minio` saudáveis (healthcheck próprio para cada um, mesmo padrão já usado por `api`/`proxy`); `docker compose down && docker compose up -d` (sem `--build`) preserva os dados gravados nos volumes; subir sem uma variável obrigatória falha com a mensagem `${VAR:?defina VAR no .env}`, mesmo comportamento já usado para `SUPABASE_URL`.
+- Dependências: nenhuma
+- Execução: sequencial (mexe em `docker-compose.yml` e `.env.example`, arquivos que as tarefas seguintes também leem, ainda que não escrevam)
+- Toca documentação: sim — `docs/DOCKER.md` ganha os dois serviços novos; `docs/BANCO-DE-DADOS.md` e `docs/OPERACAO.md` citam as variáveis novas (detalhe fino fica para `migracao-mysql/documentacao`, esta tarefa só registra o que muda no compose/env em si)
+- Status: pendente
+
+#### migracao-mysql/persistencia-orm — Prisma, schema e cliente compartilhado
+- Origem: planejada
+- Descrição: adicionar Prisma a `apps/api`; escrever `schema.prisma` com as cinco tabelas do SDD § "Modelo de dados" (`content_sections`, `site_metadata`, `media_assets`, `leads`, `operators`); gerar a migração inicial; criar o cliente Prisma compartilhado em `shared/infrastructure/` substituindo `supabase-client.ts`/`supabase.module.ts`; script `migrate:db` (análogo a `migrate:content`) que roda `prisma migrate deploy` na subida do contêiner.
+- Rastreável a: SDD § "Modelo de dados", § D-01, § D-10
+- Critério de "pronto": `npm run test -w apps/api` passa (typecheck do client gerado incluso); com `mysql` do compose no ar, `prisma migrate deploy` aplica as cinco tabelas sem erro; um script de verificação (`apps/api/scripts/verify-schema.mjs` ou equivalente, versionado) confirma as cinco tabelas e suas colunas contra o SDD, coluna a coluna — mesmo espírito do `verify-isolation.mjs` que já existia para o Supabase.
+- Dependências: migracao-mysql/infraestrutura
+- Execução: sequencial (as tarefas de módulo abaixo dependem do client gerado)
+- Toca documentação: sim — `docs/BANCO-DE-DADOS.md` passa a descrever Prisma/MySQL em vez de `supabase db push`
+- Status: pendente
+
+#### migracao-mysql/modulo-conteudo — Repositório de seções em MySQL
+- Origem: planejada
+- Descrição: `MySqlSectionRepository` implementando `SectionRepositoryPort`, substituindo `supabase-section.repository.ts`, usando o cliente Prisma de `persistencia-orm`.
+- Rastreável a: SDD § D-01, § "Contratos de dados/API/interfaces" (`GET/PUT /api/admin/sections*`), § C-03, C-04, C-08
+- Critério de "pronto": `npm run test -w apps/api` passa, incluindo os testes já existentes do módulo `content` portados para o novo repositório (nenhum teste de caso de uso ou controller deveria precisar mudar, só o teste do adaptador — ver SDD § "Camadas e padrão arquitetural"); com a API no ar contra o MySQL do compose, `PUT /api/admin/sections/hero` gravado é lido de volta idêntico por `GET /api/content`.
+- Dependências: migracao-mysql/persistencia-orm
+- Execução: paralelizável com modulo-metadados, modulo-leads e modulo-midia (módulos/diretórios distintos: `modules/content/infrastructure/`)
+- Toca documentação: não (troca de adaptador interno, sem mudança de contrato visível)
+- Status: pendente
+
+#### migracao-mysql/modulo-metadados — Repositório de metadados do site em MySQL
+- Origem: planejada
+- Descrição: `MySqlSiteMetadataRepository` substituindo `supabase-site-metadata.repository.ts`.
+- Rastreável a: SDD § "Modelo de dados" (`site_metadata`), § C-09
+- Critério de "pronto": `npm run test -w apps/api` passa; `PUT /api/admin/metadata` gravado é lido de volta por `GET /api/seo` sem executar JavaScript no lado do consumidor (verificação por `curl`, mesmo método já usado para C-09).
+- Dependências: migracao-mysql/persistencia-orm
+- Execução: paralelizável com modulo-conteudo, modulo-leads e modulo-midia (`modules/metadata/infrastructure/`)
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql/modulo-leads — Repositório de leads em MySQL
+- Origem: planejada
+- Descrição: `MySqlLeadRepository` substituindo `supabase-lead.repository.ts`, preservando o recorte por horário de Brasília (`brasilia-time.ts`) sobre `created_at` gravado em UTC (SDD § "Modelo de dados", nota sobre `timestamptz` → `DATETIME(3)`).
+- Rastreável a: SDD § "Modelo de dados" (`leads`), § C-11, C-12, RN-01
+- Critério de "pronto": `npm run test -w apps/api` passa, incluindo o teste de guarda do filtro por período em horário de Brasília (mesmo teste que já existe, portado para o adaptador novo); `POST /api/leads` seguido de `GET /api/admin/leads/export` (autenticado) devolve um `.csv` com separador `;`, BOM UTF-8 e todas as colunas de RN-01, verificado abrindo o arquivo gerado.
+- Dependências: migracao-mysql/persistencia-orm
+- Execução: paralelizável com modulo-conteudo, modulo-metadados e modulo-midia (`modules/leads/infrastructure/`)
+- Toca documentação: não
+- Status: pendente
+
+#### migracao-mysql/modulo-midia — Armazenamento MinIO e repositório de mídia em MySQL
+- Origem: planejada
+- Descrição: `MinioMediaStorage` implementando `MediaStorage` (substitui `supabase-media-storage.ts`, ver SDD § D-05 — URL `PUT` pré-assinada em vez de credencial TUS); `MySqlMediaRepository` e `MySqlMediaUrlRepository` substituindo os equivalentes Supabase.
+- Rastreável a: SDD § D-05, § "Modelo de dados" (`media_assets`), § C-06, C-07
+- Critério de "pronto": `npm run test -w apps/api` passa; com `minio` do compose no ar, `POST /api/admin/media/upload-url` devolve `{ uploadUrl, expiresInSeconds }`; um `PUT` real desse `uploadUrl` com um arquivo de imagem de teste é aceito pelo MinIO sem passar pela API (verificado por `curl -X PUT` direto, sem token de sessão — só a URL pré-assinada); `POST /api/admin/media` confirma o registro e `publicUrlFor` devolve uma URL que baixa o mesmo arquivo.
+- Dependências: migracao-mysql/persistencia-orm, migracao-mysql/infraestrutura
+- Execução: paralelizável com modulo-conteudo, modulo-metadados e modulo-leads (`modules/media/infrastructure/`)
+- Toca documentação: sim — `docs/API.md` ganha o novo formato da credencial de upload
+- Status: pendente
+
+#### migracao-mysql/autenticacao-propria — Login, hash de senha e JWT próprio
+- Origem: planejada
+- Descrição: novo endpoint `POST /api/auth/login` (use-case + controller); hashing/verificação de senha com argon2id; emissão de JWT com `jose` usando `AUTH_JWT_SECRET`; `AppJwtVerifier` substituindo `jwks-token-verifier.ts` na guarda global (SDD § D-03).
+- Rastreável a: SDD § D-03, § "Contratos de dados/API/interfaces" (`POST /api/auth/login`), § C-01, C-02
+- Critério de "pronto": `npm run test -w apps/api` passa, incluindo: login com credenciais válidas devolve `200` com token; login com e-mail inexistente e login com senha errada devolvem a **mesma** mensagem de erro (C-02 — não revelar qual dos dois falhou); token expirado ou assinado com segredo errado responde `401` na guarda global; endpoint novo criado sem marcação nasce protegido (mesmo teste de mutação já feito na T5 original, reaplicado ao verificador novo).
+- Dependências: migracao-mysql/persistencia-orm (tabela `operators` já precisa existir)
+- Execução: paralelizável com modulo-conteudo, modulo-metadados, modulo-leads e modulo-midia (`modules/auth/`, diretório próprio)
+- Toca documentação: sim — `docs/API.md` ganha o endpoint de login; `docs/OPERACAO.md` explica a variável `AUTH_JWT_SECRET`
+- Status: pendente
+
+#### migracao-mysql/gestao-operadores — Diretório de operadores em MySQL e bootstrap
+- Origem: planejada
+- Descrição: `MySqlOperatorDirectory` substituindo `supabase-operator.directory.ts` (lista, cria com hash argon2id, remove); script `seed:operator` (`apps/api/src/migration/` ou pasta equivalente) para criar o primeiro operador de um ambiente novo, direto na tabela `operators`.
+- Rastreável a: SDD § D-09, § "Modelo de dados" (`operators`), § C-13
+- Critério de "pronto": `npm run test -w apps/api` passa, incluindo os testes de guarda já existentes (recusar remover a si mesmo e remover o último operador restante, `409`); `npm run seed:operator` (com variáveis de e-mail/senha/nome) grava um operador que consegue de fato logar em `POST /api/auth/login` logo em seguida — verificação ponta a ponta do bootstrap, não só da inserção no banco.
+- Dependências: migracao-mysql/autenticacao-propria (reaproveita o hashing), migracao-mysql/persistencia-orm
+- Execução: sequencial após autenticacao-propria
+- Toca documentação: sim — substitui, em `docs/OPERACAO.md`, o passo antigo de criar o primeiro operador pelo painel do Supabase
+- Status: pendente
+
+#### migracao-mysql/painel-cliente — Painel fala com a API, não mais com um provedor externo
+- Origem: planejada
+- Descrição: em `apps/admin`, substituir `auth/supabase-auth-gateway.ts` por uma chamada a `POST /api/auth/login`; substituir `media/media-transfer.ts` (cliente TUS) por um `PUT` com a URL pré-assinada devolvida pela API, reportando progresso via evento de upload do `XMLHttpRequest`; remover `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` de `config/env.ts` e do `.env.example` do admin.
+- Rastreável a: SDD § D-03, § D-05, § C-02, C-06, C-07
+- Critério de "pronto": `npm run test -w apps/admin` passa; verificação pelo consumidor: login real no painel (contra a API + MySQL do compose) autentica e mantém a sessão ao recarregar a página; upload real de uma imagem e de um vídeo de porte equivalente aos existentes mostra progresso visível e o arquivo aparece na LP depois de salvo.
+- Dependências: migracao-mysql/autenticacao-propria, migracao-mysql/modulo-midia
+- Execução: sequencial (único ponto de escrita nos dois arquivos do painel que hoje falam com Supabase)
+- Toca documentação: sim — `docs/PAINEL.md` se a descrição do fluxo de login/upload citar o Supabase por nome
+- Status: pendente
+
+#### migracao-mysql/migrar-conteudo-e-remover-supabase — Conteúdo inicial em MySQL e limpeza da dependência
+- Origem: planejada
+- Descrição: adaptar `apps/api/src/migration/` (script `migrate:content`) para gravar no MySQL via Prisma em vez de no Supabase; remover `@supabase/supabase-js` de todos os `package.json` do monorepo; apagar os arquivos `supabase-*` mortos (`shared/infrastructure/supabase-client.ts`, `supabase.module.ts`, `supabase-operation.error.ts`, `supabase-auth-operation.error.ts`, `jwks-token-verifier.ts` e os sete repositórios/adaptadores `supabase-*.ts` já substituídos pelas tarefas anteriores); varrer o repositório inteiro por `supabase`/`Supabase`/`SUPABASE` fora de `agent_context/CHANGELOG.md`, `agent_context/PLAN.md` (registro histórico) e `docs/videos-setup/` (nota histórica anterior ao CMS).
+- Rastreável a: SDD § "Dependências externas" (`@supabase/supabase-js` removido)
+- Critério de "pronto": `npm run test` (raiz, todos os workspaces) passa; `npm run migrate:content` roda contra o MySQL do compose e `GET /api/content` devolve as 9 seções preenchidas; `grep -ril supabase apps/ packages/ docker/ docker-compose.yml .env.example` não retorna nenhum arquivo de código ou configuração (só, se algo aparecer, seria em `docs/` histórico — verificado à parte); `npm ls @supabase/supabase-js` falha em todos os workspaces.
+- Dependências: migracao-mysql/modulo-conteudo, migracao-mysql/modulo-metadados, migracao-mysql/modulo-leads, migracao-mysql/modulo-midia, migracao-mysql/gestao-operadores, migracao-mysql/painel-cliente
+- Execução: sequencial (só pode remover o que as tarefas anteriores já substituíram)
+- Toca documentação: não diretamente (a limpeza de `docs/` fica para a próxima tarefa)
+- Status: pendente
+
+#### migracao-mysql/documentacao — README e /docs refletindo MySQL + MinIO
+- Origem: planejada
+- Descrição: atualizar `README.md`, `docs/BANCO-DE-DADOS.md`, `docs/API.md`, `docs/OPERACAO.md`, `docs/DOCKER.md` e `docs/MANUTENCAO.md` para descrever a arquitetura nova; remover ou substituir `docs/MIGRAR-PARA-NOVO-SUPABASE.md` (obsoleto — não existe mais "novo projeto Supabase" a migrar) por um roteiro equivalente de backup/restauração de MySQL + MinIO, se fizer sentido, ou apenas removê-lo com a decisão registrada aqui.
+- Rastreável a: `references/documentacao-tecnica.md`; conteúdo rastreável às seções do SDD já revisadas nesta fase
+- Critério de "pronto": nenhuma seção de `docs/` ou do README cita Supabase como parte da arquitetura atual (busca textual); `docs/OPERACAO.md` documenta `seed:operator` como o passo do operador zero; `docker compose up --build -d` seguido dos passos documentados no README leva a um painel funcional, conferido manualmente.
+- Dependências: migracao-mysql/migrar-conteudo-e-remover-supabase
+- Execução: sequencial
+- Toca documentação: sim (é a própria tarefa)
+- Status: pendente
+
+#### migracao-mysql/revisao-final — Verificação de ponta a ponta e drift detection
+- Origem: planejada
+- Descrição: repetir, para a plataforma de dados nova, a mesma disciplina de revisão final já aplicada na T17 do projeto original — grep de credenciais, checagem de drift contra o SDD, e um passe manual pelos critérios de aceitação afetados.
+- Rastreável a: SDD § "Critérios de aceitação por capacidade" (C-01, C-02, C-03, C-06, C-07, C-09, C-11, C-12, C-13), § "Riscos técnicos" (R-09, R-11)
+- Critério de "pronto": com `docker compose up --build -d` de ponta a ponta (ambiente limpo, volumes novos): `npm run seed:operator` cria o primeiro operador; login no painel funciona; upload de uma imagem e de um vídeo de porte equivalente aos existentes funciona e aparece na LP; editar um texto de seção aparece na LP; um envio do formulário da LP aparece na lista de leads e é exportável em `.csv`; nenhuma variável `VITE_*` do build da LP ou do painel contém `AUTH_JWT_SECRET`, senha do MySQL ou chave secreta do MinIO (grep nos artefatos de build, mesmo método da R-09/T17 original).
+- Dependências: migracao-mysql/documentacao
+- Execução: sequencial (última tarefa da fase)
+- Toca documentação: não (verifica a documentação já escrita, não escreve nova)
+- Status: pendente
+
 ## Ordem de execução
 
 ```
@@ -721,6 +847,27 @@ T5 ─→ T10 ─→ T11 ─→ T12 ─→ T13 ───────────
 ```
 
 Pares realmente paralelizáveis, por não compartilharem arquivo nem módulo: **T2 ‖ T3** (após T1) e **T14 ‖ T15** (após T6 e T9). Todo o resto é sequencial. Os módulos da API (T6, T7, T8) têm dependência lógica apenas de T5, mas registram no mesmo módulo raiz da aplicação — por isso são executados em sequência, conforme o guardrail de arquivo compartilhado.
+
+### Fase migracao-mysql (2026-09-21)
+
+```
+infraestrutura ─→ persistencia-orm ─┬─→ modulo-conteudo ──────────┐
+                                     ├─→ modulo-metadados ────────┤
+                                     ├─→ modulo-leads ────────────┤
+                                     ├─→ modulo-midia ────────────┤
+                                     └─→ autenticacao-propria ────┤
+                                                │                  │
+                                                └─→ gestao-operadores
+                                                                   │
+                    (autenticacao-propria, modulo-midia) ─→ painel-cliente
+                                                                   │
+   (modulo-conteudo, modulo-metadados, modulo-leads,               │
+    modulo-midia, gestao-operadores, painel-cliente) ─────────────┴─→ migrar-conteudo-e-remover-supabase
+                                                                   │
+                                                                   └─→ documentacao ─→ revisao-final
+```
+
+Paralelizáveis entre si, por tocarem módulos/diretórios distintos dentro de `apps/api/src/modules/`: **modulo-conteudo ‖ modulo-metadados ‖ modulo-leads ‖ modulo-midia ‖ autenticacao-propria** (todas dependem só de `persistencia-orm`; `modulo-midia` depende também de `infraestrutura` por precisar do MinIO no ar). `gestao-operadores` e `painel-cliente` esperam suas dependências específicas terminarem antes de começar. `migrar-conteudo-e-remover-supabase` é o ponto de sincronização: só começa depois que **todas** as tarefas de módulo/painel terminaram, porque é ela que remove os arquivos `supabase-*` que as demais ainda referenciavam até serem substituídas.
 
 **Correção feita durante a execução (2026-09-02):** o plano original marcava **T2 ‖ T3 ‖ T4** como paralelizáveis. T2 e T4 instalam dependências npm e portanto ambas escrevem em `package-lock.json` na raiz — arquivo compartilhado. Pelo guardrail de arquivo compartilhado, **T4 passa a ser sequencial em relação a T2**, mesmo sem dependência lógica entre elas. T3 permanece paralelizável por ser SQL mais um script de verificação sem nenhuma dependência npm nova.
 

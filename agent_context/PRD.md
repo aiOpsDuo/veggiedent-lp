@@ -62,7 +62,7 @@ Permitir que a equipe responsável pela landing page do Veggiedent altere qualqu
 **Restrições tecnológicas definidas pelo usuário (obrigatórias):**
 
 - O backend do CMS será construído em **NestJS**.
-- O **Supabase** será usado como banco de dados e como armazenamento dos arquivos de imagem e vídeo enviados pelo painel.
+- **Revisto em 2026-09-21** (ver `agent_context/CHANGELOG.md`): o banco de dados é **MySQL auto-hospedado** (não mais Supabase). O armazenamento dos arquivos de imagem e vídeo enviados pelo painel é **MinIO auto-hospedado** (compatível com S3). A autenticação dos operadores passa a ser própria da aplicação (e-mail e senha com hash, sessão por token emitido pela própria API) em vez de um provedor de identidade externo. Ambos os serviços (MySQL e MinIO) sobem junto da API e do proxy no mesmo `docker-compose.yml` já usado pelo projeto — nenhuma conta em serviço de nuvem de terceiros é mais uma dependência obrigatória do projeto.
 - A landing page busca o conteúdo em tempo de execução (runtime), consultando a API do CMS ao carregar. Não haverá reconstrução (rebuild) do site a cada publicação.
 - Todo o CMS é acessado sob a rota **`/admin`** do mesmo site da landing page, sempre atrás de login.
 - Os metadados de busca e compartilhamento são lidos do banco e inseridos no HTML do lado do servidor antes da resposta chegar ao navegador — a landing page continua sendo o SPA que é hoje, sem migração para um framework de renderização no servidor.
@@ -77,14 +77,14 @@ Permitir que a equipe responsável pela landing page do Veggiedent altere qualqu
 
 **Dependências:**
 
-- Conta e projeto no Supabase, com as credenciais disponíveis para o ambiente do backend.
+- **Revisto em 2026-09-21:** não há mais dependência de conta em serviço de nuvem de terceiros para banco, armazenamento ou identidade. O ambiente de hospedagem precisa rodar os contêineres de MySQL e MinIO junto da API e do proxy (mesmo `docker-compose.yml`), com volumes próprios para persistência dos dois.
 - Ambiente de hospedagem para o backend NestJS e para o painel de administração.
 - **A integração com o RD Station Marketing foi descontinuada** por decisão do usuário em 2026-09-03. O lead deixa de ter destino externo: ele existe apenas no banco do CMS, e sai de lá pela exportação em CSV. Isso eleva o peso do backup do banco e de qualquer migração que toque a tabela de leads — não há mais cópia do dado em outro sistema.
 
 **Pontos em aberto a resolver no SDD (não no PRD):**
 
 - Se o CMS (backend NestJS + painel) vive neste mesmo repositório ou em um repositório separado.
-- Qual mecanismo de autenticação será usado, dentro da restrição NestJS + Supabase já definida.
+- ~~Qual mecanismo de autenticação será usado, dentro da restrição NestJS + Supabase já definida.~~ Resolvido: NestJS + MySQL + MinIO (2026-09-21); o mecanismo de autenticação própria está detalhado no SDD § D-03.
 
 ## Fora de escopo
 

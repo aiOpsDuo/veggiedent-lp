@@ -521,3 +521,31 @@ Consequencias:
 - **Rotacao de credenciais passa a ser responsabilidade declarada do usuario**, no momento da publicacao: chave secreta do Supabase, senha do banco e senha do operador, todas transitadas por chat. Registrado aqui para nao se perder — e anotado na propria T16, que e onde alguem vai procurar ao publicar.
 
 Escopo restante do projeto apos esta decisao: `publicacao/orquestracao-docker`, `ajustes/campos-de-desenvolvedor`, `lp/injetor-de-seo`, `dados/carga-do-instantaneo` e `publicacao/revisao-final`.
+
+## 2026-09-21 — Troca de plataforma de dados: Supabase sai, MySQL + MinIO + autenticação própria entram
+
+Documentos afetados: PRD.md, SDD.md, PLAN.md
+
+Motivo: pedido direto do usuário para tirar a dependência do Supabase e auto-hospedar o banco de dados. O projeto ainda não está em produção (o Supabase em uso era só de desenvolvimento — ver `docs/MIGRAR-PARA-NOVO-SUPABASE.md`, que documentava o passo seguinte, agora obsoleto), então não há dado real de usuário final a migrar: a troca é de plataforma, não de dado.
+
+Decisões confirmadas pelo usuário (ver pergunta feita antes de qualquer edição, três decisões, todas a opção recomendada):
+1. **Armazenamento de arquivos:** MinIO auto-hospedado (compatível com S3), no lugar do Supabase Storage. Preserva o padrão já existente de credencial temporária emitida pela API e upload direto do navegador ao armazenamento, sem os bytes passarem pela API.
+2. **Autenticação:** autenticação própria dentro do NestJS — tabela `operators` no MySQL com senha em hash (argon2), login emitindo um JWT assinado com segredo próprio da aplicação (antes: verificado por JWKS do Supabase Auth), no lugar do Supabase Auth + Admin API.
+3. **Onde roda o MySQL:** serviço `mysql` novo no `docker-compose.yml` já existente do projeto, com volume próprio — mesmo padrão de "um comando, um endereço" que a API e o proxy já seguem.
+
+Impacto:
+- **SDD.md** — reescritas as decisões D-03 (autenticação), D-05 (upload/armazenamento) e D-09 (gestão de operadores); acrescentada uma decisão nova sobre o driver/ORM de acesso ao MySQL; atualizados T5 (plataforma de dados), os diagramas C4, o modelo de dados (tipos Postgres → MySQL, RLS removida da descrição por não existir em MySQL — o isolamento continua garantido pela arquitetura, não por um recurso do banco), os contratos de API afetados (`POST /api/auth/login` novo; formato da credencial de upload muda de TUS retomável para PUT pré-assinado), as dependências externas e os riscos técnicos (R-09 passa a ser sobre o segredo JWT e as chaves do MinIO, não mais sobre a chave secreta do Supabase).
+- **PLAN.md** — nova fase `migracao-mysql`, com tarefas rastreáveis às seções do SDD acima (nunca `ajustes`, por não serem correção nem pedido pontual, e sim decorrência direta de uma mudança de arquitetura já registrada no SDD).
+- Toda referência a Supabase em `docs/` que descreve a arquitetura **atual** do projeto deixa de ser válida ao final da fase `migracao-mysql` — `docs/MIGRAR-PARA-NOVO-SUPABASE.md` em particular perde sentido (não existe mais "novo projeto Supabase" para migrar) e será removido ou substituído por um equivalente de backup/restauração de MySQL + MinIO, como parte da tarefa `migracao-mysql/documentacao`. Referências históricas em `CHANGELOG.md` e no próprio `PLAN.md` (T1–T36) permanecem intactas, por registrarem o que de fato aconteceu na época.
+
+## 2026-09-21 — Retomada após reinício da sessão: `origin/main` avançou por fora do orquestrador
+
+Documentos afetados: nenhum de conteúdo — apenas reconciliação de estado, registrada aqui pelo guardrail de retomada (SKILL.md § Etapa 0).
+
+Motivo: a sessão do Claude Code foi reiniciada em meio à execução da tarefa `migracao-mysql/infraestrutura`. Ao retomar, `git status` mostrou `main` local **6 commits atrás** de `origin/main` — commits que não passaram por este orquestrador: ajustes de layout/conteúdo da LP (Header, Footer, Hero, Educação, Botão, ícone do FAQ), um campo novo no esquema de `rotina` (`ctaLabel`/`ctaHref`, CTA opcional por passo), e a adição de `vercel.json` apontando a API para `https://veggiedent.onrender.com`.
+
+**Verificação feita antes de prosseguir (a pergunta que a divergência levantou):** o `vercel.json` sugeria que o projeto pudesse já estar publicado em produção com um Supabase real — o que mudaria a fase `migracao-mysql/migrar-conteudo-e-remover-supabase` de "reseed do zero" para "migração de dado real, sem perda". Perguntado diretamente ao usuário: **confirmado que não há uso de produção ainda** — o deploy existe, mas segue em desenvolvimento/homologação, sem lead real de visitante nem operador real além de teste. A premissa registrada na entrada de 2026-09-21 anterior ("não há dado de produção a migrar") **permanece válida**.
+
+**Ação:** `git pull --ff-only` trouxe os 6 commits para o `main` local, sem conflito com as edições de `agent_context/` já em andamento (arquivos disjuntos) nem com a branch de tarefa `feat/migracao-mysql-infraestrutura` (rebaseada em seguida sobre o `main` atualizado). O novo campo `ctaLabel`/`ctaHref` em `rotina` é um campo de conteúdo, sem relação com banco de dados — nenhuma tarefa da fase `migracao-mysql` precisa de ajuste por causa dele, além de o esquema JSON continuar cabendo na coluna `JSON` do MySQL sem mudança de tipo.
+
+**Nota para o usuário, não uma ação tomada por este orquestrador:** `agent_context/` documenta o desenvolvimento orquestrado por esta skill; commits que chegam a `origin/main` por fora dela (direto pelo GitHub, por outra ferramenta, ou por edição manual) não quebram o processo, mas ficam invisíveis para o orquestrador até a próxima retomada — como aconteceu aqui. Se esses 6 commits foram intencionais e vão continuar acontecendo por fora deste fluxo, vale avisar no início da próxima sessão em vez de deixar para a verificação de retomada encontrar.

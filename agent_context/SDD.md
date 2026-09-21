@@ -28,7 +28,7 @@ Derivado de `agent_context/PRD.md` (aprovado). Nenhuma decisão aqui introduz ca
 Sinais concretos do PRD que sustentam a classificação — nenhum deles é preferência de arquitetura:
 
 - **Múltiplos domínios de negócio:** o PRD descreve quatro domínios distintos com regras próprias — conteúdo editorial, mídia, metadados de página e leads (este último com exigência de LGPD que os outros não têm).
-- **Integração externa obrigatória:** Supabase (banco, armazenamento e autenticação) é dependência declarada no PRD, não opcional. *(O RD Station, que também constava aqui, foi descontinuado em 2026-09-03; a classificação de porte não muda, pois os demais sinais bastam.)*
+- **Integração externa obrigatória:** banco (MySQL), armazenamento de arquivos (MinIO) e autenticação própria são dependências declaradas no PRD, não opcionais — auto-hospedadas desde 2026-09-21 (antes, Supabase cobria as três). *(O RD Station, que também constava aqui, foi descontinuado em 2026-09-03; a classificação de porte não muda, pois os demais sinais bastam.)*
 - **Mais de um consumidor:** a LP pública e o painel consomem o mesmo conteúdo por caminhos diferentes, com exigências de segurança opostas (leitura anônima do conteúdo publicado × acesso autenticado a leads).
 - **Evolução contínua esperada:** o critério de release exige que "adicionar um campo novo a uma seção existente seja uma tarefa pequena e documentada" — isso é um requisito explícito de manutenibilidade de longo prazo, incompatível com o porte Pequeno (MVP/protótipo).
 
@@ -46,7 +46,7 @@ O porte Pequeno foi descartado por não atender nenhum dos seus critérios: são
 | **T2 — Injetor de SEO** | Intercepta a requisição do documento HTML, insere os metadados e devolve. | Função de borda da plataforma de CDN |
 | **T3 — Painel** | Interface de edição sob `/admin`. | React 18 + Vite 5 + TypeScript 5 |
 | **T4 — API do CMS** | Regras de negócio, validação, autorização, repasse de leads. | NestJS 11 (Node 20+) + TypeScript 5 |
-| **T5 — Plataforma de dados** | Banco relacional, armazenamento de arquivos, emissão de identidade. | Supabase (Postgres + Storage + Auth) |
+| **T5 — Plataforma de dados** | Banco relacional, armazenamento de arquivos, emissão de identidade. | **Revisto em 2026-09-21:** MySQL 8 (auto-hospedado) + MinIO (auto-hospedado, compatível com S3) + autenticação própria na API (antes: Supabase — Postgres + Storage + Auth) |
 
 
 T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço sempre ativo. **A LP é servida pela CDN, não pela API** — é isso que cumpre o requisito do PRD de que a indisponibilidade do CMS não derrube a página pública.
@@ -57,16 +57,16 @@ T1, T2 e T3 são publicados como artefatos estáticos em CDN; T4 é um serviço 
 |---|---|---|
 | **Apresentação** | Controllers, DTOs, pipes de validação, guardas de autenticação. Nenhuma regra de negócio. | Aplicação |
 | **Aplicação** | Casos de uso: publicar seção, registrar mídia, receber lead, exportar leads. Orquestra domínio e portas. | Domínio, Portas |
-| **Domínio** | Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework ou de Supabase. | Nada |
-| **Infraestrutura** | Adaptadores que implementam as portas: repositórios Supabase, armazenamento, verificador de token. | Domínio (implementa suas portas) |
+| **Domínio** | Esquemas de seção, regras de validação de conteúdo, regras de visibilidade, invariantes do lead. Sem nenhum import de framework ou de infraestrutura de dados. | Nada |
+| **Infraestrutura** | Adaptadores que implementam as portas: repositórios MySQL, armazenamento MinIO, emissão/verificação de token próprio. **Revisto em 2026-09-21** — antes: repositórios Supabase, armazenamento Supabase Storage, verificador de token por JWKS do Supabase Auth. | Domínio (implementa suas portas) |
 
-**Padrão arquitetural:** **Hexagonal (Ports & Adapters)**, com módulos NestJS por domínio (`content`, `media`, `leads`, `auth`, `metadata`). Justificativa ligada ao porte e ao PRD: o PRD impõe duas integrações externas obrigatórias e exige que credenciais e acesso a dados fiquem confinados ao servidor; isolar Supabase e RD Station atrás de portas é o que permite testar as regras de conteúdo e de lead sem tocar em serviço externo, e é o que torna "adicionar um campo novo" uma mudança de esquema em vez de uma mudança espalhada por camadas.
+**Padrão arquitetural:** **Hexagonal (Ports & Adapters)**, com módulos NestJS por domínio (`content`, `media`, `leads`, `auth`, `metadata`, `operators`). Justificativa ligada ao porte e ao PRD: o PRD impõe integrações externas obrigatórias e exige que credenciais e acesso a dados fiquem confinados ao servidor; isolar a plataforma de dados e o RD Station atrás de portas é o que permite testar as regras de conteúdo e de lead sem tocar em serviço externo, e é o que torna "adicionar um campo novo" uma mudança de esquema em vez de uma mudança espalhada por camadas. **Expectativa declarada para a troca de Supabase para MySQL/MinIO (2026-09-21):** por esse isolamento já existir, a troca de plataforma de dados deve ficar confinada aos arquivos de `infrastructure/` de cada módulo, sem exigir mudança em caso de uso, controller ou regra de domínio — a Fase 4 verifica se isso se sustenta na prática (ver `PLAN.md` § fase `migracao-mysql`, critério de "pronto" da tarefa `revisao-final`).
 
 **Regra de dependência:** **estrita**. Cada camada só conhece a imediatamente inferior; o Domínio não conhece ninguém. A Infraestrutura depende do Domínio (implementa suas interfaces), nunca o contrário — é o princípio de Inversão de Dependência aplicado no nível de camada, consistente com o DIP exigido no nível de classe. Consequências obrigatórias:
 
 - Nenhum controller contém regra de negócio; controller apenas traduz HTTP em chamada de caso de uso.
-- Nenhum acesso ao Supabase acontece fora da camada de Infraestrutura — nem em controller, nem em caso de uso.
-- A LP e o painel nunca falam com o Supabase para ler ou gravar conteúdo; falam sempre com a API. A única exceção declarada é o **envio dos bytes** de um arquivo direto do navegador para o armazenamento, com credencial temporária emitida pela API (justificativa em D-05).
+- Nenhum acesso ao banco ou ao armazenamento acontece fora da camada de Infraestrutura — nem em controller, nem em caso de uso.
+- A LP e o painel nunca falam com o banco para ler ou gravar conteúdo; falam sempre com a API. A única exceção declarada é o **envio dos bytes** de um arquivo direto do navegador para o armazenamento (MinIO), com credencial temporária emitida pela API (justificativa em D-05).
 
 ### Ponto único de entrada (exigência da skill 1.5.0)
 
@@ -98,49 +98,57 @@ O usuário confirmou repositório único com pastas separadas. O repositório pa
 
 ### Modelo de dados
 
-Quatro tabelas em Postgres (Supabase).
+**Revisto em 2026-09-21:** cinco tabelas em MySQL 8 (antes: quatro tabelas em Postgres/Supabase — a quinta, `operators`, nasce da D-03/D-09 revisadas). Tradução de tipo Postgres → MySQL usada nas quatro tabelas originais: `uuid` → `CHAR(36)` (UUID gerado na aplicação, não no banco — MySQL não tem gerador nativo de UUID v4 portável); `jsonb` → `JSON` (MySQL 8 tem tipo `JSON` nativo, com o mesmo papel de guardar o documento validado pelo esquema da aplicação — D-01 não muda); `text` → `VARCHAR` com tamanho declarado onde há limite conhecido, ou `TEXT` onde não há; `timestamptz` → `DATETIME(3)`, sempre gravado em UTC pela aplicação (MySQL `DATETIME` não guarda fuso; a conversão para horário de Brasília, já feita hoje para o filtro de leads — ver `brasilia-time.ts` — passa a partir da premissa de que todo valor lido do banco já é UTC, nunca do fuso da sessão do MySQL); `boolean` → `TINYINT(1)` (convenção padrão do MySQL para booleano).
 
 **`content_sections`** — um registro por seção. Todo o conteúdo da seção, incluindo suas listas, vive em `data`.
 
-| Coluna | Tipo | Nota |
+| Coluna | Tipo (MySQL) | Nota |
 |---|---|---|
-| `key` | `text` PK | Um dos 12 identificadores fechados de seção |
-| `data` | `jsonb` | Conteúdo validado contra o esquema da seção |
-| `is_published` | `boolean` | Visibilidade da seção inteira |
-| `updated_at` | `timestamptz` | |
-| `updated_by` | `uuid` | Operador que salvou |
+| `key` | `VARCHAR(64)` PK | Um dos 9 identificadores fechados de seção |
+| `data` | `JSON` | Conteúdo validado contra o esquema da seção |
+| `is_published` | `TINYINT(1)` | Visibilidade da seção inteira |
+| `updated_at` | `DATETIME(3)` | UTC |
+| `updated_by` | `CHAR(36)` | Operador que salvou |
 
 **`site_metadata`** — registro único (`id` fixo) com `title`, `description`, `og_image_media_id`, `canonical_url`, `updated_at`, `updated_by`.
 
 **`media_assets`** — um registro por arquivo enviado.
 
-| Coluna | Tipo | Nota |
+| Coluna | Tipo (MySQL) | Nota |
 |---|---|---|
-| `id` | `uuid` PK | Referenciado pelos documentos de seção |
-| `kind` | `text` | `image` \| `video` |
-| `storage_path` | `text` | Caminho no bucket |
-| `public_url` | `text` | URL pública servida ao navegador |
+| `id` | `CHAR(36)` PK | UUID gerado na aplicação. Referenciado pelos documentos de seção |
+| `kind` | `VARCHAR(16)` | `image` \| `video` |
+| `storage_path` | `VARCHAR(512)` | Caminho no bucket MinIO |
+| `public_url` | `VARCHAR(1024)` | URL pública servida ao navegador |
 | `mime_type`, `size_bytes`, `original_filename` | | |
 | `width`, `height`, `duration_seconds` | nulos conforme o tipo | |
 | `created_at`, `created_by` | | |
 
 **`leads`** — um registro por envio do formulário.
 
-| Coluna | Tipo | Nota |
+| Coluna | Tipo (MySQL) | Nota |
 |---|---|---|
-| `id` | `uuid` PK | |
-| `nome`, `email` | `text` | Obrigatórios |
-| `telefone`, `nome_cachorro`, `porte_cachorro`, `cidade_estado` | `text` | Opcionais |
-| `conhece_virbac`, `usa_produto_virbac`, `qual_produto_virbac` | `text` | Opcionais — hoje coletados e descartados (ver R-01) |
-| `aceite_comunicacoes` | `boolean` | Opt-in de marketing. Varia de verdade entre `true` e `false`, por isso é guardado |
-| `origem` | `text` | |
-
-
-| `created_at` | `timestamptz` | |
+| `id` | `CHAR(36)` PK | UUID gerado na aplicação |
+| `nome`, `email` | `VARCHAR(255)` | Obrigatórios |
+| `telefone`, `nome_cachorro`, `porte_cachorro`, `cidade_estado` | `VARCHAR(255)` | Opcionais |
+| `conhece_virbac`, `usa_produto_virbac`, `qual_produto_virbac` | `VARCHAR(255)` | Opcionais — hoje coletados e descartados (ver R-01) |
+| `aceite_comunicacoes` | `TINYINT(1)` | Opt-in de marketing. Varia de verdade entre `true` e `false`, por isso é guardado |
+| `origem` | `VARCHAR(64)` | |
+| `created_at` | `DATETIME(3)` | UTC |
 
 **Por que não existe coluna `aceite_lgpd`.** O consentimento com a Política de Privacidade é **condição de envio**: sem ele o formulário é recusado com `422` e nenhum registro nasce. Guardar a coluna significaria gravar a constante `true` em toda linha — informação zero, e uma coluna inútil na exportação. A prova de consentimento é a própria existência do registro somada a `created_at`. Se um dia for preciso provar **a que texto** a pessoa consentiu (por exemplo, depois de a Política de Privacidade mudar), o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre este erro de modelagem.
 
-**Row Level Security:** habilitada em todas as quatro tabelas, sem nenhuma policy permissiva para os papéis anônimo e autenticado. Nenhum cliente alcança o banco diretamente; todo acesso passa pela API usando a chave secreta do lado do servidor. Isso cumpre literalmente o requisito de isolamento da superfície pública do PRD.
+**`operators`** — nova tabela (D-03/D-09 revisadas em 2026-09-21). Um registro por conta de operador do painel.
+
+| Coluna | Tipo (MySQL) | Nota |
+|---|---|---|
+| `id` | `CHAR(36)` PK | UUID gerado na aplicação |
+| `email` | `VARCHAR(255)` UNIQUE | Login |
+| `password_hash` | `VARCHAR(255)` | Hash argon2id — nunca a senha em texto puro, nunca lido fora do módulo `auth`/`operators` |
+| `name` | `VARCHAR(255)` | Exibido no painel. Antes vivia em `user_metadata` do Supabase Auth por não haver tabela própria; agora tem coluna própria, já que a tabela é da aplicação |
+| `created_at` | `DATETIME(3)` | UTC |
+
+**Isolamento de acesso (revisto em 2026-09-21):** MySQL não tem um equivalente de Row Level Security do Postgres. A garantia de isolamento da superfície pública do PRD passa a vir inteiramente da arquitetura, não de um recurso do banco: a aplicação conecta ao MySQL com uma única credencial de servidor, nunca exposta ao navegador (mesma garantia de antes, R-09 revisado abaixo); nenhum cliente (LP, painel) tem endereço, porta ou credencial do MySQL; todo acesso passa pela API. Isso é estritamente equivalente, na prática, ao que a RLS "sem nenhuma policy permissiva" já garantia — o Supabase também nunca expunha o banco a um cliente sem passar pela API desta aplicação; a política de RLS era uma segunda camada de defesa contra um vazamento de credencial que, por não existir mais um serviço externo com chave própria, deixa de ter o mesmo cenário de risco (ver R-09).
 
 ## Diagrama de arquitetura
 
@@ -152,11 +160,15 @@ C4Context
   Person(visitante, "Visitante", "Tutor de cão que acessa a landing page")
   Person(operador, "Operador", "Equipe de marketing que edita conteúdo")
   System(cms, "CMS Veggiedent LP", "Landing page pública + painel de administração em /admin")
-  System_Ext(supabase, "Supabase", "Banco, armazenamento de arquivos e identidade")
+  System_Ext(mysql, "MySQL", "Banco relacional, auto-hospedado")
+  System_Ext(minio, "MinIO", "Armazenamento de arquivos, auto-hospedado, compatível com S3")
   Rel(visitante, cms, "Lê a página e envia o formulário", "HTTPS")
   Rel(operador, cms, "Edita conteúdo e consulta leads", "HTTPS")
-  Rel(cms, supabase, "Persiste conteúdo, arquivos e leads; valida identidade", "HTTPS")
+  Rel(cms, mysql, "Persiste conteúdo, metadados e leads; verifica identidade (senha em hash + JWT próprio)", "TCP")
+  Rel(cms, minio, "Persiste e serve arquivos de mídia", "HTTPS")
 ```
+
+*(Revisto em 2026-09-21 — antes: um único `System_Ext(supabase, ...)` cobria banco, armazenamento e identidade.)*
 
 ### Containers
 
@@ -171,24 +183,28 @@ C4Container
     Container(admin, "Painel", "React + Vite, estático em CDN", "Edição de conteúdo e consulta de leads, sob /admin")
     Container(api, "API do CMS", "NestJS", "Regras de conteúdo, mídia, leads e autorização")
   }
-  System_Ext(supabase, "Supabase", "Postgres + Storage + Auth")
+  System_Ext(mysql, "MySQL", "Auto-hospedado")
+  System_Ext(minio, "MinIO", "Auto-hospedado, compatível com S3")
   Rel(visitante, seo, "Pede o documento HTML", "HTTPS")
   Rel(seo, lp, "Devolve o HTML com metadados")
   Rel(seo, api, "Lê os metadados publicados", "HTTPS")
   Rel(visitante, lp, "Interage com a página")
   Rel(lp, api, "Lê o conteúdo publicado e envia o lead", "HTTPS")
   Rel(operador, admin, "Edita")
-  Rel(admin, supabase, "Autentica e recebe o token", "HTTPS")
+  Rel(admin, api, "Login (e-mail e senha), recebe JWT próprio da aplicação", "HTTPS")
   Rel(admin, api, "Lê e grava conteúdo, mídia e leads", "HTTPS + token")
-  Rel(admin, supabase, "Envia os bytes do arquivo com credencial temporária", "HTTPS")
-  Rel(api, supabase, "Persiste e lê", "HTTPS + chave secreta")
+  Rel(admin, minio, "Envia os bytes do arquivo com credencial temporária (URL pré-assinada)", "HTTPS")
+  Rel(api, mysql, "Persiste e lê", "TCP + credencial de servidor")
+  Rel(api, minio, "Emite credencial, consulta, serve URL pública e remove arquivo", "HTTPS + chave de acesso")
 ```
+
+*(Revisto em 2026-09-21 — antes: o painel autenticava direto no Supabase Auth, `System_Ext(supabase, ...)` único cobria as três funções.)*
 
 ## Decisões técnicas e trade-offs
 
-### D-01 — Um documento por seção em `jsonb`, validado por esquema declarativo
+### D-01 — Um documento por seção em coluna `JSON`, validado por esquema declarativo
 
-**Escolhido:** cada seção é um registro com o conteúdo inteiro em `jsonb`, validado contra um esquema declarado em `packages/content-schema`.
+**Escolhido:** cada seção é um registro com o conteúdo inteiro em uma coluna `JSON` (revisto em 2026-09-21: `jsonb` era o tipo do Postgres/Supabase; `JSON` é o tipo nativo equivalente do MySQL 8 — a decisão em si não muda, só o banco que a hospeda), validado contra um esquema declarado em `packages/content-schema`.
 
 **Alternativas:** (a) uma tabela por seção, com colunas tipadas; (b) modelo entidade-atributo-valor genérico.
 
@@ -206,17 +222,23 @@ C4Container
 
 **Trade-off aceito:** formulário gerado dá menos liberdade de layout que um formulário escrito à mão. Aceitável para uma ferramenta interna, onde o PRD prioriza clareza sobre sofisticação visual.
 
-### D-03 — Autenticação pelo Supabase Auth, verificada por JWKS na API
+### D-03 — Autenticação própria no NestJS, com senha em hash e JWT assinado pela aplicação *(reescrita em 2026-09-21)*
 
-**Escolhido:** o painel autentica direto no Supabase Auth (e-mail e senha) e recebe um JWT. A API valida esse JWT contra o JWKS público do projeto Supabase, através de uma guarda global do NestJS; endpoints públicos são liberados por decorador explícito.
+> **Desenho original, superado em 2026-09-21:** o painel autenticava direto no Supabase Auth (e-mail e senha) e recebia um JWT; a API validava esse JWT contra o JWKS público do projeto Supabase. Superado pela troca de plataforma de dados (ver `agent_context/CHANGELOG.md`, entrada de 2026-09-21) — não havia mais um provedor de identidade externo para emitir e verificar o token.
 
-**Alternativas:** (a) autenticação própria no NestJS com tabela de usuários e hash de senha; (b) sessão por cookie assinado pela API.
+**Escolhido:** a API ganha um endpoint de login (`POST /api/auth/login`) que recebe e-mail e senha, busca o operador na tabela `operators` (MySQL) pelo e-mail, verifica a senha com **argon2id** contra `password_hash`, e — se válida — assina um JWT com um segredo simétrico próprio da aplicação (`AUTH_JWT_SECRET`, variável de ambiente, nunca no repositório) usando `jose` (já era dependência, antes só para verificar; passa também a assinar). O painel guarda esse token e o envia em `Authorization: Bearer` a cada requisição, exatamente como antes. A guarda global do NestJS passa a verificar a assinatura com o mesmo segredo simétrico, em vez de buscar chave pública por JWKS.
 
-**Por quê:** (a) significaria armazenar e rotacionar senhas — responsabilidade de segurança que não precisamos assumir, já que o Supabase é dependência obrigatória do PRD e já resolve isso. A verificação por JWKS foi confirmada na documentação vigente do Supabase e não exige que a API guarde nenhum segredo de assinatura.
+**Alternativas:** (a) manter um provedor de identidade externo auto-hospedado (ex.: Keycloak) — descartada por decisão do usuário (ver pergunta de esclarecimento antes desta mudança): adiciona um serviço a mais na infraestrutura sem necessidade, para uma equipe pequena com um único nível de acesso; (b) sessão por cookie assinado pela API em vez de JWT no header — descartada por exigir mudar o contrato entre painel e API sem ganho: o painel já é um SPA que já guarda e envia o token manualmente, e as duas aplicações (LP e painel) já esperam chamadas `fetch` com header, não cookie de mesma origem gerenciado pelo navegador.
 
-**Trade-off original, revisto em 2026-09-04:** até a T28, a criação de operadores acontecia só no painel do Supabase, não numa tela do CMS. O usuário decidiu trazer isso para dentro do painel — ver D-09. O que continua valendo do PRD é a parte que não mudou: **todos os operadores têm o mesmo nível de acesso**, sem papéis nem permissões diferenciadas.
+**Por quê:** com o Supabase fora do projeto, alguém precisa assumir a responsabilidade de guardar e verificar senha — não há mais um provedor gerenciado para isso. `argon2id` é o algoritmo de hash de senha recomendado atualmente (OWASP) e não exige serviço externo. Manter JWT como formato de token preserva o contrato já existente entre painel e API (`Authorization: Bearer <token>`), então nenhuma tela do painel muda de forma além de onde o login é chamado.
 
-**Consequência de segurança:** a guarda é global e nega por padrão. Um endpoint só é público se alguém o marcar explicitamente — o esquecimento leva a "bloqueado", nunca a "exposto".
+**Trade-off aceito:** a aplicação passa a ser responsável por um segredo de assinatura (`AUTH_JWT_SECRET`) que, se vazar, permite forjar qualquer sessão de operador — antes esse risco não existia porque a API só verificava (chave pública, sem segredo). Mitigado por: o segredo nunca é uma variável `VITE_*` (não entra em nenhum build de navegador — mesma regra de isolamento já aplicada à antiga chave secreta do Supabase, ver R-09 revisado); documentado como obrigatório de gerar aleatoriamente por ambiente (nunca reaproveitado entre desenvolvimento e produção); sem endpoint de rotação automática nesta versão — trocar o segredo desloga todos os operadores de uma vez, aceitável para uma ferramenta interna de equipe pequena (mesma proporcionalidade já usada em D-09).
+
+**Sessão sem estado no servidor, herdada do desenho original:** como antes, não há lista de tokens revogados nem sessão guardada no banco — o JWT é auto-contido e stateless. "Logout" continua sendo o painel descartar o token guardado no navegador; um token já emitido continua válido até expirar mesmo após logout, exatamente o mesmo comportamento que já existia com o Supabase Auth (o PRD não exige revogação imediata de sessão).
+
+**O que continua valendo do PRD e de D-09, sem mudança:** **todos os operadores têm o mesmo nível de acesso**, sem papéis nem permissões diferenciadas.
+
+**Consequência de segurança:** a guarda é global e nega por padrão. Um endpoint só é público se alguém o marcar explicitamente — o esquecimento leva a "bloqueado", nunca a "exposto". Isso não muda com a troca de verificação por JWKS para verificação por segredo simétrico.
 
 ### D-04 — Tudo sob `/admin` é servido como aplicação separada, sem rota pública
 
@@ -226,15 +248,19 @@ C4Container
 
 **Trade-off aceito:** dois builds em vez de um. Compensado por não penalizar a performance da LP, que é requisito do PRD.
 
-### D-05 — Bytes de arquivo vão direto do navegador para o armazenamento
+### D-05 — Bytes de arquivo vão direto do navegador para o armazenamento *(reescrita em 2026-09-21)*
 
-**Escolhido:** o painel pede à API uma credencial temporária de upload; a API a emite com a chave secreta e devolve; o navegador envia o arquivo **direto ao armazenamento**; ao concluir, o painel confirma à API, que registra a mídia. Vídeos usam upload retomável em blocos.
+> **Desenho original, superado em 2026-09-21:** o armazenamento era o Supabase Storage, com upload retomável em blocos pelo protocolo TUS. Superado pela troca para MinIO auto-hospedado (ver `agent_context/CHANGELOG.md`, entrada de 2026-09-21).
 
-**Alternativas:** o arquivo trafegar pela API.
+**Escolhido:** o painel pede à API uma credencial temporária de upload; a API a emite — agora como uma **URL PUT pré-assinada do MinIO** (protocolo S3, gerada com as credenciais de acesso do servidor, escopada a um bucket e caminho específicos, com validade curta) — e devolve; o navegador envia o arquivo **direto ao MinIO** com uma requisição `PUT` para essa URL; ao concluir, o painel confirma à API, que registra a mídia. O três-passos (pedir credencial → enviar bytes → confirmar) não muda.
 
-**Por quê:** o PRD declara vídeos na ordem de dezenas a centenas de MB. Passar isso pela API significaria tempo de requisição longo, consumo de memória e esbarro nos limites de corpo de requisição de qualquer plataforma. A emissão de credencial temporária pelo servidor e o upload retomável foram confirmados na documentação vigente do Supabase Storage.
+**Alternativas:** (a) o arquivo trafegar pela API — descartada pelo mesmo motivo original (abaixo); (b) reproduzir upload retomável em blocos (multipart do protocolo S3, que o MinIO também suporta) — descartada nesta troca: o limite de arquivo do projeto é 50 MB (premissa do PRD), porte para o qual um `PUT` único e simples é confiável em qualquer conexão razoável, e a complexidade de orquestrar upload multipart (iniciar, enviar cada parte, completar) não se paga para esse tamanho de arquivo — decisão proporcional ao porte Médio do projeto.
 
-**Trade-off aceito:** o fluxo tem três passos em vez de um, e um upload interrompido pode deixar um arquivo no armazenamento sem registro correspondente. Mitigado em R-04. A chave secreta continua exclusivamente no servidor — o navegador recebe apenas uma credencial de escopo e validade limitados, o que preserva o requisito de isolamento do PRD.
+**Por quê (arquivo direto ao armazenamento, herdado do desenho original):** o PRD declara vídeos na ordem de dezenas a centenas de MB. Passar isso pela API significaria tempo de requisição longo, consumo de memória e esbarro nos limites de corpo de requisição de qualquer plataforma.
+
+**Trade-off aceito:** o fluxo tem três passos em vez de um, e um upload interrompido pode deixar um arquivo no armazenamento sem registro correspondente. Mitigado em R-04 (sem mudança). A chave de acesso do MinIO continua exclusivamente no servidor — o navegador recebe apenas uma URL pré-assinada de escopo e validade limitados, o que preserva o requisito de isolamento do PRD.
+
+**Trade-off novo, específico desta troca:** ao abandonar o upload retomável em blocos, uma falha de rede a 90% de um vídeo de 50 MB exige reenviar o arquivo inteiro, não retomar do ponto de interrupção. Aceito porque (i) o teto de 50 MB já era conhecido e pequeno o bastante para um reenvio completo ser tolerável, e (ii) o painel continua mostrando progresso do envio ao operador (evento de progresso do `XMLHttpRequest`/`fetch` com `ReadableStream`, do lado do navegador) — o operador não fica sem retorno visual, só perde a retomada por bloco. Se o volume de vídeo do projeto crescer muito além de 50 MB no futuro, revisitar esta decisão (multipart do MinIO) antes de simplesmente subir o teto.
 
 ### D-06 — Metadados injetados na borda, com o HTML estático como reserva
 
@@ -272,22 +298,31 @@ C4Container
 
 **Trade-off aceito:** o instantâneo envelhece entre builds, então uma falha prolongada da API pode exibir conteúdo defasado. Preferível a exibir nada, e a defasagem é visível apenas durante indisponibilidade.
 
-### D-09 — Gestão de operadores dentro do painel, via Admin API do Supabase
+### D-09 — Gestão de operadores dentro do painel, sobre a tabela `operators` própria *(reescrita em 2026-09-21)*
 
-**Escolhido:** o painel ganha uma tela para listar, criar e remover operadores. A API expõe `/api/admin/operators/*`, atrás da mesma guarda global (D-03), e fala com a **Admin API** do Supabase Auth (`auth.admin.*`) usando a chave secreta — nunca o navegador fala direto com ela. Remover um operador chama `admin.deleteUser`.
+> **Desenho original, superado em 2026-09-21:** a API falava com a **Admin API** do Supabase Auth (`auth.admin.*`) usando a chave secreta para criar, listar e remover operadores; o nome do operador vivia em `user_metadata`, por não existir tabela própria. Superado pela troca de plataforma de dados (ver `agent_context/CHANGELOG.md`, entrada de 2026-09-21) — sem Supabase Auth, não há mais Admin API para chamar.
 
-**Criação de operador — revisto em 2026-09-04 (T34):** quem cria preenche e-mail, senha e nome do operador novo diretamente na tela; a API chama `admin.createUser({ email, password, email_confirm: true, user_metadata: { name } })` e a conta já nasce pronta para uso, sem link nem e-mail. `email_confirm: true` é necessário porque não há passo de confirmação — sem ele o Supabase esperaria uma confirmação que nunca chega. O nome não tem tabela própria (não existe tabela de operadores no CMS); vive em `user_metadata`, a única extensão de dado que a Admin API do Supabase Auth permite sem outra fonte de verdade.
+**Escolhido:** o painel mantém a mesma tela para listar, criar e remover operadores. A API expõe `/api/admin/operators/*`, atrás da mesma guarda global (D-03), e passa a ler e escrever diretamente na tabela `operators` (MySQL, ver "Modelo de dados"). Criar um operador grava um novo registro com `password_hash` calculado por argon2id (mesmo algoritmo e módulo de D-03); remover um operador apaga o registro (`DELETE`, não soft-delete — o PRD não exige histórico de operadores removidos).
 
-~~**Desenho original (T29, superado):** convidar gerava um link de ativação de uso único (`generateLink({ type: 'invite' })`), devolvido à tela para quem convida enviar por fora, e o convidado definia a própria senha ao abrir o link — a rota `/admin/ativar` e as telas associadas foram construídas para isso. O usuário decidiu trocar pelo fluxo direto acima; ver `agent_context/CHANGELOG.md`, entrada de 2026-09-04.~~
+**Criação de operador — sem mudança de fluxo desde a T34 (2026-09-04):** quem cria preenche e-mail, senha e nome do operador novo diretamente na tela; a conta já nasce pronta para uso, sem link nem e-mail. Diferença puramente de implementação: antes a API chamava `admin.createUser(...)`, agora ela mesma faz o hash da senha e insere a linha em `operators` — o comportamento visível ao operador que cria não muda.
 
-**Trade-off aceito, reconhecido explicitamente:** com criação direta, **quem cria sabe a senha inicial de outra pessoa** — o próprio motivo que tinha descartado esse caminho na primeira versão da decisão (D-03/D-09 originais). O usuário decidiu que a simplicidade operacional vale mais que essa garantia neste projeto (equipe pequena, todos os operadores já se conhecem e confiam). Mitigação parcial, não implementada por não ter sido pedida: nada impede um operador de trocar a própria senha depois pelo fluxo padrão do Supabase, se isso vier a ser necessário.
+**Bootstrap do primeiro operador (novo problema, introduzido por esta troca):** com o Supabase, o primeiro operador de um ambiente novo nascia por um passo manual no painel do Supabase (documentado como a "armadilha" central de `docs/MIGRAR-PARA-NOVO-SUPABASE.md` — "sem o primeiro operador, ninguém entra no painel novo"). Sem Supabase, esse painel de terceiro não existe mais. **Escolhido:** um script de linha de comando (`npm run seed:operator`, mesmo padrão de `migrate:content` já existente em `apps/api`) que recebe e-mail, senha e nome por variável de ambiente ou prompt, e insere o operador direto na tabela `operators` — para ser rodado uma vez por ambiente novo (desenvolvimento, homologação, produção), antes do primeiro login. Documentado em `docs/OPERACAO.md` como o novo passo equivalente ao antigo "criar o primeiro usuário no painel do Supabase".
+
+**Trade-off aceito, herdado sem mudança:** com criação direta, **quem cria sabe a senha inicial de outra pessoa**. O usuário já havia decidido que a simplicidade operacional vale mais que essa garantia neste projeto (equipe pequena, todos os operadores já se conhecem e confiam) — ver decisão original de 2026-09-04. Mitigação parcial, não implementada por não ter sido pedida: nada impede um operador de trocar a própria senha depois (endpoint de troca de senha não existe hoje nem existia com o Supabase — fora de escopo, mesma decisão de antes).
 
 **Consequências de segurança, inegociáveis:**
-- A chave secreta do Supabase (`SUPABASE_SECRET_KEY`) já é usada pela API para outras coisas (D-01, D-05) e continua nunca saindo do servidor; nenhuma rota nova a expõe ao navegador.
-- Um operador **não pode remover a si mesmo** nem **remover o último operador restante** — as duas coisas travariam o painel sem ninguém para reabri-lo. Recusado com `409`.
-- O link de convite é de **uso único** e a tela nunca reexibe um link já gerado — se o convite expirar ou se perder, a ação é gerar um novo, não recuperar o antigo.
+- O segredo de assinatura JWT (`AUTH_JWT_SECRET`) e a credencial de conexão do MySQL nunca saem do servidor; nenhuma rota nova as expõe ao navegador (mesma regra que antes protegia `SUPABASE_SECRET_KEY`).
+- Um operador **não pode remover a si mesmo** nem **remover o último operador restante** — as duas coisas travariam o painel sem ninguém para reabri-lo. Recusado com `409`. Sem mudança nesta troca.
 
-## Contratos de dados/API/interfaces
+### D-10 — Prisma como ORM e ferramenta de migração do MySQL *(nova em 2026-09-21)*
+
+**Escolhido:** `@prisma/client` para consultas e `prisma migrate` para versionar o schema do MySQL (`content_sections`, `site_metadata`, `media_assets`, `leads`, `operators`). Um `schema.prisma` por módulo de dados, migrações geradas e versionadas em `apps/api/prisma/migrations/`, aplicadas com `prisma migrate deploy` na subida do contêiner (mesmo espírito do `supabase db push` que já existia).
+
+**Alternativas:** (a) `mysql2` cru, sem camada de ORM — o projeto já não usava um ORM pesado sobre o Supabase (usava o query builder do `@supabase/supabase-js`, equivalente em nível de abstração); (b) TypeORM — integração "oficial" com NestJS via `@nestjs/typeorm`, mas com padrões ativamente desaconselhados pela própria comunidade (Active Record misturado com Data Mapper, migrações menos previsíveis); (c) Kysely — query builder tipado sem geração de código, mais leve que Prisma.
+
+**Por quê:** o porte Médio do projeto e a exigência do PRD de que "adicionar um campo novo a uma seção existente é uma tarefa pequena e documentada" pedem uma ferramenta com migração de schema declarativa e gerada automaticamente a partir do modelo — Prisma cobre isso de forma mais direta que `mysql2` cru (que exigiria escrever e manter SQL de migração à mão) e de forma mais madura que Kysely (sem geração de migração embutida). Frente a TypeORM, Prisma tem tipagem gerada mais estrita e um fluxo de migração mais prático de auditar em revisão de PR (cada migração é um arquivo `.sql` gerado, legível no diff).
+
+**Trade-off aceito:** mais uma ferramenta de geração de código no pipeline de build (`prisma generate`, análogo ao `npm run build --prefix packages/content-schema` que já existe como pre-step); acopla o schema de dados a um formato proprietário do Prisma em vez de SQL puro — mitigado por Prisma gerar SQL padrão auditável a cada migração, sem trava real de saída (é possível ler/exportar o SQL gerado a qualquer momento).
 
 Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 
@@ -305,6 +340,12 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 
 `POST /api/leads` grava o lead **antes** de tentar o RD Station e responde sucesso se a gravação deu certo, registrando o resultado do repasse em `rdstation_status`. Uma falha do RD Station nunca faz o visitante ver erro nem faz o lead ser perdido.
 
+### Endpoint de login (público, credenciais no corpo)
+
+| Método e rota | Descrição | Resposta |
+|---|---|---|
+| `POST /api/auth/login` | **Novo em 2026-09-21 (D-03).** Recebe `{ email, password }`; verifica contra `operators` (MySQL) com argon2id. | `200 { accessToken, expiresInSeconds }` · `401` (mesma mensagem genérica para e-mail inexistente ou senha errada — nunca revela qual dos dois falhou, ver C-02) |
+
 ### Endpoints administrativos (exigem token válido)
 
 | Método e rota | Descrição |
@@ -314,11 +355,11 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 | `PUT /api/admin/sections/:key` | Substitui o documento. Valida contra o esquema; rejeita com `422` e erros por campo. Salvar publica |
 | `PATCH /api/admin/sections/:key/visibility` | Liga ou desliga a seção |
 | `GET /api/admin/metadata` · `PUT /api/admin/metadata` | Lê e grava os metadados da página |
-| `POST /api/admin/media/upload-url` | Recebe nome, tipo e tamanho; devolve credencial temporária e caminho de destino |
+| `POST /api/admin/media/upload-url` | Recebe nome, tipo e tamanho; devolve credencial temporária e caminho de destino. **Revisto em 2026-09-21 (D-05):** resposta muda de `{ signedUrl, token, resumableEndpoint, expiresInSeconds }` (TUS/Supabase) para `{ uploadUrl, expiresInSeconds }` — uma única URL `PUT` pré-assinada do MinIO |
 | `POST /api/admin/media` | Confirma o upload e registra a mídia; devolve o registro com a URL pública |
 | `GET /api/admin/media/:id` · `DELETE /api/admin/media/:id` | Consulta e remoção. A remoção é recusada com `409` se a mídia estiver referenciada por alguma seção |
-| `GET /api/admin/operators` | Lista os operadores (e-mail, criado em, último login) |
-| `POST /api/admin/operators` | Recebe e-mail, senha e nome; cria a conta pronta para uso via Admin API (D-09) |
+| `GET /api/admin/operators` | Lista os operadores (e-mail, criado em) |
+| `POST /api/admin/operators` | Recebe e-mail, senha e nome; cria a conta pronta para uso gravando direto em `operators` com senha em hash (D-09, revisado — antes via Admin API do Supabase) |
 | `DELETE /api/admin/operators/:id` | Remove um operador. Recusado com `409` se for o próprio operador autenticado, ou o último operador restante |
 | `GET /api/admin/leads` | Lista paginada, mais recente primeiro. Filtros `from` e `to` por data |
 | `GET /api/admin/leads/export` | Exportação em CSV com separador `;` e BOM UTF-8, respeitando os filtros |
@@ -407,11 +448,13 @@ Deve ser possível exportar, em formato `.csv`, os leads recebidos pelos formul�
 
 ## Dependências externas
 
-- **Supabase** — Postgres, Storage e Auth. Dependência obrigatória declarada no PRD. A chave secreta é usada exclusivamente pela API, a partir de variável de ambiente do servidor; nunca é embarcada em nenhum build de navegador.
+- ~~Supabase~~ — **substituído em 2026-09-21** por MySQL + MinIO auto-hospedados (ver `agent_context/CHANGELOG.md`). Linha mantida riscada por registro histórico.
+- **MySQL 8** (auto-hospedado, container Docker no `docker-compose.yml` do projeto) — banco relacional. Dependência obrigatória, declarada no PRD desde 2026-09-21.
+- **MinIO** (auto-hospedado, container Docker, compatível com S3) — armazenamento dos arquivos de imagem e vídeo. Dependência obrigatória, declarada no PRD desde 2026-09-21.
 - ~~RD Station Marketing~~ — **descontinuado em 2026-09-03.** O lead não tem destino externo; sai do sistema apenas pela exportação em CSV.
 - **Plataforma de CDN com função de borda** — publica LP e painel e hospeda o injetor de SEO. Isolada em um único arquivo (D-06).
 - **Ambiente de execução sempre ativo para a API** — Node 20 ou superior.
-- **Bibliotecas principais:** NestJS 11, `@supabase/supabase-js` 2, `jose` (verificação de token por JWKS), `zod` (esquemas), React 18, Vite 5, Tailwind 3. Versões declaradas apenas no nível major.
+- **Bibliotecas principais:** NestJS 11, `@prisma/client` + `prisma` (ORM e migração do MySQL, D-10), `argon2` (hash de senha, D-03), `jose` (assinatura e verificação de JWT próprio — antes só verificação por JWKS), cliente S3 (`@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`, para o MinIO), `zod` (esquemas), React 18, Vite 5, Tailwind 3. Versões declaradas apenas no nível major. `@supabase/supabase-js` removido.
 
 Nenhum outro projeto vinculado: o CMS e a LP vivem neste mesmo repositório e formam um único produto.
 
@@ -427,7 +470,8 @@ Nenhum outro projeto vinculado: o CMS e a LP vivem neste mesmo repositório e fo
 | **R-06** | Regra de negócio vazando para a apresentação — a armadilha mais comum em arquitetura em camadas. | Regra de dependência estrita declarada; controllers sem lógica; validação e visibilidade decididas no domínio. Verificável em revisão de código. |
 | **R-07** | Mover a LP da raiz para `apps/lp/` quebra caminhos de build, imports de assets e o deploy de uma página que já está em produção. | Migração isolada em uma tarefa própria do plano, cujo critério de pronto é o build e a checag| **R-08** | ~~Payload do RD Station a confirmar com a Virbac antes do go-live.~~ **Risco extinto em 2026-09-03**: a integração foi descontinuada e não há mais payload externo a confirmar. |
  Virbac como pendência externa registrada no README, não como decisão técnica deste projeto. |
-| **R-09** | Credencial do Supabase vazar para um build de navegador, quebrando o requisito de isolamento do PRD. | A chave secreta só é lida no app da API, que não passa pelo Vite. Verificação na Fase 4: buscar por credenciais nos artefatos de build da LP e do painel antes de aceitar a entrega. |
+| **R-09** | **Revisto em 2026-09-21:** o segredo JWT (`AUTH_JWT_SECRET`), a credencial de conexão do MySQL ou as chaves de acesso do MinIO vazarem para um build de navegador, quebrando o requisito de isolamento do PRD. *(Antes: credencial do Supabase.)* | Nenhum desses três segredos tem variante `VITE_*`; são lidos só no app da API, que não passa pelo Vite. Verificação na Fase 4: buscar pelas variáveis de servidor (`AUTH_JWT_SECRET`, `MYSQL_*`, `MINIO_SECRET_KEY`) nos artefatos de build da LP e do painel antes de aceitar a entrega — mesmo método já usado para a chave do Supabase. |
+| **R-11** | **Novo em 2026-09-21.** Sem um provedor gerenciado, gerar e guardar `AUTH_JWT_SECRET`, a senha do MySQL e as chaves do MinIO passa a ser responsabilidade exclusiva de quem sobe o ambiente — um segredo fraco ou reaproveitado entre ambientes (ex.: mesmo valor em desenvolvimento e produção) não é mais impedido por um provedor externo. | `.env.example` documenta que cada um desses valores precisa ser gerado por ambiente (ex.: `openssl rand -base64 32`), nunca copiado de outro `.env`; o `docker-compose.yml` falha ao subir se a variável não estiver definida (mesmo padrão `${VAR:?defina VAR no .env}` já usado para as variáveis do Supabase). Documentado em `docs/OPERACAO.md`, tarefa `migracao-mysql/documentacao`. |
 | **R-10** | Gestão de operadores (D-09) mal implementada trava o acesso ao próprio painel — o único lugar de onde dá para corrigir isso é justamente o painel. | Bloqueio explícito, testado por mutação: recusar `409` a remover a si mesmo e a remover o último operador restante. Nenhum outro caminho de exclusão (ex.: direto no banco) é exposto pela API. |
 
 ## Nível de rigor da especificação
