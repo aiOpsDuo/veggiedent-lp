@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { SECTION_REPOSITORY } from './domain/section-repository.port'
-import { SupabaseSectionRepository } from './infrastructure/supabase-section.repository'
+import { MySqlSectionRepository } from './infrastructure/mysql-section.repository'
 
 /**
  * A porta de persistência das seções, isolada em um módulo próprio.
@@ -18,7 +18,7 @@ import { SupabaseSectionRepository } from './infrastructure/supabase-section.rep
  */
 @Module({
   providers: [
-    { provide: SECTION_REPOSITORY, useClass: SupabaseSectionRepository },
+    { provide: SECTION_REPOSITORY, useClass: MySqlSectionRepository },
   ],
   exports: [SECTION_REPOSITORY],
 })
