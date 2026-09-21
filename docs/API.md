@@ -88,16 +88,19 @@ curl -s -X POST http://localhost:3000/api/admin/media/upload-url \
 ```jsonc
 { "kind": "video", "bucket": "veggiedent-videos",
   "path": "676edef9-…/demonstracao.mp4",
-  "signedUrl": "https://…/storage/v1/object/upload/sign/veggiedent-videos/…?token=…",
-  "token": "…",                       // o mesmo direito de escrita, para o upload retomável
-  "resumableEndpoint": "https://…/storage/v1/upload/resumable/sign",
+  "uploadUrl": "http://localhost:9000/veggiedent-videos/676edef9-…/demonstracao.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=…&X-Amz-Date=…&X-Amz-Expires=7200&X-Amz-SignedHeaders=host&X-Amz-Signature=…",
   "expiresInSeconds": 7200, "maxBytes": 524288000 }
 ```
 
-**2. Enviar os bytes, do navegador direto ao armazenamento.** Dois caminhos, ambos com a credencial acima e **sem** passar pela API:
+**Revisto em 2026-09-21 (D-05, troca de Supabase Storage por MinIO):** a resposta tinha três campos de credencial (`signedUrl`, `token`, `resumableEndpoint`) porque o Supabase Storage oferecia um caminho de envio único e um protocolo retomável (TUS) em blocos, e o painel escolhia um dos dois. O MinIO não tem upload retomável, e D-05 decidiu não reproduzi-lo por multipart do protocolo S3: o teto de 50 MB do projeto (premissa do PRD) não justifica essa complexidade. Sobrou uma única forma de autorização — `uploadUrl` — e os outros dois campos saíram sem substituto.
 
-- *Arquivo pequeno* (imagem): `PUT` no `signedUrl`, com o `content-type` do arquivo — é o que o `uploadToSignedUrl(path, token, file)` do `@supabase/supabase-js` faz.
-- *Vídeo*: protocolo retomável (TUS) apontado para `resumableEndpoint`, com o token no cabeçalho **`x-signature`**, blocos de **6 MB** e os metadados `bucketName`, `objectName` e `contentType`. Retomável é o que permite continuar de onde parou depois de uma queda de conexão, e é o que dá o progresso visível que o painel mostra. Quem faz esse papel no painel é o `tus-js-client`, a biblioteca que a própria documentação do Supabase Storage indica; a escolha entre este caminho e o `PUT` acima é feita pela natureza da mídia, em `apps/admin/src/media/media-transfer.ts`.
+**2. Enviar os bytes, do navegador direto ao armazenamento.** Um único caminho, com a credencial acima e **sem** passar pela API: `PUT` na `uploadUrl`, com o `content-type` do arquivo no corpo da requisição e nenhum cabeçalho de sessão — é a própria URL que autoriza o envio:
+
+```bash
+curl -s -X PUT "$UPLOAD_URL" -H 'content-type: video/mp4' --upload-file demonstracao.mp4
+```
+
+Um upload interrompido a meio caminho (por exemplo, a 90% de um vídeo de 50 MB) exige reenviar o arquivo inteiro, não retomar do ponto de interrupção — trade-off aceito em D-05. O painel continua mostrando progresso do envio ao operador pelo evento de progresso do `XMLHttpRequest`/`fetch`, mesmo sem retomada por bloco.
 
 **3. Confirmar.** Só agora nasce o registro em `media_assets` (risco R-04):
 
@@ -110,20 +113,22 @@ curl -s -X POST http://localhost:3000/api/admin/media \
 
 A API pergunta ao armazenamento se o arquivo está lá; se não estiver, responde `422` e **não grava nada**. Tamanho e tipo do registro são lidos do arquivo que chegou, não do corpo da requisição — quem confirma não consegue registrar uma mídia que não existe nem descrevê-la de forma diferente do que ela é. Confirmar duas vezes o mesmo caminho devolve o registro que já existe, sem duplicar.
 
-A chave secreta do Supabase **não sai do servidor** em nenhum dos três passos: o navegador recebe apenas uma credencial válida para um caminho, em um bucket, por duas horas.
+A chave de acesso do MinIO **não sai do servidor** em nenhum dos três passos: o navegador recebe apenas uma URL `PUT` pré-assinada, válida para um caminho, em um bucket, por duas horas.
 
-**Buckets, limites e tipos aceitos** (criados por `20260902120500_create_storage_buckets.sql` e alterados por `20260903120000_allow_svg_in_images_bucket.sql`; o catálogo em `apps/api/src/modules/media/domain/media-kind.ts` repete os mesmos valores e um teste lê as migrações em ordem e compara os dois). O bucket `veggiedent-captions` (natureza `caption`, tipo de campo "legenda") foi removido na T31 — nunca teve arquivo real (0 registros) e o campo saiu do esquema inteiro; ver `20260904160000_remove_captions_media_kind.sql`:
+**Buckets, limites e tipos aceitos** — o catálogo vive em `apps/api/src/modules/media/domain/media-kind.ts` (nomes de bucket) e um teste (`media-kind.spec.ts`) confere os limites e tipos contra as migrações históricas do Supabase em `supabase/migrations/` (fonte da verdade herdada — os limites de tamanho e a lista de tipos aceitos não mudaram nesta troca, só o armazenamento por trás). O nome de bucket que `media-kind.ts` declara precisa ser exatamente o valor das variáveis de ambiente `MINIO_BUCKET_IMAGES`/`MINIO_BUCKET_VIDEOS` (SDD § "Modelo de dados", nota sobre `MinioMediaStorage`) — é o mesmo default de `docker-compose.yml`, e um bucket real é criado e configurado automaticamente com esses nomes na subida da API (ver adiante):
 
 | Natureza | Bucket | Limite | Tipos aceitos |
 |---|---|---|---|
 | `image` | `veggiedent-images` | 10 MB | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`, `image/svg+xml` |
 | `video` | `veggiedent-videos` | 500 MB | `video/mp4`, `video/webm` |
 
-**Por que SVG é aceito.** Ele ficou de fora na criação dos buckets, com a justificativa de que nenhuma seção precisaria dele. A premissa estava errada: a LP usa quatro SVGs reais — o logo Veggiedent, no cabeçalho e no rodapé, e três infográficos da prova de autoridade. Rasterizar o logo custaria 8,7 KB → 35 KB e a escalabilidade de um ativo de marca. SVG continua sendo documento executável, mas aqui o risco é contido por dois fatos: **só operador autenticado envia arquivo** (não existe upload anônimo, e `storage.objects` não tem policy de escrita), e o arquivo é **servido do domínio do Supabase Storage**, não do domínio da LP — um script embutido não alcançaria o DOM da página, seus cookies ou sua sessão, e a LP carrega essas imagens por `<img src>`, contexto em que o navegador já não executa script do SVG.
+**Por que SVG é aceito.** Ele ficou de fora na criação dos buckets originais do Supabase, com a justificativa de que nenhuma seção precisaria dele. A premissa estava errada: a LP usa quatro SVGs reais — o logo Veggiedent, no cabeçalho e no rodapé, e três infográficos da prova de autoridade. Rasterizar o logo custaria 8,7 KB → 35 KB e a escalabilidade de um ativo de marca. SVG continua sendo documento executável, mas aqui o risco é contido por dois fatos: **só operador autenticado envia arquivo** (não existe upload anônimo — só a API tem a chave de acesso do MinIO, e só ela emite `uploadUrl`), e o arquivo é **servido do domínio do MinIO**, não do domínio da LP — um script embutido não alcançaria o DOM da página, seus cookies ou sua sessão, e a LP carrega essas imagens por `<img src>`, contexto em que o navegador já não executa script do SVG.
 
 A natureza é **deduzida do tipo do arquivo**, não escolhida por quem envia: cada tipo pertence a um único bucket. Tipo fora da lista é recusado com `422` e a mensagem `Tipo de arquivo não suportado. Tipos aceitos: …` no campo `contentType`.
 
-> **Limite do projeto, acima do limite do bucket.** O projeto Supabase tem um teto global de upload — hoje **50 MB** neste projeto, verificado em 2026-09-02 — que **prevalece sobre os 500 MB do bucket de vídeo**: um arquivo maior é recusado pelo próprio armazenamento com `413 Maximum size exceeded`, antes de qualquer byte ser aceito. Os vídeos que a LP usa hoje têm 23,6 MB e 4,2 MB, então nada está bloqueado — mas se um vídeo maior que 50 MB precisar entrar, o teto tem de ser elevado em *Project Settings → Storage → Upload file size limit* (o plano Free trava em 50 MB; os pagos vão até 50 GB). O código não contorna isso, e não deve: quem manda no armazenamento é o armazenamento.
+**Bucket público, criado automaticamente na subida da API.** Diferente do Supabase (buckets criados por migração SQL, antes de a API subir pela primeira vez), o MinIO não tem um mecanismo de migração para buckets. `MinioMediaStorage` garante os dois buckets — cria o que faltar e aplica uma política de leitura pública e anônima (`s3:GetObject`) — toda vez que a API sobe, de forma idempotente. Não é preciso nenhum passo manual equivalente ao antigo `supabase storage create-bucket`. Isso só existe porque a LP precisa servir a mídia sem autenticação (`<img src>`/`<video src>` direto do MinIO); nenhuma outra operação de bucket (escrita, listagem) é pública.
+
+O teto de arquivo do projeto — **50 MB**, premissa do PRD (SDD § D-05) — não é imposto pelo MinIO nem pelo bucket (que aceita até 500 MB de vídeo): é uma expectativa de produto, não uma trava de código. Um arquivo maior que 50 MB ainda seria aceito hoje se enviado; se isso um dia for necessário revisitar, a decisão em D-05 já registra a alternativa (multipart do protocolo S3, que o MinIO suporta) e por que ela não se paga no porte atual.
 
 **Remoção.** `DELETE /api/admin/media/:id` responde `409` se a mídia estiver referenciada por qualquer seção — **publicada ou não**, porque uma seção desligada precisa voltar idêntica — ou pelos metadados da página; nesse caso nada é apagado. Sem referências, o registro sai primeiro e o arquivo depois: na ordem inversa, uma falha no meio deixaria um registro apontando para arquivo inexistente, e a LP com imagem quebrada.
 

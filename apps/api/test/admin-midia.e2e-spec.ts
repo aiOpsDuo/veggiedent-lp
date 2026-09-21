@@ -27,9 +27,7 @@ interface CredencialEmitida {
   kind: string
   bucket: string
   path: string
-  token: string
-  signedUrl: string
-  resumableEndpoint: string
+  uploadUrl: string
   expiresInSeconds: number
   maxBytes: number
 }
@@ -70,7 +68,7 @@ describe('rotas administrativas de mídia', () => {
     mimeType: string,
   ): void => {
     harness.database.storage.uploadWithCredential(
-      credencial.token,
+      credencial.uploadUrl,
       credencial.bucket,
       credencial.path,
       { sizeBytes, mimeType },
@@ -116,9 +114,8 @@ describe('rotas administrativas de mídia', () => {
         bucket: VIDEO.bucket,
         maxBytes: 500 * MEGABYTE,
       })
-      expect(response.body.token).toEqual(expect.any(String))
-      expect(response.body.signedUrl).toContain(VIDEO.bucket)
-      expect(response.body.resumableEndpoint).toContain('/storage/v1/upload/resumable')
+      expect(response.body.uploadUrl).toEqual(expect.any(String))
+      expect(response.body.uploadUrl).toContain(VIDEO.bucket)
       expect(response.body.expiresInSeconds).toBeGreaterThan(0)
     })
 

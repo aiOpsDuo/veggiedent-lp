@@ -28,9 +28,7 @@ export class IssueUploadCredentialUseCase {
       kind: target.policy.kind,
       bucket: target.policy.bucket,
       path: target.path,
-      signedUrl: credential.signedUrl,
-      token: credential.token,
-      resumableEndpoint: credential.resumableEndpoint,
+      uploadUrl: credential.uploadUrl,
       expiresInSeconds: credential.expiresInSeconds,
       maxBytes: target.policy.maxBytes,
     }

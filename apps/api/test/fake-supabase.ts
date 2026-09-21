@@ -1,5 +1,5 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-import { FakeStorage } from './fake-storage'
+import { FakeMinioClient } from './fake-storage'
 import { FakeSupabaseAuthAdmin } from './fake-supabase-auth-admin'
 
 /**
@@ -284,8 +284,16 @@ class FakeQueryBuilder implements PromiseLike<Result> {
  */
 export class FakeSupabaseDatabase {
   readonly calls: RecordedCall[] = []
-  /** O armazenamento de arquivos do mesmo cliente (`supabase.storage`). */
-  readonly storage = new FakeStorage()
+  /**
+   * O armazenamento de arquivos, exposto aqui por conveniência histórica: os
+   * testes de mídia (`admin-midia.e2e-spec.ts`, `carga-do-instantaneo.e2e-spec.ts`)
+   * manipulam `harness.database.storage` diretamente para fazer o papel do
+   * navegador (SDD § D-05). Desde 2026-09-21 é um `FakeMinioClient` — a mídia
+   * não fala mais com este dublê Supabase para nada além disso; `media_assets`
+   * continua sendo uma tabela genérica aqui embaixo, mas quem a lê/grava é o
+   * `FakeMediaRepository`/`FakeMediaUrlRepository` de `fake-media-repository.ts`.
+   */
+  readonly storage = new FakeMinioClient()
   /** A Admin API de autenticação do mesmo cliente (`supabase.auth.admin`). */
   readonly auth = { admin: new FakeSupabaseAuthAdmin() }
   private readonly tables = new Map<string, Row[]>()
