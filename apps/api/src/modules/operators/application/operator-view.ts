@@ -1,47 +1,30 @@
 import type { OperatorAccount } from '../domain/operator-account'
 
 /**
- * O que a tela de operadores recebe (SDD § C-13): identidade, nome e as duas
- * datas que ajudam a reconhecer uma conta na lista. Nenhuma senha, nenhum
- * metadado interno do Supabase — só o que quem administra precisa ver.
+ * O que a tela de operadores recebe (SDD § C-13): identidade, nome e a data
+ * de criação. Nenhuma senha, nenhum metadado interno — só o que quem
+ * administra precisa ver.
  *
- * Diferente de `OperatorAccount.name`, este `name` nunca é vazio: um operador
- * sem nome em `user_metadata` (SDD § D-09 — o operador original, criado antes
- * deste campo existir) recebe o nome derivado do e-mail em `fallbackName`.
+ * `name` nunca é vazio, na mesma garantia de `OperatorAccount.name` (coluna
+ * `operators.name` é `NOT NULL`, e `CreateOperatorDto.name` já exige uma
+ * string não vazia na criação). Removido nesta migração: o antigo fallback
+ * derivado do e-mail (`fallbackName`), que só existia para o caso do Supabase
+ * Auth de um operador sem `user_metadata.name` — caso que não existe mais,
+ * já que não há caminho de escrita que grave um operador sem nome. Removido
+ * também `lastSignInAt` (ver `operator-account.ts`).
  */
 export interface OperatorView {
   readonly id: string
   readonly email: string
   readonly name: string
   readonly createdAt: string
-  readonly lastSignInAt: string | null
-}
-
-const NAME_SEPARATORS = /[._-]+/
-
-/**
- * Deriva um nome legível da parte local do e-mail (antes do `@`) — o fallback
- * sensato para um operador sem `user_metadata.name` (SDD § D-09). Um e-mail
- * sem parte local reconhecível (ex.: vazio) devolve o próprio e-mail: melhor
- * mostrar algo identificável do que uma string vazia.
- */
-export function fallbackName(email: string): string {
-  const localPart = email.split('@')[0] ?? ''
-  const words = localPart.split(NAME_SEPARATORS).filter((word) => word.length > 0)
-  if (words.length === 0) {
-    return email
-  }
-  return words.map((word) => word[0]?.toUpperCase() + word.slice(1)).join(' ')
 }
 
 export function toOperatorView(account: OperatorAccount): OperatorView {
   return {
     id: account.id,
     email: account.email,
-    name: account.name !== null && account.name.trim().length > 0
-      ? account.name
-      : fallbackName(account.email),
+    name: account.name,
     createdAt: account.createdAt,
-    lastSignInAt: account.lastSignInAt,
   }
 }

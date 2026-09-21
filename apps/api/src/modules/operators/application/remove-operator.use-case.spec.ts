@@ -15,9 +15,8 @@ function operator(id: string): OperatorAccount {
   return {
     id,
     email: `${id}@veggiedent.test`,
-    name: null,
+    name: `Operador ${id}`,
     createdAt: '2026-09-01T00:00:00.000Z',
-    lastSignInAt: null,
   }
 }
 

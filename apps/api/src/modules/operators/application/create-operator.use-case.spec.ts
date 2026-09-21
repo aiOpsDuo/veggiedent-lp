@@ -22,7 +22,6 @@ class FakeOperatorDirectory implements OperatorDirectory {
       email: input.email,
       name: input.name,
       createdAt: '2026-09-04T00:00:00.000Z',
-      lastSignInAt: null,
     }
   }
 
@@ -64,7 +63,6 @@ describe('CreateOperatorUseCase', () => {
       email: 'nova.operadora@veggiedent.test',
       name: 'Nova Operadora',
       createdAt: '2026-09-04T00:00:00.000Z',
-      lastSignInAt: null,
     })
     expect(JSON.stringify(view)).not.toMatch(/senha-inicial/)
   })

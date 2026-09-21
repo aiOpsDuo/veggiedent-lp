@@ -14,6 +14,12 @@ import { OPERATOR_ID, startContentHarness, type ContentHarness } from './content
  * 2. **A conta nasce pronta para logar, sem link** (D-09, revista na T34):
  *    `POST` recebe e-mail, senha e nome, e nenhuma senha volta na resposta.
  * 3. **Tudo aqui exige token** — a guarda global cobre a listagem também.
+ *
+ * Desde a migração para MySQL/Prisma (SDD § D-09/D-10), `harness.operators`
+ * (`FakeOperatorDirectory`, implementando a porta diretamente) substitui
+ * `harness.database.auth.admin` (o antigo dublê da Admin API do Supabase
+ * Auth) — sem nome derivado do e-mail nem "último login" a testar: os dois
+ * saíram junto com o Supabase (ver `operator-account.ts`/`operator-view.ts`).
  */
 
 describe('rotas administrativas de operadores', () => {
@@ -50,13 +56,12 @@ describe('rotas administrativas de operadores', () => {
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
     })
 
-    it('lista os operadores existentes, com e-mail, nome, criação e último login', async () => {
-      harness.database.auth.admin.seed({
+    it('lista os operadores existentes, com e-mail, nome e criação', async () => {
+      harness.operators.seed({
         id: OPERATOR_ID,
         email: 'operadora@veggiedent.test',
         name: 'Operadora Original',
         createdAt: '2026-08-01T10:00:00.000Z',
-        lastSignInAt: '2026-09-04T09:00:00.000Z',
       })
 
       const response = await listar()
@@ -68,26 +73,17 @@ describe('rotas administrativas de operadores', () => {
           email: 'operadora@veggiedent.test',
           name: 'Operadora Original',
           createdAt: '2026-08-01T10:00:00.000Z',
-          lastSignInAt: '2026-09-04T09:00:00.000Z',
         },
       ])
     })
 
-    it('deriva um nome legível do e-mail para um operador sem nome cadastrado', async () => {
-      harness.database.auth.admin.seed({ id: OPERATOR_ID, email: 'ana.paula@veggiedent.test' })
-
-      const response = await listar()
-
-      expect(response.body[0].name).toBe('Ana Paula')
-    })
-
     it('lista mais recente primeiro', async () => {
-      harness.database.auth.admin.seed({
+      harness.operators.seed({
         id: OPERATOR_ID,
         email: 'antiga@veggiedent.test',
         createdAt: '2026-08-01T10:00:00.000Z',
       })
-      harness.database.auth.admin.seed({
+      harness.operators.seed({
         id: '22222222-0000-4000-8000-000000000002',
         email: 'recente@veggiedent.test',
         createdAt: '2026-09-01T10:00:00.000Z',
@@ -107,7 +103,7 @@ describe('rotas administrativas de operadores', () => {
       const response = await agente().post('/api/admin/operators').send(NOVO_OPERADOR)
 
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
-      expect(harness.database.auth.admin.count()).toBe(0)
+      expect(harness.operators.count()).toBe(0)
     })
 
     it('cria a conta com e-mail e nome informados, sem devolver a senha', async () => {
@@ -137,12 +133,12 @@ describe('rotas administrativas de operadores', () => {
       expect(response.body.fields.email).toBe('Informe um e-mail válido.')
     })
 
-    it('recusa senha curta com mensagem clara em português, sem chamar o Supabase', async () => {
+    it('recusa senha curta com mensagem clara em português, sem chamar o diretório', async () => {
       const response = await criar({ ...NOVO_OPERADOR, password: '12345' })
 
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(response.body.fields.password).toBe('A senha precisa ter pelo menos 6 caracteres.')
-      expect(harness.database.auth.admin.count()).toBe(0)
+      expect(harness.operators.count()).toBe(0)
     })
 
     it('recusa nome ausente com mensagem clara em português', async () => {
@@ -151,36 +147,47 @@ describe('rotas administrativas de operadores', () => {
       expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(response.body.fields.name).toBe('Informe o nome do operador.')
     })
+
+    /** Unicidade de `operators.email` (SDD § "Modelo de dados"), traduzida para `422` por campo. */
+    it('recusa e-mail já cadastrado com 422 e mensagem por campo', async () => {
+      harness.operators.seed({ id: OPERATOR_ID, email: NOVO_OPERADOR.email })
+
+      const response = await criar(NOVO_OPERADOR)
+
+      expect(response.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(response.body.fields.email).toBe('Este e-mail já está em uso por outro operador.')
+      expect(harness.operators.count()).toBe(1)
+    })
   })
 
   describe('remoção', () => {
     const OUTRO_OPERADOR = '22222222-0000-4000-8000-000000000002'
 
     beforeEach(() => {
-      harness.database.auth.admin.seed({ id: OPERATOR_ID, email: 'operadora@veggiedent.test' })
+      harness.operators.seed({ id: OPERATOR_ID, email: 'operadora@veggiedent.test' })
     })
 
     it('responde 401 sem token e não remove', async () => {
-      harness.database.auth.admin.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
+      harness.operators.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
 
       const response = await agente().delete(`/api/admin/operators/${OUTRO_OPERADOR}`)
 
       expect(response.status).toBe(HttpStatus.UNAUTHORIZED)
-      expect(harness.database.auth.admin.has(OUTRO_OPERADOR)).toBe(true)
+      expect(harness.operators.has(OUTRO_OPERADOR)).toBe(true)
     })
 
     it('remove um operador que não é o autenticado, havendo outro restante', async () => {
-      harness.database.auth.admin.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
+      harness.operators.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
 
       const response = await remover(OUTRO_OPERADOR)
 
       expect(response.status).toBe(HttpStatus.NO_CONTENT)
-      expect(harness.database.auth.admin.has(OUTRO_OPERADOR)).toBe(false)
+      expect(harness.operators.has(OUTRO_OPERADOR)).toBe(false)
     })
 
     /** R-10, primeira recusa: ninguém remove a própria conta. */
     it('recusa com 409 remover a si mesmo, mesmo havendo outro operador', async () => {
-      harness.database.auth.admin.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
+      harness.operators.seed({ id: OUTRO_OPERADOR, email: 'outro@veggiedent.test' })
 
       const response = await remover(OPERATOR_ID)
 
@@ -189,7 +196,7 @@ describe('rotas administrativas de operadores', () => {
         statusCode: HttpStatus.CONFLICT,
         error: 'Um operador não pode remover a própria conta.',
       })
-      expect(harness.database.auth.admin.has(OPERATOR_ID)).toBe(true)
+      expect(harness.operators.has(OPERATOR_ID)).toBe(true)
     })
 
     /**
@@ -198,14 +205,13 @@ describe('rotas administrativas de operadores', () => {
      * A checagem de "a si mesmo" compara o alvo com o id do token, não com a
      * lista de operadores (`remove-operator.use-case.ts`) — então, para
      * exercitar a segunda guarda isoladamente, o cenário aqui é o de um token
-     * cuja conta já não existe mais no Supabase Auth (ex.: removida por outro
-     * caminho, sessão ainda não expirada): o alvo da remoção **não é** "eu
-     * mesmo" segundo o token, e ainda assim é o único operador que resta.
+     * cuja conta já não existe mais na tabela `operators` (ex.: removida por
+     * outro caminho, sessão ainda não expirada): o alvo da remoção **não é**
+     * "eu mesmo" segundo o token, e ainda assim é o único operador que resta.
      */
     it('recusa com 409 remover o único operador restante, quando o alvo não é o próprio autenticado', async () => {
-      const database = harness.database
-      await database.auth.admin.deleteUser(OPERATOR_ID)
-      database.auth.admin.seed({ id: OUTRO_OPERADOR, email: 'unico@veggiedent.test' })
+      await harness.operators.remove(OPERATOR_ID)
+      harness.operators.seed({ id: OUTRO_OPERADOR, email: 'unico@veggiedent.test' })
 
       const response = await remover(OUTRO_OPERADOR)
 
@@ -214,7 +220,7 @@ describe('rotas administrativas de operadores', () => {
         statusCode: HttpStatus.CONFLICT,
         error: 'Não é possível remover o último operador restante.',
       })
-      expect(database.auth.admin.has(OUTRO_OPERADOR)).toBe(true)
+      expect(harness.operators.has(OUTRO_OPERADOR)).toBe(true)
     })
 
     it('responde 404 ao remover um id que não é operador', async () => {

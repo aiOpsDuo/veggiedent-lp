@@ -3,7 +3,7 @@ import { CreateOperatorUseCase } from './application/create-operator.use-case'
 import { ListOperatorsUseCase } from './application/list-operators.use-case'
 import { RemoveOperatorUseCase } from './application/remove-operator.use-case'
 import { OPERATOR_DIRECTORY } from './domain/operator-directory.port'
-import { SupabaseOperatorDirectory } from './infrastructure/supabase-operator.directory'
+import { MySqlOperatorDirectory } from './infrastructure/mysql-operator.directory'
 import { AdminOperatorsController } from './presentation/admin-operators.controller'
 
 /**
@@ -12,14 +12,16 @@ import { AdminOperatorsController } from './presentation/admin-operators.control
  *
  * Camadas (SDD § "Visão de layers dentro da API"): igual aos demais módulos —
  * `presentation/` traduz HTTP, `application/` orquestra, `domain/` guarda a
- * porta e as duas regras de recusa (R-10), `infrastructure/` fala com a Admin
- * API do Supabase Auth. Não existe repositório de banco aqui: o Supabase Auth
- * é a única fonte, por isso não há tabela `operators` nem migração para ela.
+ * porta e as duas regras de recusa (R-10), `infrastructure/` fala com a tabela
+ * `operators` do MySQL via Prisma (SDD § D-10 — substitui a Admin API do
+ * Supabase Auth). `PRISMA_CLIENT` não precisa ser importado aqui: `PrismaModule`
+ * é `@Global()` (ver `shared/infrastructure/prisma.module.ts`) e já está
+ * registrado uma única vez em `AppModule`.
  */
 @Module({
   controllers: [AdminOperatorsController],
   providers: [
-    { provide: OPERATOR_DIRECTORY, useClass: SupabaseOperatorDirectory },
+    { provide: OPERATOR_DIRECTORY, useClass: MySqlOperatorDirectory },
     ListOperatorsUseCase,
     CreateOperatorUseCase,
     RemoveOperatorUseCase,
