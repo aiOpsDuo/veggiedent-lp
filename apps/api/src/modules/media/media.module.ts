@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { ENVIRONMENT } from '../../config/environment'
 import { SectionRepositoryModule } from '../content/section-repository.module'
 import { MetadataModule } from '../metadata/metadata.module'
 import { DeleteMediaUseCase } from './application/delete-media.use-case'
@@ -10,9 +11,10 @@ import { MEDIA_REPOSITORY } from './domain/media-repository.port'
 import { MEDIA_STORAGE } from './domain/media-storage.port'
 import { MEDIA_URL_REPOSITORY } from './domain/media-url-repository.port'
 import { ContentMediaReferenceFinder } from './infrastructure/content-media-reference.finder'
-import { SupabaseMediaRepository } from './infrastructure/supabase-media.repository'
-import { SupabaseMediaStorage } from './infrastructure/supabase-media-storage'
-import { SupabaseMediaUrlRepository } from './infrastructure/supabase-media-url.repository'
+import { createMinioClient, MINIO_CLIENT } from './infrastructure/minio-client'
+import { MinioMediaStorage } from './infrastructure/minio-media-storage'
+import { MySqlMediaUrlRepository } from './infrastructure/mysql-media-url.repository'
+import { MySqlMediaRepository } from './infrastructure/mysql-media.repository'
 import { AdminMediaController } from './presentation/admin-media.controller'
 
 /**
@@ -21,7 +23,7 @@ import { AdminMediaController } from './presentation/admin-media.controller'
  * Camadas (SDD § "Visão de layers dentro da API"): `presentation/` traduz HTTP,
  * `application/` orquestra casos de uso, `domain/` guarda as regras e as portas,
  * `infrastructure/` implementa as portas. A dependência aponta sempre para
- * dentro: nada em `domain/` importa framework, Supabase ou camada de fora.
+ * dentro: nada em `domain/` importa framework, MinIO/Prisma ou camada de fora.
  *
  * São quatro portas, estreitas de propósito (ISP): a que resolve identificador
  * em URL para o conteúdo publicado, a que registra e remove, a que fala com o
@@ -35,14 +37,25 @@ import { AdminMediaController } from './presentation/admin-media.controller'
  *
  * `MEDIA_URL_REPOSITORY` continua exportado porque `GET /api/content` entrega à
  * LP um endereço no lugar do identificador guardado (SDD § C-06 e C-07).
+ *
+ * **Migração MySQL/MinIO (SDD § D-05, D-10 — reescritas em 2026-09-21).**
+ * `SupabaseMediaStorage`/`SupabaseMediaRepository`/`SupabaseMediaUrlRepository`
+ * saíram (arquivos apagados, sem substituto no nome — ficariam órfãos, nada
+ * mais os referenciava fora daqui). `MinioMediaStorage` fala com o MinIO pelo
+ * cliente `minio` (token `MINIO_CLIENT`, só usado dentro deste módulo — ao
+ * contrário do `PRISMA_CLIENT`, que é global porque cinco módulos o
+ * compartilham, o cliente MinIO só interessa à mídia). `MySqlMediaRepository`
+ * e `MySqlMediaUrlRepository` usam o `PRISMA_CLIENT` global de
+ * `PrismaModule`.
  */
 @Module({
   imports: [SectionRepositoryModule, MetadataModule],
   controllers: [AdminMediaController],
   providers: [
-    { provide: MEDIA_URL_REPOSITORY, useClass: SupabaseMediaUrlRepository },
-    { provide: MEDIA_REPOSITORY, useClass: SupabaseMediaRepository },
-    { provide: MEDIA_STORAGE, useClass: SupabaseMediaStorage },
+    { provide: MINIO_CLIENT, inject: [ENVIRONMENT], useFactory: createMinioClient },
+    { provide: MEDIA_URL_REPOSITORY, useClass: MySqlMediaUrlRepository },
+    { provide: MEDIA_REPOSITORY, useClass: MySqlMediaRepository },
+    { provide: MEDIA_STORAGE, useClass: MinioMediaStorage },
     { provide: MEDIA_REFERENCE_FINDER, useClass: ContentMediaReferenceFinder },
     IssueUploadCredentialUseCase,
     RegisterMediaUseCase,

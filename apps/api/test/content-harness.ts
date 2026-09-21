@@ -1,6 +1,10 @@
 import type { INestApplication } from '@nestjs/common'
+import { MEDIA_REPOSITORY } from '../src/modules/media/domain/media-repository.port'
+import { MEDIA_URL_REPOSITORY } from '../src/modules/media/domain/media-url-repository.port'
+import { MINIO_CLIENT } from '../src/modules/media/infrastructure/minio-client'
 import { SUPABASE_CLIENT } from '../src/shared/infrastructure/supabase-client'
 import { createTestApp } from './create-test-app'
+import { FakeMediaRepository, FakeMediaUrlRepository } from './fake-media-repository'
 import { FakeSupabaseDatabase } from './fake-supabase'
 import { signOperatorToken } from './operator-tokens'
 
@@ -25,6 +29,18 @@ export async function startContentHarness(): Promise<ContentHarness> {
 
   const app = await createTestApp({}, {}, [
     { provide: SUPABASE_CLIENT, useValue: database.asSupabaseClient() },
+    // Mídia (migrada para MySQL/MinIO — SDD § D-05/D-10): três fronteiras
+    // próprias, sem passar pelo dublê Supabase acima. `MINIO_CLIENT` troca de
+    // lugar (não `MEDIA_STORAGE`) para que o adaptador real,
+    // `MinioMediaStorage`, continue sendo o que a suíte exercita — só o
+    // cliente MinIO por trás dele é o dublê (`database.storage`, um
+    // `FakeMinioClient`). Os dois repositórios
+    // (`MEDIA_REPOSITORY`/`MEDIA_URL_REPOSITORY`) trocam de lugar na porta
+    // mesmo: replicar a superfície inteira do `PrismaClient` gerado só para
+    // isso não se paga — ver o comentário de `fake-media-repository.ts`.
+    { provide: MINIO_CLIENT, useValue: database.storage },
+    { provide: MEDIA_REPOSITORY, useValue: new FakeMediaRepository(database) },
+    { provide: MEDIA_URL_REPOSITORY, useValue: new FakeMediaUrlRepository(database) },
   ])
 
   const token = await signOperatorToken({

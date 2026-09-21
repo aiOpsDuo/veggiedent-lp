@@ -65,18 +65,22 @@ export class HttpMediaSource implements SnapshotMediaSource {
 const CACHE_SECONDS = 3600
 
 /**
- * Envio direto ao Supabase Storage pela URL assinada, no protocolo que o
- * cliente oficial usa: `PUT` na URL da credencial, com o tipo do arquivo no
- * cabeçalho e os bytes no corpo.
+ * Envio direto ao armazenamento pela URL pré-assinada: um `PUT` só, com o
+ * tipo do arquivo no cabeçalho e os bytes no corpo (SDD § D-05, reescrita em
+ * 2026-09-21 — `credential.uploadUrl`, não mais `credential.signedUrl`).
+ *
+ * `x-upsert` saiu: era um cabeçalho do Supabase Storage, sem equivalente no
+ * MinIO — a URL `PUT` pré-assinada do MinIO não distingue criar de
+ * sobrescrever, e a idempotência do envio já é garantida por outro lugar
+ * (`RegisterMediaUseCase.execute`, via `findByStoragePath`).
  */
 export class SignedUrlUploader implements MediaUploader {
   async upload(credential: UploadCredentialView, file: MediaBytes): Promise<void> {
-    const response = await fetch(credential.signedUrl, {
+    const response = await fetch(credential.uploadUrl, {
       method: 'PUT',
       headers: {
         'content-type': file.contentType,
         'cache-control': `max-age=${CACHE_SECONDS}`,
-        'x-upsert': 'false',
       },
       body: file.bytes,
     })

@@ -92,7 +92,7 @@ class UploaderParaOArmazenamentoDeTeste implements MediaUploader {
 
   async upload(credential: UploadCredentialView, file: MediaBytes): Promise<void> {
     this.harness.database.storage.uploadWithCredential(
-      credential.token,
+      credential.uploadUrl,
       credential.bucket,
       credential.path,
       { sizeBytes: file.bytes.byteLength, mimeType: file.contentType },

@@ -4,19 +4,31 @@ import type { UploadTarget } from './upload-plan'
 export const MEDIA_STORAGE = Symbol('MediaStorage')
 
 /**
- * A credencial temporária que o navegador recebe (SDD § D-05).
+ * A credencial temporária que o navegador recebe (SDD § D-05, reescrita em
+ * 2026-09-21).
  *
  * É de escopo e validade limitados: vale para **um** caminho, em **um** bucket,
- * por um tempo curto. A chave secreta do Supabase, que a emitiu, nunca sai do
+ * por um tempo curto. A chave de acesso do MinIO, que a emitiu, nunca sai do
  * servidor.
+ *
+ * **Antes (Supabase Storage/TUS)** este tipo carregava três formas de
+ * autorização — `signedUrl` (envio de um arquivo só), `token` (o mesmo direito
+ * de escrita, na forma que o protocolo retomável exige) e `resumableEndpoint`
+ * (o endereço desse protocolo, para vídeo grande em blocos) — porque o
+ * Supabase Storage oferecia os dois caminhos e o painel escolhia um deles em
+ * tempo de execução.
+ *
+ * **Agora (MinIO)** só existe uma forma de autorização: uma URL `PUT`
+ * pré-assinada, escopada a um bucket e caminho, por tempo limitado. O MinIO
+ * também suporta multipart em blocos, mas D-05 descarta reproduzi-lo: o teto
+ * de 50 MB do projeto não justifica a complexidade de orquestrar upload em
+ * partes. Sem upload retomável, não há um "mesmo direito em outra forma" nem
+ * um endereço de protocolo separado para descrever — por isso `token` e
+ * `resumableEndpoint` saem do tipo, e não são substituídos por equivalentes.
  */
 export interface UploadCredential {
-  /** Endereço de envio direto, para arquivo que cabe em uma requisição. */
-  readonly signedUrl: string
-  /** O mesmo direito de escrita, na forma que o upload retomável usa. */
-  readonly token: string
-  /** Endereço do protocolo retomável, para vídeo grande enviado em blocos. */
-  readonly resumableEndpoint: string
+  /** Endereço `PUT` de envio direto — a única forma de upload que existe. */
+  readonly uploadUrl: string
   readonly expiresInSeconds: number
 }
 

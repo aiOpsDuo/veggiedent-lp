@@ -7,14 +7,20 @@ import type { MediaKind } from '../domain/media-kind'
  * apresentação não monta resposta e o domínio não conhece a forma do JSON.
  */
 
-/** Resposta de `POST /api/admin/media/upload-url` — o passo 1 de D-05. */
+/**
+ * Resposta de `POST /api/admin/media/upload-url` — o passo 1 de D-05.
+ *
+ * `uploadUrl`/`expiresInSeconds` são a credencial em si (SDD § D-05, reescrita
+ * em 2026-09-21 — antes `signedUrl`/`token`/`resumableEndpoint`). `kind`,
+ * `bucket`, `path` e `maxBytes` não são parte da credencial: são o destino que
+ * a API decidiu, que o passo 3 (`POST /api/admin/media`) repete para
+ * confirmar o upload.
+ */
 export interface UploadCredentialView {
   readonly kind: MediaKind
   readonly bucket: string
   readonly path: string
-  readonly signedUrl: string
-  readonly token: string
-  readonly resumableEndpoint: string
+  readonly uploadUrl: string
   readonly expiresInSeconds: number
   readonly maxBytes: number
 }
