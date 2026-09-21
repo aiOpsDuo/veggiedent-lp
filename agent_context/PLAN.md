@@ -752,7 +752,8 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/persistencia-orm
 - Execução: paralelizável com modulo-conteudo, modulo-leads e modulo-midia (`modules/metadata/infrastructure/`)
 - Toca documentação: não
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#3](https://github.com/aiOpsDuo/veggiedent-lp/pull/3) squash-mergeado em `main` (commit `bfb8a98`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: revisei o diff completo; rodei eu mesmo `npx jest mysql-site-metadata` (5/5) e `npm run typecheck -w apps/api` (só os 5 erros Supabase já conhecidos, de módulos ainda não migrados por outras tarefas em paralelo). **Verificação por `curl` contra `GET /api/seo` real, prevista no critério acima, ainda não é possível**: a suíte e2e da API está vermelha até a tarefa `autenticacao-propria` substituir `test/content-harness.ts` — essa parte do critério fica para `migracao-mysql/revisao-final`, quando a API inteira voltar a subir de ponta a ponta.
 
 #### migracao-mysql/modulo-leads — Repositório de leads em MySQL
 - Origem: planejada
