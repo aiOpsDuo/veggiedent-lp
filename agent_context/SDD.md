@@ -110,7 +110,7 @@ O usuário confirmou repositório único com pastas separadas. O repositório pa
 | `updated_at` | `DATETIME(3)` | UTC |
 | `updated_by` | `CHAR(36)` | Operador que salvou |
 
-**`site_metadata`** — registro único (`id` fixo) com `title`, `description`, `og_image_media_id`, `canonical_url`, `updated_at`, `updated_by`.
+**`site_metadata`** — registro único (`id` fixo) com `title`, `description`, `og_image_media_id`, `og_image_alt`, `updated_at`, `updated_by`. **Correção de retomada em 2026-09-21:** esta linha estava desatualizada desde a T25 (2026-09-05) — carregava `canonical_url`, removido naquela migração (`20260905120000_remove_canonical_url_and_option_codes.sql`, o endereço canônico voltou a ser estático em `apps/lp/index.html`), e não citava `og_image_alt`, adicionado antes disso (`20260902130000_add_og_image_alt_to_site_metadata.sql`). Conferido contra `supabase-site-metadata.repository.ts`, que é quem de fato lê/grava essas colunas hoje — nenhuma tarefa de código precisa mudar por causa desta correção, só a descrição estava errada.
 
 **`media_assets`** — um registro por arquivo enviado.
 
