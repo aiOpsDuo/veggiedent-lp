@@ -828,7 +828,9 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/modulo-conteudo, migracao-mysql/modulo-metadados, migracao-mysql/modulo-leads, migracao-mysql/modulo-midia, migracao-mysql/gestao-operadores, migracao-mysql/painel-cliente
 - Execução: sequencial (só pode remover o que as tarefas anteriores já substituíram)
 - Toca documentação: não diretamente (a limpeza de `docs/` fica para a próxima tarefa)
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#10](https://github.com/aiOpsDuo/veggiedent-lp/pull/10) squash-mergeado em `main` (commit `7766888`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: revisei `content-harness.ts`, os três dublês novos (`fake-section-repository.ts`, `fake-site-metadata-repository.ts`, `fake-lead-repository.ts`) e `app.module.ts`. Rodei eu mesmo `npm run test` completo na raiz — **47 suites / 466 testes da API, mais LP e content-schema, todos verdes, sem MySQL/MinIO reais no ar** —, `npm run typecheck` e `npm run build` (raiz, todos os workspaces) limpos. O subagente já havia feito a verificação real de ponta a ponta (`migrate:db` → `seed:operator` → `migrate:content` → `GET /api/content` com as 9 seções), então não repeti isso.
+- **Achado adicional na varredura final, fora do escopo literal desta tarefa:** `packages/design-tokens/src/assets.ts` (`VEGGIEDENT_LOGO_URL`) ainda é uma URL literal do Supabase Storage do projeto de desenvolvimento, e `apps/admin/src/screens/{AdminLayout.tsx,LoginScreen.tsx}` a consomem — diferente do logo da LP (Header/Footer), que já virou asset local em 2026-09-08 (commit `5ab9922`); o painel ficou de fora daquele fix. Isso é uma dependência de Supabase **real e funcional** (o logo do painel quebra se o projeto Supabase de desenvolvimento for desligado), não coberta pelo grep desta tarefa por viver em `packages/`, fora do `apps/` que o critério de "pronto" varria explicitamente sem incluir `packages/design-tokens`. Também `apps/admin/src/api/admin-api-client.ts:147` tem um comentário desatualizado ("Supabase é usado exclusivamente para autenticar"), obsoleto desde `painel-cliente`. Registrado como tarefa `ajustes/logo-do-painel-e-comentario-desatualizado`, a seguir.
 
 #### migracao-mysql/documentacao — README e /docs refletindo MySQL + MinIO
 - Origem: planejada
@@ -848,6 +850,16 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/documentacao
 - Execução: sequencial (última tarefa da fase)
 - Toca documentação: não (verifica a documentação já escrita, não escreve nova)
+- Status: pendente
+
+### ajustes/logo-do-painel-aponta-para-supabase
+- **Identificador (v1.5.0):** `ajustes/logo-do-painel-aponta-para-supabase` — origem: correção.
+- Descrição: `packages/design-tokens/src/assets.ts` (`VEGGIEDENT_LOGO_URL`) ainda é uma URL literal do Supabase Storage do projeto de desenvolvimento, consumida por `apps/admin/src/screens/{AdminLayout.tsx,LoginScreen.tsx}` — dependência de Supabase real e funcional (o logo do painel quebra se aquele projeto for desligado), que passou batido pelo mesmo fix já aplicado ao logo da LP (`ajustes/logo-fixo-em-codigo`, 2026-09-08) e pela varredura final de `migracao-mysql/migrar-conteudo-e-remover-supabase` (que não cobria `packages/`). Trocar por um asset local, mesmo padrão de `apps/lp/src/assets/logos/veggiedent-fresh-edc-logo.svg` (comparar por hash antes de aceitar como idêntico). Corrigir também o comentário desatualizado em `apps/admin/src/api/admin-api-client.ts:147` ("Supabase é usado exclusivamente para autenticar" — obsoleto desde `migracao-mysql/painel-cliente`).
+- Rastreável a: `agent_context/CHANGELOG.md`, entrada a criar quando esta tarefa for executada; achado registrado em `migracao-mysql/migrar-conteudo-e-remover-supabase` acima.
+- Critério de "pronto": `grep -ril supabase packages/` não retorna nenhum código com URL ou dependência real (só, no máximo, comentário histórico); `npm run build -w apps/admin` produz o SVG como asset do próprio bundle, não uma referência externa; hash do arquivo local idêntico ao baixado da URL antiga, antes de removê-la.
+- Dependências: migracao-mysql/painel-cliente (já concluída)
+- Execução: sequencial
+- Toca documentação: não
 - Status: pendente
 
 ## Ordem de execução
