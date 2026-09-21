@@ -10,6 +10,12 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule)
   const environment = app.get<Environment>(ENVIRONMENT)
 
+  // Liga os hooks de desligamento do Nest a SIGTERM/SIGINT: sem isto,
+  // `onModuleDestroy` (usado por `PrismaModule` para fechar o pool de conexões
+  // do MySQL, SDD § D-10) nunca é chamado — o Nest não escuta sinais do
+  // sistema operacional por padrão.
+  app.enableShutdownHooks()
+
   configureApp(app, environment)
   await app.listen(environment.PORT)
 

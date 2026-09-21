@@ -8,5 +8,7 @@ module.exports = {
     '^.+\\.ts$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.json' }],
   },
   setupFiles: ['<rootDir>/test/setup-environment.ts'],
-  collectCoverageFrom: ['src/**/*.ts', '!src/main.ts'],
+  // `src/generated/**` e o Prisma Client gerado (schema.prisma § generator
+  // client) — codigo que ninguem escreve a mao, sem sentido medir cobertura.
+  collectCoverageFrom: ['src/**/*.ts', '!src/main.ts', '!src/generated/**'],
 };

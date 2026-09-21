@@ -1,0 +1,218 @@
+// Schema Prisma do CMS Veggiedent.
+// Rastreavel a: agent_context/SDD.md § "Modelo de dados", § D-01, § D-10.
+//
+// Cinco tabelas, traduzidas de supabase/migrations/*.sql (fonte da verdade do
+// schema real de producao) para MySQL 8, conforme a tabela de tipos do SDD:
+// uuid -> CHAR(36); jsonb -> JSON; text -> VARCHAR(n) com limite conhecido, ou
+// TEXT sem limite; timestamptz -> DATETIME(3) em UTC; boolean -> TINYINT(1)
+// (Prisma "Boolean").
+//
+// DECISAO — geracao de UUID passa do banco para a aplicacao.
+// As migracoes Postgres usam `default gen_random_uuid()`: hoje e o PROPRIO
+// BANCO quem gera o id de `media_assets` e `leads` (`content_sections.key` nao
+// e UUID; `site_metadata.id` e a constante 'default'; `operators` e tabela
+// nova, sem equivalente Postgres). MySQL nao tem uma funcao nativa portavel
+// equivalente a `gen_random_uuid()` (UUID() do MySQL gera UUID v1, baseado em
+// timestamp e endereco de rede — formato diferente, e nao e o que o resto do
+// sistema espera). Por isso nenhum campo `id` abaixo tem `@default(uuid())`
+// nem qualquer outro default do Prisma: a partir desta tarefa, o UUID v4 passa
+// a ser gerado explicitamente pela aplicacao (repositorios das tarefas
+// seguintes desta fase, com alguma biblioteca de UUID v4), antes do INSERT.
+// Isso muda ONDE o UUID nasce (banco -> aplicacao), nao o formato do valor.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  runtime      = "nodejs"
+}
+
+// A partir do Prisma ORM 7, `url` nao vive mais no datasource do
+// schema.prisma: a URL de conexao para o Prisma Migrate mora em
+// `prisma.config.ts` (que le `DATABASE_URL` do ambiente), e o `PrismaClient`
+// em tempo de execucao recebe a conexao via driver adapter
+// (`shared/infrastructure/prisma-client.ts`), nao mais pelo datasource.
+datasource db {
+  provider = "mysql"
+}
+
+/// Uma secao da landing page. Todo o conteudo, inclusive listas, vive em `data`.
+model ContentSection {
+  /// Um dos 9 identificadores fechados de secao: hero, educacao, rotina,
+  /// produto, demonstracao, prova_autoridade, captura_lead, onde_comprar, faq
+  /// (supabase/migrations/20260904170000_remove_footer_section.sql, ultima
+  /// migracao a estreitar o conjunto). O Postgres original garante isso com
+  /// `constraint content_sections_key_check`; o Prisma nao tem CHECK
+  /// declarativo portavel entre bancos (sem atributo `@@check`, pedido desde
+  /// 2019 — github.com/prisma/prisma/issues/3388, ainda em aberto). A
+  /// validacao do valor permanece na aplicacao: `packages/content-schema`
+  /// (tipo `SectionKey`) valida a chave em toda escrita, antes de qualquer
+  /// INSERT/UPDATE chegar aqui. Diferenca consciente do desenho original: o
+  /// MySQL desta tabela nao repete a garantia de banco que o Postgres tinha.
+  key String @id @db.VarChar(64)
+
+  /// Documento da secao validado contra packages/content-schema. O banco nao
+  /// impoe forma (SDD § D-01).
+  data Json
+
+  /// Visibilidade da secao inteira. GET /api/content omite secoes nao publicadas.
+  isPublished Boolean @default(false) @map("is_published")
+
+  /// UTC. Default so vale no INSERT — repositorios atualizam explicitamente em cada escrita.
+  updatedAt DateTime @default(now()) @map("updated_at") @db.DateTime(3)
+
+  /// Operador que salvou. Sem FK para `operators` — mesma justificativa de
+  /// auditoria sem chave estrangeira ja usada nas migracoes Postgres originais
+  /// (media_assets.created_by, site_metadata.updated_by): o valor e de
+  /// auditoria, nao de negocio, e nenhuma regra do SDD depende dele.
+  updatedById String? @map("updated_by") @db.Char(36)
+
+  @@map("content_sections")
+}
+
+/// Registro unico (`id` fixo) com os metadados da pagina. Consumido por GET /api/seo.
+model SiteMetadata {
+  /// Preso a constante 'default' pela aplicacao (repositorio das tarefas
+  /// seguintes) — mesmo papel do `check (id = 'default')` do Postgres
+  /// original, que o Prisma tambem nao expressa de forma declarativa.
+  id String @id @default("default") @db.VarChar(16)
+
+  /// Sem limite conhecido no schema original (`text`) -> TEXT.
+  title String? @db.Text
+
+  /// Sem limite conhecido no schema original (`text`) -> TEXT.
+  description String? @db.Text
+
+  /// Texto alternativo da imagem de compartilhamento (og_image). Obrigatorio
+  /// no esquema da aplicacao quando ha imagem; anulavel aqui porque a imagem
+  /// e opcional (mesma nota de supabase/migrations/20260902130000_*.sql).
+  ogImageAlt String? @map("og_image_alt") @db.Text
+
+  /// FK real para media_assets (nao e campo de auditoria): reproduz o
+  /// `references media_assets(id) on delete set null` do Postgres original —
+  /// perder a imagem nao pode apagar os demais metadados.
+  ogImageMediaId String?     @map("og_image_media_id") @db.Char(36)
+  ogImage        MediaAsset? @relation(fields: [ogImageMediaId], references: [id], onDelete: SetNull)
+
+  /// UTC. Default so vale no INSERT.
+  updatedAt DateTime @default(now()) @map("updated_at") @db.DateTime(3)
+
+  /// Operador que salvou. Sem FK — mesma justificativa de content_sections.updatedById.
+  updatedById String? @map("updated_by") @db.Char(36)
+
+  // Sem `canonical_url`: removida em
+  // supabase/migrations/20260905120000_remove_canonical_url_and_option_codes.sql.
+  // O endereco canonico e estatico em apps/lp/index.html.
+
+  @@map("site_metadata")
+}
+
+/// Um registro por arquivo enviado ao armazenamento (MinIO).
+model MediaAsset {
+  /// UUID gerado pela aplicacao antes do INSERT (ver nota no topo do arquivo
+  /// sobre a mudanca de onde o UUID nasce).
+  id String @id @db.Char(36)
+
+  /// Conjunto fechado: image | video ('caption' removido em
+  /// supabase/migrations/20260904160000_remove_captions_media_kind.sql). Sem
+  /// CHECK no MySQL — mesma nota de content_sections.key: validado na
+  /// aplicacao antes da escrita.
+  kind String @db.VarChar(16)
+
+  /// Caminho no bucket MinIO. Unique: um caminho identifica um unico arquivo.
+  storagePath String @unique @map("storage_path") @db.VarChar(512)
+
+  /// URL publica servida ao navegador.
+  publicUrl String @map("public_url") @db.VarChar(1024)
+
+  /// Convencao pratica de tamanho para tipo MIME (sem limite formal, mas nunca observado alem disso).
+  mimeType String @map("mime_type") @db.VarChar(255)
+
+  sizeBytes BigInt @map("size_bytes")
+
+  /// VARCHAR(255): mesmo limite pratico de nome de arquivo usado por sistemas de arquivo comuns.
+  originalFilename String @map("original_filename") @db.VarChar(255)
+
+  /// Preenchido para os dois kinds hoje existentes (imagem e video preenchem largura/altura).
+  width Int?
+
+  /// Preenchido para os dois kinds hoje existentes (imagem e video preenchem largura/altura).
+  height Int?
+
+  /// Preenchido apenas para kind = video; nulo para kind = image.
+  durationSeconds Decimal? @map("duration_seconds") @db.Decimal(10, 3)
+
+  /// UTC.
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  /// Operador que registrou a midia. Sem FK — mesma justificativa de content_sections.updatedById.
+  createdById String? @map("created_by") @db.Char(36)
+
+  /// Lado inverso da FK real de SiteMetadata.ogImageMediaId.
+  siteMetadataReferences SiteMetadata[]
+
+  @@map("media_assets")
+}
+
+/// Um registro por envio do formulario de captura de leads.
+model Lead {
+  /// UUID gerado pela aplicacao antes do INSERT (ver nota no topo do arquivo).
+  id String @id @db.Char(36)
+
+  /// Obrigatorio.
+  nome String @db.VarChar(255)
+
+  /// Obrigatorio.
+  email String @db.VarChar(255)
+
+  telefone      String? @db.VarChar(255)
+  nomeCachorro  String? @map("nome_cachorro") @db.VarChar(255)
+  porteCachorro String? @map("porte_cachorro") @db.VarChar(255)
+  cidadeEstado  String? @map("cidade_estado") @db.VarChar(255)
+
+  /// Coletado no formulario. Ate esta fase, descartado antes do envio (SDD § R-01) — esta tabela e o que corrige isso.
+  conheceVirbac String? @map("conhece_virbac") @db.VarChar(255)
+
+  usaProdutoVirbac  String? @map("usa_produto_virbac") @db.VarChar(255)
+  qualProdutoVirbac String? @map("qual_produto_virbac") @db.VarChar(255)
+
+  /// Opt-in de marketing. Varia de verdade entre true/false — por isso e guardado
+  /// (ao contrario de `aceite_lgpd`, removido: ver nota do SDD § "Modelo de dados").
+  aceiteComunicacoes Boolean @map("aceite_comunicacoes")
+
+  origem String? @db.VarChar(64)
+
+  /// UTC.
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  // Sem `aceite_lgpd` (consentimento e condicao de envio, nao dado do
+  // registro) nem `rdstation_status`/`rdstation_error` (integracao
+  // descontinuada) — as duas colunas caem antes de chegar a este schema.
+
+  /// Espelha `leads_created_at_desc_idx` (supabase/migrations/20260902120300_create_leads.sql):
+  /// serve GET /api/admin/leads (listagem paginada, mais recente primeiro) e seu filtro por periodo.
+  @@index([createdAt(sort: Desc)], map: "leads_created_at_desc_idx")
+  @@map("leads")
+}
+
+/// Uma conta de operador do painel (SDD § D-03/D-09). Tabela nova — nao existe
+/// equivalente Postgres/Supabase: antes o operador vivia inteiramente no
+/// Supabase Auth.
+model Operator {
+  /// UUID gerado pela aplicacao antes do INSERT (tabela nasce direto no MySQL, nunca existiu no Postgres).
+  id String @id @db.Char(36)
+
+  /// Login.
+  email String @unique @db.VarChar(255)
+
+  /// Hash argon2id — nunca a senha em texto puro.
+  passwordHash String @map("password_hash") @db.VarChar(255)
+
+  /// Exibido no painel.
+  name String @db.VarChar(255)
+
+  /// UTC.
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@map("operators")
+}
