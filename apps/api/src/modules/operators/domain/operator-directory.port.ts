@@ -3,8 +3,8 @@ import type { OperatorAccount } from './operator-account'
 export const OPERATOR_DIRECTORY = Symbol('OperatorDirectory')
 
 /**
- * O que a Admin API do Supabase precisa para criar um operador pronto para
- * logar (SDD § D-09, revista na T34): sem link, sem e-mail — quem cria já
+ * O que a tabela `operators` precisa para criar um operador pronto para logar
+ * (SDD § D-09, revista em 2026-09-21): sem link, sem e-mail — quem cria já
  * define e-mail, senha e nome nesta mesma chamada.
  */
 export interface CreateOperatorInput {
@@ -14,11 +14,11 @@ export interface CreateOperatorInput {
 }
 
 /**
- * Porta para a Admin API do Supabase Auth (SDD § D-09). É a única forma de a
- * API conhecer, criar ou remover um operador — não existe tabela de
- * operadores no banco do CMS, então não existe um "repositório" no sentido dos
- * outros módulos (mídia, metadados, leads): quem implementa esta porta fala
- * `auth.admin.*`, nunca `.from(...)`.
+ * Porta para a tabela `operators` do MySQL (SDD § D-09, § "Modelo de dados").
+ * É a única forma de a API conhecer, criar ou remover um operador. A forma da
+ * porta (`listAll`/`create`/`remove`) não muda desde a versão sobre a Admin
+ * API do Supabase Auth que esta migração substitui — só quem a implementa
+ * passa a falar `prisma.operator.*` em vez de `auth.admin.*`.
  */
 export interface OperatorDirectory {
   listAll(): Promise<OperatorAccount[]>

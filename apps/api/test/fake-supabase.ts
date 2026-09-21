@@ -1,6 +1,5 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { FakeMinioClient } from './fake-storage'
-import { FakeSupabaseAuthAdmin } from './fake-supabase-auth-admin'
 
 /**
  * Banco em memória com a forma de resposta do PostgREST.
@@ -294,8 +293,6 @@ export class FakeSupabaseDatabase {
    * `FakeMediaRepository`/`FakeMediaUrlRepository` de `fake-media-repository.ts`.
    */
   readonly storage = new FakeMinioClient()
-  /** A Admin API de autenticação do mesmo cliente (`supabase.auth.admin`). */
-  readonly auth = { admin: new FakeSupabaseAuthAdmin() }
   private readonly tables = new Map<string, Row[]>()
   private readonly failures = new Map<string, PostgrestError>()
 

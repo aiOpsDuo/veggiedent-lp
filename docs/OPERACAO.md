@@ -38,6 +38,23 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 | `VITE_LEAD_SUBMIT_ENDPOINT` | Endpoint que recebe o formulário. Padrão `/api/leads` — relativo, pela mesma razão de `VITE_CONTENT_ENDPOINT` |
 | `VITE_CONTENT_ENDPOINT` | De onde a LP lê o conteúdo publicado. Padrão `/api/content` — relativo porque LP e API compartilham domínio |
 
+## Bootstrap do primeiro operador
+
+**Novo problema introduzido pela migração para MySQL/Prisma (SDD § D-09):** com o Supabase, o primeiro operador de um ambiente novo nascia por um passo manual no painel do Supabase (a "armadilha" documentada em [`MIGRAR-PARA-NOVO-SUPABASE.md`](MIGRAR-PARA-NOVO-SUPABASE.md) — "sem o primeiro operador, ninguém entra no painel novo"). Sem Supabase, esse painel de terceiro não existe mais.
+
+O equivalente agora é um comando de servidor, análogo a `migrate:content`:
+
+```
+SEED_OPERATOR_EMAIL=operadora@empresa.com \
+SEED_OPERATOR_PASSWORD=senha-inicial-forte \
+SEED_OPERATOR_NAME="Nome da Operadora" \
+npm run seed:operator -w apps/api
+```
+
+(Em `docker compose exec api sh -c '...'`, as três variáveis vão antes do comando, do mesmo jeito.) Grava o operador direto na tabela `operators`, com a senha em hash argon2id — o mesmo algoritmo do login. Rodar de novo com o mesmo e-mail é seguro: o comando recusa com uma mensagem clara, sem sobrescrever a conta existente. Rode isto uma vez por ambiente novo (desenvolvimento, homologação, produção), antes do primeiro login.
+
+Este documento ainda descreve o resto da autenticação e das variáveis de ambiente pelo desenho anterior (Supabase Auth/JWKS) — atualização completa fica para a tarefa `migracao-mysql/documentacao`, ao final desta fase.
+
 ## Comandos e portas internas
 
 O comando de todo dia é o Docker (ver [README.md](../README.md) e [DOCKER.md](DOCKER.md)). A lista completa de comandos `npm`, o modo de rodar uma aplicação isolada para depurar, a tabela de portas internas (5173/5174/3000) e as verificações rápidas por `curl` estão em [RODAR-SEM-DOCKER.md](RODAR-SEM-DOCKER.md) — não duplicados aqui.

@@ -16,6 +16,8 @@
     "pretest": "npm run build --prefix ../../packages/content-schema && npm run prisma:generate",
     "premigrate:content": "npm run build",
     "migrate:content": "node --env-file-if-exists=.env dist/migration/main.js",
+    "preseed:operator": "npm run build",
+    "seed:operator": "node --env-file-if-exists=.env dist/migration/seed-operator.main.js",
     "prisma:generate": "prisma generate",
     "migrate:db": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
