@@ -5,9 +5,13 @@ import {
 import { DEFAULT_PORT } from './environment.schema'
 
 const validEnvironment = {
-  SUPABASE_URL: 'https://projeto.supabase.co',
-  SUPABASE_SECRET_KEY: 'sb_secret_ficticia',
-  SUPABASE_JWKS_URL: 'https://projeto.supabase.co/auth/v1/.well-known/jwks.json',
+  DATABASE_URL: 'mysql://veggiedent_app:senha-ficticia@localhost:3306/veggiedent',
+  MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_ROOT_USER: 'minioadmin-ficticio',
+  MINIO_ROOT_PASSWORD: 'minioadmin-senha-ficticia',
+  MINIO_BUCKET_IMAGES: 'veggiedent-images',
+  MINIO_BUCKET_VIDEOS: 'veggiedent-videos',
+  AUTH_JWT_SECRET: 'segredo-ficticio-com-pelo-menos-32-caracteres',
   ALLOWED_ORIGINS: 'http://localhost:5173',
 }
 
@@ -17,7 +21,7 @@ describe('parseEnvironment', () => {
 
     expect(environment.NODE_ENV).toBe('development')
     expect(environment.PORT).toBe(DEFAULT_PORT)
-    expect(environment.SUPABASE_URL).toBe(validEnvironment.SUPABASE_URL)
+    expect(environment.DATABASE_URL).toBe(validEnvironment.DATABASE_URL)
   })
 
   it('converte a porta para número', () => {
@@ -36,11 +40,11 @@ describe('parseEnvironment', () => {
   })
 
   it('recusa subir e nomeia a variável obrigatória ausente', () => {
-    const { SUPABASE_SECRET_KEY, ...semSegredo } = validEnvironment
+    const { AUTH_JWT_SECRET, ...semSegredo } = validEnvironment
 
     expect(() => parseEnvironment(semSegredo)).toThrow(EnvironmentValidationError)
     expect(() => parseEnvironment(semSegredo)).toThrow(
-      /SUPABASE_SECRET_KEY: variável obrigatória ausente\./,
+      /AUTH_JWT_SECRET: variável obrigatória ausente\./,
     )
   })
 
@@ -51,19 +55,19 @@ describe('parseEnvironment', () => {
   })
 
   it('acusa formato inválido sem imprimir o valor recebido', () => {
-    const segredoDoUsuario = 'sb_secret_valor_que_nao_pode_vazar'
+    const segredoDoUsuario = 'segredo-jwt-que-nao-pode-vazar-em-mensagem-de-erro'
 
     try {
       parseEnvironment({
         ...validEnvironment,
-        SUPABASE_SECRET_KEY: segredoDoUsuario,
-        SUPABASE_URL: 'nao-e-uma-url',
+        AUTH_JWT_SECRET: segredoDoUsuario,
+        MINIO_ENDPOINT: 'nao-e-uma-url',
       })
       throw new Error('parseEnvironment deveria ter recusado o ambiente.')
     } catch (error) {
       expect(error).toBeInstanceOf(EnvironmentValidationError)
       const message = (error as Error).message
-      expect(message).toMatch(/SUPABASE_URL: valor fora do formato esperado\./)
+      expect(message).toMatch(/MINIO_ENDPOINT: valor fora do formato esperado\./)
       expect(message).not.toContain('nao-e-uma-url')
       expect(message).not.toContain(segredoDoUsuario)
     }
@@ -72,10 +76,10 @@ describe('parseEnvironment', () => {
   it('lista todas as variáveis com problema, não só a primeira', () => {
     expect(() => parseEnvironment({})).toThrow(
       expect.objectContaining({
-        message: expect.stringContaining('SUPABASE_URL'),
+        message: expect.stringContaining('DATABASE_URL'),
       }),
     )
-    expect(() => parseEnvironment({})).toThrow(/SUPABASE_JWKS_URL/)
+    expect(() => parseEnvironment({})).toThrow(/MINIO_ENDPOINT/)
     expect(() => parseEnvironment({})).toThrow(/ALLOWED_ORIGINS/)
   })
 })

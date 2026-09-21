@@ -52,7 +52,9 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio
+    # Docker Hub descontinuou a publicação de `minio/minio` para a edição
+    # comunitária — a distribuição oficial atual é `quay.io/minio/minio`.
+    image: quay.io/minio/minio
     command: server /data --console-address ":9001"
     environment:
       # Credencial de acesso ao armazenamento. Nunca vai para o navegador — o
@@ -88,9 +90,10 @@ services:
       # Segredo do servidor. Nunca é argumento de build, nunca entra numa
       # camada de imagem: chega como variável de ambiente, em execução.
       # A API conecta com o usuário de aplicação, nunca com o root do MySQL.
-      MYSQL_DATABASE: ${MYSQL_DATABASE:?defina MYSQL_DATABASE no .env da raiz}
-      MYSQL_USER: ${MYSQL_USER:?defina MYSQL_USER no .env da raiz}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?defina MYSQL_PASSWORD no .env da raiz}
+      # Connection string única no formato que o Prisma espera (SDD § D-10),
+      # interpolada a partir das três variáveis que o serviço `mysql` já exige
+      # — nenhuma variável nova precisa entrar no `.env`.
+      DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env da raiz}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env da raiz}
@@ -144,3 +147,9 @@ services:
       retries: 6
       start_period: 5s
     restart: unless-stopped
+
+volumes:
+  # Nomeados e declarados aqui para sobreviver a `docker compose down` (sem
+  # `-v`) e a `--build` — só `docker compose down -v` os apaga.
+  mysql_data:
+  minio_data:
