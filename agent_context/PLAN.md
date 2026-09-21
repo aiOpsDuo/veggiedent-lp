@@ -717,7 +717,9 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: nenhuma
 - Execução: sequencial (mexe em `docker-compose.yml` e `.env.example`, arquivos que as tarefas seguintes também leem, ainda que não escrevam)
 - Toca documentação: sim — `docs/DOCKER.md` ganha os dois serviços novos; `docs/BANCO-DE-DADOS.md` e `docs/OPERACAO.md` citam as variáveis novas (detalhe fino fica para `migracao-mysql/documentacao`, esta tarefa só registra o que muda no compose/env em si)
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#1](https://github.com/aiOpsDuo/veggiedent-lp/pull/1) squash-mergeado em `main` (commit `57e54c4`) e enviado ao remoto; branch e worktree de tarefa removidos.
+- Verificação do orquestrador, além do que o subagente relatou: revisei o diff completo do PR linha a linha (checklist de `references/git-workflow.md`) e encontrei duas lacunas antes de aceitar — `apps/api/.env.example` (usado por `docs/RODAR-SEM-DOCKER.md`) tinha ficado com as três variáveis antigas do Supabase, desatualizado em relação ao `environment.schema.ts` novo; e a tabela de `docs/DOCKER.md` ainda citava a imagem `minio/minio` em vez da `quay.io/minio/minio` já corrigida no compose. Ambas devolvidas a um segundo subagente, corrigidas, `grep` de verificação conferido por mim (`SUPABASE` ausente de `apps/api/.env.example`; `minio/minio` sem `quay.io/` ausente de `docs/` e `docker-compose.yml`), só então mergeei.
+- **Efeito colateral conhecido e aceito, não é regressão desta tarefa:** `npm run typecheck -w apps/api` e `npm run test -w apps/api` ficam **vermelhos** a partir deste merge — os 5 arquivos que ainda importam `SUPABASE_*` de `environment.schema.ts` (três adaptadores + dois fixtures de teste e2e) só são substituídos pelas tarefas seguintes desta fase (`persistencia-orm`, `modulo-midia`, `autenticacao-propria`). Confirmado por mim que `apps/admin`, `apps/lp` e `packages/content-schema` continuam com typecheck limpo. Registrado aqui para quem retomar não estranhar o vermelho nem tentar "consertar" fora de ordem.
 
 #### migracao-mysql/persistencia-orm — Prisma, schema e cliente compartilhado
 - Origem: planejada
