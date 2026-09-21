@@ -3,7 +3,7 @@ import { GetSeoMetadataUseCase } from './application/get-seo-metadata.use-case'
 import { GetSiteMetadataUseCase } from './application/get-site-metadata.use-case'
 import { SaveSiteMetadataUseCase } from './application/save-site-metadata.use-case'
 import { SITE_METADATA_REPOSITORY } from './domain/site-metadata-repository.port'
-import { SupabaseSiteMetadataRepository } from './infrastructure/supabase-site-metadata.repository'
+import { MySqlSiteMetadataRepository } from './infrastructure/mysql-site-metadata.repository'
 import { AdminMetadataController } from './presentation/admin-metadata.controller'
 import { PublicSeoController } from './presentation/public-seo.controller'
 
@@ -13,7 +13,7 @@ import { PublicSeoController } from './presentation/public-seo.controller'
  * Camadas (SDD § "Visão de layers dentro da API"): `presentation/` traduz HTTP,
  * `application/` orquestra casos de uso, `domain/` guarda as regras e as portas,
  * `infrastructure/` implementa as portas. A dependência aponta sempre para
- * dentro: nada em `domain/` importa framework, Supabase ou camada de fora.
+ * dentro: nada em `domain/` importa framework, Prisma ou camada de fora.
  *
  * A porta é exportada porque `GET /api/content` entrega conteúdo e metadados na
  * mesma resposta (SDD § "Contratos de dados/API"); o módulo de conteúdo lê os
@@ -24,7 +24,7 @@ import { PublicSeoController } from './presentation/public-seo.controller'
   providers: [
     {
       provide: SITE_METADATA_REPOSITORY,
-      useClass: SupabaseSiteMetadataRepository,
+      useClass: MySqlSiteMetadataRepository,
     },
     GetSeoMetadataUseCase,
     GetSiteMetadataUseCase,
