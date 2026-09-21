@@ -5,7 +5,7 @@ import { ListLeadsUseCase } from './application/list-leads.use-case'
 import { SubmitLeadUseCase } from './application/submit-lead.use-case'
 import { LEAD_INTAKE } from './domain/lead-intake.port'
 import { LEAD_REPOSITORY } from './domain/lead-repository.port'
-import { SupabaseLeadRepository } from './infrastructure/supabase-lead.repository'
+import { MySqlLeadRepository } from './infrastructure/mysql-lead.repository'
 import { AdminLeadsController } from './presentation/admin-leads.controller'
 import { PublicLeadsController } from './presentation/public-leads.controller'
 
@@ -15,7 +15,7 @@ import { PublicLeadsController } from './presentation/public-leads.controller'
  * Camadas (SDD § "Visão de layers dentro da API"): `presentation/` traduz HTTP,
  * `application/` orquestra casos de uso, `domain/` guarda as regras e as portas,
  * `infrastructure/` implementa as portas. A dependência aponta sempre para
- * dentro: nada em `domain/` importa framework, Supabase ou camada de fora.
+ * dentro: nada em `domain/` importa framework, Prisma ou camada de fora.
  *
  * São duas portas sobre a mesma tabela, implementadas pela mesma classe e
  * registradas sob os dois tokens: `LEAD_INTAKE` é o que o caminho público
@@ -30,9 +30,9 @@ import { PublicLeadsController } from './presentation/public-leads.controller'
 @Module({
   controllers: [PublicLeadsController, AdminLeadsController],
   providers: [
-    SupabaseLeadRepository,
-    { provide: LEAD_INTAKE, useExisting: SupabaseLeadRepository },
-    { provide: LEAD_REPOSITORY, useExisting: SupabaseLeadRepository },
+    MySqlLeadRepository,
+    { provide: LEAD_INTAKE, useExisting: MySqlLeadRepository },
+    { provide: LEAD_REPOSITORY, useExisting: MySqlLeadRepository },
     SubmitLeadUseCase,
     ListLeadsUseCase,
     ExportLeadsUseCase,
