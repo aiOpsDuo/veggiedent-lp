@@ -729,7 +729,10 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/infraestrutura
 - Execução: sequencial (as tarefas de módulo abaixo dependem do client gerado)
 - Toca documentação: sim — `docs/BANCO-DE-DADOS.md` passa a descrever Prisma/MySQL em vez de `supabase db push`
-- Status: pendente
+- Status: **concluída** em 2026-09-21, PR [#2](https://github.com/aiOpsDuo/veggiedent-lp/pull/2) squash-mergeado em `main` (commit `a392e35`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: reli `schema.prisma` inteiro linha a linha contra `agent_context/SDD.md` § "Modelo de dados" e contra as migrações reais em `supabase/migrations/` — as cinco tabelas, tipos e `@map` batem; rodei eu mesmo `npm run typecheck -w apps/api` e confirmei os mesmos (e só os mesmos) 5 arquivos Supabase pendentes das tarefas seguintes, nenhum erro novo introduzido.
+- **Correção de retomada feita durante a revisão desta tarefa:** a primeira redação de SDD § D-10 dizia que as migrações seriam "aplicadas com `prisma migrate deploy` na subida do contêiner", comparando com o `supabase db push` original — mas o `supabase db push` **nunca rodou automaticamente na subida do contêiner** (sempre foi um passo manual, já documentado em `docs/DOCKER.md` desde a T21). Corrigido o texto de D-10 para descrever `migrate:db` como comando de servidor dedicado, rodado à parte — o que o subagente já havia implementado corretamente; só a descrição na decisão estava errada, sem impacto em código.
+- Decisão de biblioteca não prevista no plano original, aceita: Prisma ORM 7 (GA) exige *driver adapter* (`@prisma/adapter-mariadb`, já que não existe adapter `mysql` dedicado — `mariadb` é compatível) em vez de URL de conexão direta no `PrismaClient`; a URL de conexão do Prisma Migrate saiu de `schema.prisma` para `prisma.config.ts`. Documentado em comentário no próprio código.
 
 #### migracao-mysql/modulo-conteudo — Repositório de seções em MySQL
 - Origem: planejada
