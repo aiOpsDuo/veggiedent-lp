@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { AdminApiClient } from './api/admin-api-client'
 import { App } from './App'
-import { createSupabaseAuthGateway } from './auth/supabase-auth-gateway'
+import { createApiAuthGateway } from './auth/api-auth-gateway'
 import { readEnvironment } from './config/env'
 import './index.css'
 
@@ -12,9 +12,13 @@ const ADMIN_BASENAME = '/admin'
 const container = document.getElementById('root') as HTMLElement
 
 /**
- * Um erro de ambiente vira uma mensagem legível em vez de página em branco:
- * sem as variáveis do Supabase não existe login possível, e quem está subindo o
- * painel precisa saber qual variável falta.
+ * Um erro de ambiente vira uma mensagem legível em vez de página em branco.
+ *
+ * `readEnvironment` não tem hoje nenhuma variável obrigatória (SDD § D-03: o
+ * painel só fala com a própria API, `apiBaseUrl` sempre tem um valor por
+ * padrão), então este caminho não deveria disparar na prática — fica como
+ * rede de segurança para uma variável obrigatória que venha a existir no
+ * futuro, em vez de uma página em branco sem explicação.
  */
 function renderConfigurationError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error)
@@ -26,7 +30,7 @@ try {
   ReactDOM.createRoot(container).render(
     <React.StrictMode>
       <App
-        authGateway={createSupabaseAuthGateway(environment)}
+        authGateway={createApiAuthGateway(environment)}
         apiClient={new AdminApiClient(environment.apiBaseUrl)}
         basename={ADMIN_BASENAME}
       />

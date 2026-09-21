@@ -23,9 +23,7 @@ const CREDENCIAL: UploadCredential = {
   kind: 'video',
   bucket: 'veggiedent-videos',
   path: 'abc/video.mp4',
-  signedUrl: 'https://armazenamento.test/object/upload/sign/veggiedent-videos/abc/video.mp4',
-  token: 'credencial-temporaria',
-  resumableEndpoint: 'https://armazenamento.test/storage/v1/upload/resumable/sign',
+  uploadUrl: 'https://armazenamento.test/veggiedent-videos/abc/video.mp4?X-Amz-Signature=exemplo',
   expiresInSeconds: 7200,
   maxBytes: 524288000,
 }
