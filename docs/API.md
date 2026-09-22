@@ -14,7 +14,21 @@ desenvolvimento as mesmas rotas respondem em `http://localhost:5173/api/…`. A 
 | `GET /api/seo` | Só os metadados da página, para o injetor de borda: `{ title, description, ogImageUrl, canonicalUrl }`. Campos ausentes vêm `null`, para que o injetor use a reserva do HTML estático em vez de falhar. |
 | `POST /api/leads` | Recebe o formulário da LP: valida e **grava o lead**. Responde `200 {"success":true}`; dados inválidos respondem `422` com erro por campo; falha de gravação responde `500`, porque o lead se perderia. Ver "Captura e consulta de leads". |
 
-**Exigem token** — cabeçalho `Authorization: Bearer <token do Supabase Auth>`. Sem token, ou com token inválido ou expirado, respondem `401 {"statusCode":401,"error":"Autenticação necessária."}`:
+**Login (público, credenciais no corpo):**
+
+| Método e rota | O que faz |
+|---|---|
+| `POST /api/auth/login` | Recebe `{ "email": "...", "password": "..." }`; verifica contra a tabela `operators` (MySQL) com argon2id. |
+
+```bash
+curl -s -X POST http://localhost:3000/api/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"email":"operadora@empresa.com","password":"senha-inicial-forte"}'
+```
+
+Sucesso responde `200 { "accessToken": "...", "expiresInSeconds": 43200 }` — um JWT assinado pela própria API (`AUTH_JWT_SECRET`, SDD § D-03), válido por 12 horas (um turno de trabalho), sem endpoint de renovação: expirado, o operador loga de novo. E-mail inexistente e senha errada respondem a **mesma** mensagem genérica, `401 {"statusCode":401,"error":"Credenciais inválidas."}`, para não revelar qual dos dois falhou (SDD § C-02).
+
+**Exigem token** — cabeçalho `Authorization: Bearer <token>`, o `accessToken` devolvido por `POST /api/auth/login`. Sem token, ou com token inválido ou expirado, respondem `401 {"statusCode":401,"error":"Autenticação necessária."}`:
 
 | Método e rota | O que faz |
 |---|---|
@@ -54,7 +68,7 @@ Um campo de imagem ou vídeo guarda no banco o **identificador** da mídia, nunc
 
 | Saída | O que o campo de mídia traz | Por quê |
 |---|---|---|
-| `GET /api/content` e `GET /api/seo` (públicas) | A **URL pública** do arquivo | Quem consome é a LP e o injetor de SEO, que precisam de um endereço para `<img src>`, `<video src>` e `og:image`. Um identificador não é renderizável, e a LP nunca fala com o Supabase para resolvê-lo (SDD § C-06, C-07 e C-10). |
+| `GET /api/content` e `GET /api/seo` (públicas) | A **URL pública** do arquivo | Quem consome é a LP e o injetor de SEO, que precisam de um endereço para `<img src>`, `<video src>` e `og:image`. Um identificador não é renderizável, e a LP nunca fala com o MinIO para resolvê-lo (SDD § C-06, C-07 e C-10). |
 | `GET /api/admin/sections/:key` e `GET /api/admin/metadata` (com token) | O **identificador** guardado | Quem consome é o painel, que edita a referência e a devolve no `PUT`. Trocar o identificador pela URL na tela de edição faria o painel gravar um endereço digitado, exatamente o que o esquema proíbe. |
 
 A resolução acontece **dentro da API**, na leitura, e vale tanto para campo de topo (`hero.image`) quanto para campo de item de lista (vídeos, cards, passos, parceiros).

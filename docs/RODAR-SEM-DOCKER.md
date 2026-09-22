@@ -12,7 +12,7 @@ git clone <repositorio> && cd veggiedent-lp
 npm install
 cp apps/lp/.env.example apps/lp/.env        # opcional: todas as variáveis têm default
 cp apps/api/.env.example apps/api/.env      # e preencha as variáveis obrigatórias
-cp apps/admin/.env.example apps/admin/.env  # e preencha as duas variáveis do Supabase
+cp apps/admin/.env.example apps/admin/.env  # opcional: a única variável tem default
 npm run dev
 ```
 
