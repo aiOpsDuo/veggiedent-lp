@@ -113,16 +113,44 @@ npm run build -w apps/api                # compila a API e a carga
 npm run migrate:content -w apps/api      # popula o CMS
 ```
 
+**Isto roda de uma máquina com o repositório completo — nunca de dentro do contêiner da
+API (`docker compose exec api ...`), e a razão não é só o build.** Achado da tarefa
+`migracao-mysql/revisao-final`: mesmo contornando o primeiro problema (a imagem de produção
+não tem `tsconfig.build.json` nem código-fonte para o pré-passo `npm run build` recompilar —
+mesma causa documentada em [OPERACAO.md, "Bootstrap do primeiro operador"](OPERACAO.md) para o
+`seed:operator`, e mesmo remédio, o `dist/` já compilado direto), a carga ainda esbarra num
+segundo problema, este sem contorno simples: ela fala com a API por HTTP, inclusive para
+**subir os bytes de cada mídia pela URL pré-assinada que a própria API devolve** — e essa URL
+sempre usa `MINIO_PUBLIC_URL` (o endereço voltado ao navegador, `docs/DOCKER.md`), nunca o
+endereço interno `minio:9000`. Rodando de dentro do contêiner `api`, `localhost:8180` (o valor
+típico de `MINIO_PUBLIC_URL`) aponta para o próprio contêiner, não para o proxy publicado no
+hospedeiro — a conexão é recusada. Não há variável para contornar isso: quem decide o formato
+de `uploadUrl` é o processo da API já em execução, não quem chama `migrate:content`. A carga
+precisa, portanto, rodar de um lugar que alcance o endereço público de verdade — o hospedeiro
+(ou qualquer rede que resolva `localhost:$PORTA_PROXY`) —, o mesmo lugar de onde um navegador
+alcançaria o painel.
+
 O que a carga precisa no ambiente (ela lê `apps/api/.env` se ele existir; ver
 `apps/api/src/migration/main.ts`):
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `MINIO_ENDPOINT` | sim | Endereço do MinIO de **destino**, o mesmo que a API está usando (a carga só o usa para conferir se o objeto já existe — `PublicStorageProbe` — nunca para montar uma URL entregue a alguém) |
-| `CMS_API_URL` | não | Raiz da API, com prefixo. Padrão `http://localhost:3000/api` |
+| `MINIO_ENDPOINT` | sim | Endereço do MinIO de **destino**, alcançável de onde a carga roda (a carga só o usa para conferir se o objeto já existe — `PublicStorageProbe` — nunca para montar uma URL entregue a alguém). Contra o `docker-compose.yml` deste projeto, o mesmo endereço público do proxy serve — `http://localhost:$PORTA_PROXY/storage` —, sem precisar publicar a porta do MinIO à parte |
+| `CMS_API_URL` | não | Raiz da API, com prefixo. Padrão `http://localhost:3000/api`; contra o compose, `http://localhost:$PORTA_PROXY/api` |
 | `CMS_ACCESS_TOKEN` | — | Token de um operador. No lugar dele, as duas abaixo |
 | `CMS_OPERATOR_EMAIL`, `CMS_OPERATOR_PASSWORD` | — | Credenciais de um operador já criado (`seed:operator` ou pela tela Operadores), trocadas por um token via `POST /api/auth/login` |
 | `CONTENT_SNAPSHOT` | não | Caminho de outro instantâneo. Padrão: o do repositório |
+
+Exemplo completo contra a pilha do `docker-compose.yml` (porta padrão 8080, ajuste se
+`PORTA_PROXY` for outra):
+
+```bash
+CMS_API_URL="http://localhost:8080/api" \
+MINIO_ENDPOINT="http://localhost:8080/storage" \
+CMS_OPERATOR_EMAIL="operadora@empresa.com" \
+CMS_OPERATOR_PASSWORD="senha-inicial-forte" \
+npm run migrate:content -w apps/api
+```
 
 **Antes de rodar, crie um operador** — a carga escreve como um operador escreveria, e a guarda
 global da API nega por padrão. Ver [OPERACAO.md, "Bootstrap do primeiro operador"](OPERACAO.md)

@@ -85,6 +85,17 @@ COPY --from=build-api /repo/packages/content-schema/dist /repo/packages/content-
 # roda sozinha na subida do contêiner).
 COPY apps/api/prisma /repo/apps/api/prisma
 COPY apps/api/prisma.config.ts /repo/apps/api/prisma.config.ts
+# `apps/lp/src/content/content-snapshot.json` é a entrada de `migrate:content`
+# (`defaultSnapshotPath()` em `src/migration/content-snapshot.ts` sobe a
+# árvore de diretórios a partir de si mesmo até achar
+# `apps/lp/src/content/content-snapshot.json` — funciona sem mudança de
+# código porque preserva o mesmo caminho relativo do monorepo). Achado da
+# tarefa `migracao-mysql/revisao-final`, revisão de retomada: sem este
+# arquivo (16 KB, dado versionado, não segredo), `migrate:content` dentro do
+# contêiner falha com "Não encontrei apps/lp/src/content/content-snapshot.json
+# em nenhum diretório acima de /repo/apps/api/dist/migration" — a imagem não
+# tem `apps/lp/` nenhum, só o `dist/` da API e do pacote de esquemas.
+COPY apps/lp/src/content/content-snapshot.json /repo/apps/lp/src/content/content-snapshot.json
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
 

@@ -45,7 +45,9 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 
 **Novo problema introduzido pela migração para MySQL/Prisma (SDD § D-09):** com o Supabase, o primeiro operador de um ambiente novo nascia por um passo manual no painel do Supabase — "sem o primeiro operador, ninguém entra no painel novo". Sem Supabase, esse painel de terceiro não existe mais.
 
-O equivalente agora é um comando de servidor, análogo a `migrate:content`:
+O equivalente agora é um comando de servidor, análogo a `migrate:content`. A forma do comando muda conforme onde ele roda — **a mesma distinção que já existe para `migrate:db`** em [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md) (desenvolvimento × contêiner de produção), pelo mesmo motivo: a imagem de produção só tem o `dist/` compilado, nunca o código-fonte nem as ferramentas de build.
+
+**Em desenvolvimento** (repositório completo instalado, `npm install` já rodado):
 
 ```
 SEED_OPERATOR_EMAIL=operadora@empresa.com \
@@ -54,7 +56,17 @@ SEED_OPERATOR_NAME="Nome da Operadora" \
 npm run seed:operator -w apps/api
 ```
 
-(Em `docker compose exec api sh -c '...'`, as três variáveis vão antes do comando, do mesmo jeito.) Grava o operador direto na tabela `operators`, com a senha em hash argon2id — o mesmo algoritmo do login. Rodar de novo com o mesmo e-mail é seguro: o comando recusa com uma mensagem clara, sem sobrescrever a conta existente. Rode isto uma vez por ambiente novo (desenvolvimento, homologação, produção), antes do primeiro login.
+**Dentro do contêiner de produção** (`docker compose exec`) — **achado da tarefa `migracao-mysql/revisao-final`:** o comando acima, rodado ali, falha com `error TS5058: The specified path does not exist: 'tsconfig.build.json'`. A causa é o pré-passo `preseed:operator` (`npm run build`), que tenta recompilar `packages/content-schema` e a própria API — mas a imagem de produção nunca teve o código-fonte nem `tsconfig.build.json` copiados (só o `dist/` já compilado no momento do `docker build`, que já está pronto e atualizado). A saída é a mesma dos outros comandos de servidor deste documento: pular o script `npm` e chamar o JavaScript já compilado direto, exatamente como o próprio `CMD` do contêiner já faz (`docker/Dockerfile`, `CMD ["node", "dist/main.js"]`):
+
+```bash
+docker compose exec \
+  -e SEED_OPERATOR_EMAIL=operadora@empresa.com \
+  -e SEED_OPERATOR_PASSWORD=senha-inicial-forte \
+  -e SEED_OPERATOR_NAME="Nome da Operadora" \
+  api node dist/migration/seed-operator.main.js
+```
+
+Os dois caminhos gravam o operador direto na tabela `operators`, com a senha em hash argon2id — o mesmo algoritmo do login. Rodar de novo com o mesmo e-mail é seguro: o comando recusa com uma mensagem clara, sem sobrescrever a conta existente. Rode isto uma vez por ambiente novo (desenvolvimento, homologação, produção), antes do primeiro login.
 
 ## Comandos e portas internas
 

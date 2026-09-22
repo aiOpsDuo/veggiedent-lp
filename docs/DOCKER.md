@@ -165,15 +165,27 @@ Esta é a pegadinha do modelo, e vale conhecê-la antes de depurar meia hora:
    not find Prisma Schema"). Código na frente do banco **quebra de verdade**:
    se o banco não tiver uma coluna que o código seleciona, a resposta é
    `500`, não um campo vazio.
-5. **Nenhum segredo vive na imagem nem no repositório.** Verificável, não
+5. **Nem todo comando de bootstrap roda igual dentro do contêiner.**
+   `seed:operator` roda com `docker compose exec` chamando o `dist/` direto
+   (`docs/OPERACAO.md`, "Bootstrap do primeiro operador") — a mesma pegadinha
+   do item 4 (o script `npm` tenta recompilar algo que a imagem não tem
+   fonte para recompilar). `migrate:content` vai além: mesmo pulando o
+   `npm run build`, ele fala com a própria API por HTTP para subir mídia
+   pela URL pré-assinada, que a API sempre monta com `MINIO_PUBLIC_URL` — de
+   dentro de um contêiner irmão, esse endereço (`localhost:$PORTA_PROXY`)
+   aponta para o contêiner errado. `migrate:content` só roda de um lugar que
+   alcance o endereço público de verdade — o hospedeiro, nunca
+   `docker compose exec` (`docs/CONTEUDO-DA-LP.md`, "Popular um ambiente
+   novo a partir do instantâneo").
+6. **Nenhum segredo vive na imagem nem no repositório.** Verificável, não
    prometido — o procedimento está na seção seguinte.
-6. **O proxy resolve os nomes `api` e `minio` uma vez, ao carregar a
+7. **O proxy resolve os nomes `api` e `minio` uma vez, ao carregar a
    configuração.** Se um dos dois contêineres for **recriado sozinho** e
    ganhar outro IP, o proxy passa a responder `502` na rota correspondente até
    ser reiniciado (`docker compose restart proxy`). `docker compose up -d`
    recria os três e não tem esse problema. Reresolver em tempo de execução
    exigiria `zone`, que é do nginx comercial.
-7. **Node 24, não 20**, fixado em `docker/Dockerfile`. O motivo original do pin
+8. **Node 24, não 20**, fixado em `docker/Dockerfile`. O motivo original do pin
    — `@supabase/supabase-js` exigindo o WebSocket nativo do Node 22+ — deixou
    de existir: a dependência foi removida do projeto inteiro em
    `migracao-mysql/migrar-conteudo-e-remover-supabase`. O pin em si não foi
