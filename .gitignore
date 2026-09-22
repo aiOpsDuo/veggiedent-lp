@@ -5,6 +5,12 @@ dist
 *.log
 .vercel
 
+# docs/BANCO-DE-DADOS.md documenta este arquivo como "local, nunca commitado"
+# (publica temporariamente a porta do mysql/minio no hospedeiro para rodar
+# comandos contra o banco/armazenamento de fora do container) — mas nada o
+# excluia de fato do controle de versao ate esta correcao.
+docker-compose.override.yml
+
 # Prisma Client gerado (apps/api/prisma/schema.prisma § generator client) —
 # artefato de build, como `dist/`: nasce de `prisma generate`, nunca é escrito
 # à mão. Fica dentro de `src/` só para o `tsc`/`nest build` incluí-lo na
