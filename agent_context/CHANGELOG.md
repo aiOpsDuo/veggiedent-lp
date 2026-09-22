@@ -559,3 +559,11 @@ Documentos afetados: PLAN.md (nova tarefa `ajustes/logo-do-painel-aponta-para-su
 Motivo: ao revisar o PR de `migracao-mysql/migrar-conteudo-e-remover-supabase`, a varredura por `supabase` no código (`grep -ril supabase apps/ packages/ ...`) achou `packages/design-tokens/src/assets.ts` com `VEGGIEDENT_LOGO_URL` ainda literal para o projeto Supabase de desenvolvimento, consumida por duas telas do painel (`AdminLayout.tsx`, `LoginScreen.tsx`). O mesmo problema já tinha sido corrigido para a LP em 2026-09-08 (`ajustes/logo-fixo-em-codigo`, commit `5ab9922`), mas aquele fix não cobriu `packages/design-tokens`, e a varredura desta fase também não — o critério de "pronto" da tarefa varria `apps/`, não `packages/`.
 
 Impacto: tarefa nova, `ajustes/logo-do-painel-aponta-para-supabase`, adicionada ao `PLAN.md` — dependência real e funcional (não só textual) de um serviço que o projeto está deliberadamente deixando de usar. Sem urgência de produção (o projeto Supabase de desenvolvimento continua no ar por enquanto), mas registrado para não ser esquecido antes de qualquer desligamento desse projeto.
+
+## 2026-09-22 — Remove docs/MIGRAR-PARA-NOVO-SUPABASE.md, obsoleto pela migração para MySQL
+
+Documentos afetados: PLAN.md, README.md, docs/ (tarefa `migracao-mysql/documentacao`)
+
+Motivo: com a migração para MySQL + MinIO concluída, não existe mais "um projeto Supabase novo, de produção" para o qual migrar — o roteiro de 7 passos que este documento descrevia (criado em 2026-09-08, ver entrada de `ajustes/documentar-migracao-de-projeto`) deixou de fazer sentido. Avaliada a alternativa de substituí-lo por um roteiro de backup/restauração de MySQL + MinIO; decidido não fazer isso por não haver conteúdo real e proporcional para preencher (nenhum procedimento de backup foi implementado ou pedido) — um documento assim seria especulativo, exatamente o que a skill orienta a evitar.
+
+Impacto: `README.md` perde o link para o documento removido; nenhum outro documento dependia dele.

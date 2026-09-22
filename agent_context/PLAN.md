@@ -840,7 +840,9 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/migrar-conteudo-e-remover-supabase
 - Execução: sequencial
 - Toca documentação: sim (é a própria tarefa)
-- Status: pendente
+- Status: **concluída** em 2026-09-22, PR [#12](https://github.com/aiOpsDuo/veggiedent-lp/pull/12) squash-mergeado em `main` (commit `f2b1219`) e enviado ao remoto; branch e worktree removidos. `docs/MIGRAR-PARA-NOVO-SUPABASE.md` removido (decisão registrada no PR e no `CHANGELOG.md`), por não haver conteúdo real e proporcional para um roteiro de backup/restauração que o substituísse.
+- Verificação do orquestrador: rebasei a branch, rodei `grep -rli supabase docs/ README.md` e reli cada ocorrência restante — todas são menção histórica legítima (comparação "antes/depois" ou seção explicitamente rotulada "Histórico", como em `docs/BANCO-DE-DADOS.md`), nenhuma instrução ativa para configurar ou depender de Supabase. Conferi o diff do `README.md` (troca da linha de "Serviço externo" e do link removido) e de `docs/DOCKER.md`/`docs/PAINEL.md` — coerentes com o código real.
+- **A parte do critério sobre `docker compose up --build -d` de ponta a ponta → painel funcional, conferido manualmente, fica para `migracao-mysql/revisao-final`** — não foi verificada nesta tarefa nem por mim nesta rodada (o subagente verificou comandos pontuais de `docs/MANUTENCAO.md` contra MySQL/MinIO reais, mas não o fluxo completo de onboarding do README).
 
 #### migracao-mysql/revisao-final — Verificação de ponta a ponta e drift detection
 - Origem: planejada
