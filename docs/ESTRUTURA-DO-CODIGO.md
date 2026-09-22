@@ -13,7 +13,7 @@ O repositório é um monorepo de workspaces npm. `agent_context/` e `README.md` 
 ├── packages/
 │   └── content-schema/     # esquemas de seção — esqueleto, preenchido na T2
 ├── docs/
-├── supabase/               # migrações SQL do banco, buckets e script de verificação
+├── supabase/               # histórico: migrações SQL e script de verificação do antigo banco Postgres/Supabase — não mais aplicadas nem mantidas (ver BANCO-DE-DADOS.md, "Histórico: migrações Postgres/Supabase")
 ├── agent_context/
 └── README.md
 ```
@@ -35,14 +35,14 @@ apps/api/src/
         ├── presentation/   # controllers, DTOs, guardas — traduzem HTTP
         ├── application/    # casos de uso — orquestram domínio e portas
         ├── domain/         # regras e portas — não conhecem ninguém
-        └── infrastructure/ # adaptadores: Supabase e Storage
+        └── infrastructure/ # adaptadores: repositórios MySQL/Prisma, armazenamento MinIO, JWT próprio
 ```
 
 Os cinco módulos de domínio nascem vazios na T4. `auth` foi preenchido na T5; `content` e `metadata`, na T6; `media`, na T7; `leads`, na T8.
 
 `migration/` é a exceção que confirma a regra: ele **não é um módulo do Nest** e nada em `modules/` o conhece. É um processo separado (`npm run migrate:content -w apps/api`) que fala com a API pelos endpoints administrativos, como o painel faz — é o que garante que a carga não escapa da validação de esquema. Ver [CONTEUDO-DA-LP.md, "Popular um ambiente novo"](CONTEUDO-DA-LP.md).
 
-Dentro de `apps/admin`, a mesma inversão de dependência da API aparece em escala menor — o painel não conhece o Supabase, conhece uma porta:
+Dentro de `apps/admin`, a mesma inversão de dependência da API aparece em escala menor — o painel não conhece a API de autenticação diretamente, conhece uma porta:
 
 ```
 apps/admin/src/
@@ -50,10 +50,10 @@ apps/admin/src/
 ├── App.tsx             # as rotas: uma pública (login) e todas as outras dentro da guarda
 ├── config/env.ts       # variáveis do painel, validadas na inicialização
 ├── auth/
-│   ├── auth-gateway.ts           # a porta: entrar, sair, observar a sessão
-│   ├── supabase-auth-gateway.ts  # o adaptador do Supabase Auth — o único arquivo que o conhece
-│   ├── AuthProvider.tsx          # estado da sessão, alimentado só pelo que o gateway avisa
-│   └── RequireSession.tsx        # a guarda de rota
+│   ├── auth-gateway.ts       # a porta: entrar, sair, observar a sessão
+│   ├── api-auth-gateway.ts   # o adaptador de `POST /api/auth/login` — o único arquivo que fala com esse endpoint
+│   ├── AuthProvider.tsx      # estado da sessão, alimentado só pelo que o gateway avisa
+│   └── RequireSession.tsx    # a guarda de rota
 ├── api/                # cliente da API do CMS (token no cabeçalho, como a guarda da API espera)
 ├── content/
 │   ├── sections-gateway.ts   # a porta das seções: listar, ler, gravar, ligar/desligar
@@ -85,6 +85,6 @@ cliente, então a licença de quem viaja junto importa. O editor de texto rico �
 **DOMPurify** (MPL-2.0 ou Apache-2.0, à escolha de quem usa), a mesma biblioteca que a API usa
 do lado do servidor, ali com o **jsdom** (MIT) fornecendo o DOM que o Node não tem.
 
-**Serviço externo:** Supabase (banco Postgres, armazenamento de arquivos e autenticação) — o único. O RD Station Marketing foi **descontinuado em 2026-09-03**; o lead não tem destino externo.
+**Serviços de dados:** MySQL 8 e MinIO, auto-hospedados (`docker-compose.yml`) — banco relacional e armazenamento de arquivos. Autenticação própria na API (JWT + argon2), sem provedor externo. O RD Station Marketing foi **descontinuado em 2026-09-03**; o lead não tem destino externo.
 
-**Ponto de atenção de segurança:** a chave secreta do Supabase vive exclusivamente no ambiente de `apps/api`. Nenhuma credencial pode entrar em um build de navegador — variáveis lidas pelo Vite (`VITE_*`) são públicas por natureza.
+**Ponto de atenção de segurança:** a credencial de conexão do MySQL, as chaves de acesso do MinIO e o segredo de assinatura do JWT (`AUTH_JWT_SECRET`) vivem exclusivamente no ambiente de `apps/api`. Nenhuma credencial pode entrar em um build de navegador — variáveis lidas pelo Vite (`VITE_*`) são públicas por natureza.

@@ -19,7 +19,7 @@ Quatro peças em um domínio único:
 | `apps/api` | API do CMS: conteúdo, mídia, metadados e leads | NestJS 11, Node 20+ |
 | `packages/content-schema` | Esquemas das seções — fonte única de validação, formulário e tipos | TypeScript 5, Zod, DOMPurify |
 
-Serviço externo: Supabase (banco Postgres, armazenamento de arquivos e autenticação) — o único. Requer Node 20 ou superior.
+Serviços de dados: MySQL 8 e MinIO, auto-hospedados (`docker-compose.yml`) — banco relacional e armazenamento de arquivos, respectivamente. Autenticação própria na API (JWT + argon2), sem provedor externo. Requer Node 20 ou superior.
 
 Padrão arquitetural, camadas, modelo de dados, decisões técnicas com trade-offs e os diagramas C4 estão em [`agent_context/SDD.md`](agent_context/SDD.md) — não duplicados aqui.
 
@@ -45,8 +45,7 @@ Sem Docker (recarga automática, depurar um processo isolado): [`docs/RODAR-SEM-
 - Subir as três aplicações com um comando, numa porta única: [`docs/DOCKER.md`](docs/DOCKER.md)
 - Como o painel funciona, tela a tela: [`docs/PAINEL.md`](docs/PAINEL.md)
 - Rotas da API, envio de mídia e exportação de leads: [`docs/API.md`](docs/API.md)
-- Migrações, RLS e verificação de isolamento: [`docs/BANCO-DE-DADOS.md`](docs/BANCO-DE-DADOS.md)
-- Passo a passo para migrar para um projeto Supabase novo, de produção: [`docs/MIGRAR-PARA-NOVO-SUPABASE.md`](docs/MIGRAR-PARA-NOVO-SUPABASE.md)
+- Schema, migrações Prisma e verificação contra o SDD: [`docs/BANCO-DE-DADOS.md`](docs/BANCO-DE-DADOS.md)
 - Como a LP consome o conteúdo e o instantâneo de reserva: [`docs/CONTEUDO-DA-LP.md`](docs/CONTEUDO-DA-LP.md)
 - Estrutura de pastas de cada aplicação: [`docs/ESTRUTURA-DO-CODIGO.md`](docs/ESTRUTURA-DO-CODIGO.md)
 - Adicionar um campo, excluir um lead (LGPD), limpar mídia órfã: [`docs/MANUTENCAO.md`](docs/MANUTENCAO.md)

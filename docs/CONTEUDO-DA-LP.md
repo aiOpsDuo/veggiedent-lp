@@ -102,30 +102,31 @@ Os identificadores mudaram em relação aos que estavam escritos em código
 
 ## Popular um ambiente novo a partir do instantâneo
 
-Um projeto Supabase recém-criado — ou um cujas tabelas foram zeradas — deixa o painel sem
-nada, e redigitar o conteúdo à mão não é opção. A carga resolve isso lendo o **instantâneo
-versionado** e gravando **pelos mesmos endpoints administrativos que o painel usa**, com token
-de operador de verdade: não há atalho até o banco, e um documento fora de forma é recusado com
-`422` do mesmo jeito que seria para quem edita pelo painel.
+Um MySQL vazio — recém-criado ou zerado — deixa o painel sem nada, e redigitar o conteúdo à
+mão não é opção. A carga resolve isso lendo o **instantâneo versionado** e gravando **pelos
+mesmos endpoints administrativos que o painel usa**, com token de operador de verdade: não há
+atalho até o banco, e um documento fora de forma é recusado com `422` do mesmo jeito que seria
+para quem edita pelo painel.
 
 ```bash
 npm run build -w apps/api                # compila a API e a carga
 npm run migrate:content -w apps/api      # popula o CMS
 ```
 
-O que a carga precisa no ambiente (ela lê `apps/api/.env` se ele existir):
+O que a carga precisa no ambiente (ela lê `apps/api/.env` se ele existir; ver
+`apps/api/src/migration/main.ts`):
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `SUPABASE_URL` | sim | Projeto Supabase de **destino**, o mesmo que a API está usando |
+| `MINIO_ENDPOINT` | sim | Endereço do MinIO de **destino**, o mesmo que a API está usando |
 | `CMS_API_URL` | não | Raiz da API, com prefixo. Padrão `http://localhost:3000/api` |
-| `CMS_ACCESS_TOKEN` | — | Token de um operador. No lugar dele, as três abaixo |
-| `CMS_OPERATOR_EMAIL`, `CMS_OPERATOR_PASSWORD` | — | Operador já criado no Supabase Auth |
-| `SUPABASE_PUBLISHABLE_KEY` | — | Chave publicável, usada só para trocar e-mail e senha por token |
+| `CMS_ACCESS_TOKEN` | — | Token de um operador. No lugar dele, as duas abaixo |
+| `CMS_OPERATOR_EMAIL`, `CMS_OPERATOR_PASSWORD` | — | Credenciais de um operador já criado (`seed:operator` ou pela tela Operadores), trocadas por um token via `POST /api/auth/login` |
 | `CONTENT_SNAPSHOT` | não | Caminho de outro instantâneo. Padrão: o do repositório |
 
 **Antes de rodar, crie um operador** — a carga escreve como um operador escreveria, e a guarda
-global da API nega por padrão. Ver [PAINEL.md, "Como criar e remover um operador"](PAINEL.md).
+global da API nega por padrão. Ver [OPERACAO.md, "Bootstrap do primeiro operador"](OPERACAO.md)
+ou [PAINEL.md, "Como criar e remover um operador"](PAINEL.md).
 
 **Rodar duas vezes não duplica nada.** A carga substitui: uma seção é uma linha só, pela chave,
 e os metadados são um registro único. As mídias são o caso que exige cuidado, porque o

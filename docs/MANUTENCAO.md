@@ -52,26 +52,25 @@
   5. **Confirme** repetindo a busca do passo 2: nenhum lead com aquele e-mail deve restar.
   6. **Não há outro sistema a alcançar.** O repasse a destino externo foi descontinuado em 2026-09-03: o lead nunca saiu deste banco por conta própria, e apagá-lo aqui encerra o pedido. O que pode ter saído são **exportações em CSV já baixadas** — se alguma foi entregue a terceiros, o pedido do titular precisa alcançá-la também, e isso está fora do que o sistema controla.
 
-  Nunca apague um lead direto no banco pelo painel do Supabase: os dois caminhos acima passam pela API, que registra a exclusão no log do servidor com o identificador do lead e o do operador — e é esse registro que sustenta a resposta ao titular caso o pedido seja questionado depois. O painel do Supabase apaga sem deixar rastro nenhum.
-- **Limpeza de arquivos órfãos no armazenamento:** um upload interrompido entre o passo 2 e o passo 3 do envio de mídia deixa um arquivo no bucket sem linha correspondente em `media_assets` (risco R-04 do SDD). O arquivo é **inerte** — nenhum documento de seção o referencia, porque referência é sempre por identificador de mídia, e identificador só existe depois da confirmação — mas ocupa espaço e é o único resíduo previsto do fluxo.
+  Nunca apague um lead direto no banco (`docker compose exec mysql mysql ...`): os dois caminhos acima passam pela API, que registra a exclusão no log do servidor com o identificador do lead e o do operador — e é esse registro que sustenta a resposta ao titular caso o pedido seja questionado depois. Apagar direto no banco não deixa esse rastro.
+- **Limpeza de arquivos órfãos no armazenamento:** um upload interrompido entre o passo 2 e o passo 3 do envio de mídia deixa um arquivo no bucket MinIO sem linha correspondente em `media_assets` (risco R-04 do SDD). O arquivo é **inerte** — nenhum documento de seção o referencia, porque referência é sempre por identificador de mídia, e identificador só existe depois da confirmação — mas ocupa espaço e é o único resíduo previsto do fluxo.
 
   A conciliação é uma diferença entre duas listas, e a coluna `storage_path` foi guardada qualificada pelo bucket (`veggiedent-videos/<uuid>/<arquivo>`) justamente para que ela seja direta:
 
   ```bash
-  # 1. o que está registrado (com a chave secreta, do lado do servidor)
-  curl -s "$SUPABASE_URL/rest/v1/media_assets?select=storage_path" \
-    -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY"
+  # 1. o que está registrado (direto no MySQL, do lado do servidor)
+  docker compose exec mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" \
+    -e "SELECT storage_path FROM media_assets;"
 
-  # 2. o que está em cada bucket
-  for b in veggiedent-images veggiedent-videos; do
-    curl -s -X POST "$SUPABASE_URL/storage/v1/object/list/$b" \
-      -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY" \
-      -H 'content-type: application/json' -d '{"prefix":"","limit":1000}'
-  done
+  # 2. o que está em cada bucket. O `mc` já vem na imagem do MinIO, mas o alias
+  #    "local" do healthcheck não carrega credencial (só serve para `mc ready`) —
+  #    autentique antes de listar ou apagar:
+  docker compose exec minio mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+  docker compose exec minio mc ls --recursive local/veggiedent-images
+  docker compose exec minio mc ls --recursive local/veggiedent-videos
 
   # 3. apagar um arquivo que está no bucket e não está na lista de registrados
-  curl -s -X DELETE "$SUPABASE_URL/storage/v1/object/<bucket>/<caminho>" \
-    -H "apikey: $SUPABASE_SECRET_KEY" -H "authorization: Bearer $SUPABASE_SECRET_KEY"
+  docker compose exec minio mc rm local/<bucket>/<caminho>
   ```
 
-  Cadência sugerida: mensal, ou depois de uma sessão de edição em que algum upload de vídeo tenha falhado. **Só apague o que estiver no bucket e não estiver na lista de registrados** — o caminho inverso (registro sem arquivo) não é órfão, é defeito, e apagar o registro esconderia o problema em vez de resolvê-lo. Um upload retomável abandonado antes do primeiro bloco não chega a virar arquivo; o Supabase descarta sozinho essas partes incompletas.
+  Cadência sugerida: mensal, ou depois de uma sessão de edição em que algum upload de vídeo tenha falhado. **Só apague o que estiver no bucket e não estiver na lista de registrados** — o caminho inverso (registro sem arquivo) não é órfão, é defeito, e apagar o registro esconderia o problema em vez de resolvê-lo. Uma falha de rede antes de o `PUT` terminar não chega a criar o objeto no MinIO — não há partes incompletas a limpar, diferente do antigo upload retomável em blocos (D-05).

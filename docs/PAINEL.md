@@ -116,19 +116,18 @@ tela sem salvar deixa o arquivo no armazenamento sem ninguém usando (ver [MANUT
 painel**, com mensagem em português e sem nenhuma chamada à rede: o operador não espera um
 envio para descobrir que o arquivo nunca teve chance.
 
-> **Por que 50 MB, se o bucket de vídeo declara 500 MB.** O projeto Supabase tem um teto global
-> de upload por arquivo — hoje **50 MB** — que prevalece sobre o limite declarado em cada
-> bucket: acima dele o armazenamento responde `413 Maximum size exceeded` antes de aceitar
-> qualquer byte. O painel exibe e aplica o **menor** dos dois limites, que é o que de fato vale.
-> Elevar o teto é mudança de plano do projeto, em *Project Settings → Storage → Upload file size
-> limit* (o plano Free trava em 50 MB), não mudança de código. Ver [API.md, "Buckets, limites e tipos
-> aceitos"](API.md) para a tabela completa.
+> **Por que 50 MB, se o bucket de vídeo declara 500 MB.** É uma expectativa de produto (SDD §
+> D-05), não uma trava do MinIO nem do bucket: o teto de **50 MB** é aplicado pelo próprio
+> painel, antes de qualquer envio. O painel exibe e aplica esse limite, escrito no código, não
+> num painel de configuração de terceiro. Ver [API.md, "Buckets, limites e tipos aceitos"](API.md)
+> para a tabela completa.
 
-**Vídeo sobe em blocos, pelo protocolo retomável.** Blocos de 6 MB, direto ao armazenamento: um
-arquivo de 23,6 MB vira quatro blocos, e uma queda de conexão faz o envio recomeçar do último
-bloco confirmado, não do início. Retomar **entre recarregamentos da página** não é oferecido: a
-credencial e o caminho de destino são emitidos a cada tentativa, então recarregar começa um
-envio novo. Arquivo pequeno (imagem) sobe em uma requisição só, também com progresso.
+**Vídeo e imagem sobem do mesmo jeito: um único `PUT`, direto ao armazenamento** (SDD § D-05,
+revisto em 2026-09-21 — o MinIO não tem upload retomável, e reproduzi-lo por multipart não se
+paga para o teto de 50 MB do projeto). Uma queda de conexão a 90% do envio exige reenviar o
+arquivo inteiro, não retomar do ponto de interrupção — trade-off aceito em D-05. O painel
+continua mostrando o progresso do envio, pelo evento de progresso do `XMLHttpRequest`, com ou
+sem retomada por bloco.
 
 **Os bytes nunca passam pela API** (SDD § D-05). O painel pede a credencial, envia o arquivo
 direto ao armazenamento e confirma — os três passos descritos em "Envio de mídia em três
@@ -256,32 +255,26 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 
 ## Como criar e remover um operador do painel
 
-A T29 trouxe a gestão de operadores para dentro do CMS, revertendo o trade-off original da
-[SDD § D-03](../agent_context/SDD.md) (que deixava isso só no painel do Supabase). A T34 trocou o
-fluxo de criação por convite (link de ativação de uso único) por criação direta: quem cria
-preenche e-mail, senha e nome, e a conta já nasce pronta para logar — ver
-[SDD § D-09](../agent_context/SDD.md), revista em 2026-09-04. A API continua sem tabela de
-usuários — o Supabase Auth segue como única fonte —, mas é a própria tela **Operadores**
-(`/admin/operadores`) que fala com a Admin API do Supabase em nome de quem administra o painel;
-a chave secreta nunca chega ao navegador.
+A T29 trouxe a gestão de operadores para dentro do CMS. A T34 trocou o fluxo de criação por
+convite (link de ativação de uso único) por criação direta: quem cria preenche e-mail, senha e
+nome, e a conta já nasce pronta para logar. **Revisto em 2026-09-21 (SDD § D-09):** com o
+Supabase fora do projeto, a API passou a ler e escrever diretamente na tabela `operators`
+(MySQL) — a própria tela **Operadores** (`/admin/operadores`) fala com `/api/admin/operators/*`,
+atrás da mesma guarda global; o segredo de assinatura do JWT e a credencial do MySQL nunca
+chegam ao navegador.
 
 **Criar:**
 
 1. Na tela **Operadores**, preencha **nome**, **e-mail** e **senha inicial** do operador novo e
-   confirme **Criar operador**. A API chama `admin.createUser({ email, password, email_confirm:
-   true, user_metadata: { name } })` — a conta nasce **já confirmada e pronta para logar**, sem
-   link nem e-mail transacional algum.
-2. A senha mínima é de 6 caracteres (o padrão do Supabase Auth); a tela recusa antes de
-   submeter, com mensagem em português, se a senha for mais curta.
-3. **Trade-off aceito, declarado em D-09:** quem cria sabe a senha inicial de outra pessoa —
+   confirme **Criar operador**. A API grava o registro em `operators` com a senha em hash
+   argon2id — a conta nasce **já pronta para logar**, sem link nem e-mail transacional algum.
+2. **Trade-off aceito, declarado em D-09:** quem cria sabe a senha inicial de outra pessoa —
    não há passo em que o novo operador a define por conta própria. A equipe é pequena e todos os
-   operadores já se conhecem; nada impede o operador novo de trocar a própria senha depois pelo
-   fluxo padrão do Supabase, se isso vier a ser necessário (não implementado, por não ter sido
+   operadores já se conhecem; nada impede o operador novo de trocar a própria senha depois, se
+   isso vier a ser necessário (endpoint de troca de senha não implementado, por não ter sido
    pedido).
-4. O nome mostrado na lista vem de `user_metadata.name` — a única extensão de dado que a Admin
-   API do Supabase Auth permite sem outra fonte de verdade. Um operador criado antes deste campo
-   existir (o operador original) não tem nome cadastrado; a lista mostra, nesse caso, um nome
-   derivado do e-mail (ex.: `ana.paula@...` vira "Ana Paula").
+3. O nome mostrado na lista vem da coluna `name` da própria tabela `operators` — antes vivia em
+   `user_metadata` do Supabase Auth por não haver tabela própria; agora tem coluna dedicada.
 
 **Remover:** na mesma tela, com confirmação em dois passos. A API recusa com `409` remover a
 própria conta ou o único operador restante (SDD § R-10) — as duas formas de travar o próprio
@@ -290,43 +283,25 @@ acesso ao painel —, e a tela já desabilita o botão nesses dois casos, com o 
 Não há papéis nem permissões: quem entra tem acesso a todo o painel. Gestão de papéis está
 fora de escopo por decisão do PRD.
 
-> **Verificado na T5**, contra o projeto real, com um usuário de teste criado direto no painel
-> do Supabase (o fluxo da época) e removido em seguida: o token emitido pelo Supabase Auth é
-> assinado em **ES256** e verificado pela API contra o JWKS do projeto (`SUPABASE_JWKS_URL`),
-> sem que a API guarde nenhum segredo de assinatura. Requisição sem token a um endpoint
-> administrativo responde `401`; com o token do operador, `200`.
-
-> **Verificado na T29** (fluxo de convite por link, superado pela T34), de ponta a ponta, num
-> navegador de verdade e contra o Supabase e a API reais: login como o operador real; convite de
-> um e-mail de teste pela tela; o link copiado, aberto numa aba anônima e navegado até a rota de
-> ativação; senha definida no formulário, com entrada automática no painel já autenticado; saída
-> e login de novo com a conta nova, confirmando que a senha valeu; de volta como o operador
-> original, o operador de teste foi removido pelo painel. A Admin API do Supabase confirmou ao
-> final que não sobrou conta órfã.
->
-> **Verificado de novo na T34**, contra o fluxo de criação direta, num navegador de verdade e
-> contra o Supabase e a API reais: login como o operador real; criação de um operador de teste
-> pela tela, preenchendo nome, e-mail e senha; o operador de teste apareceu na lista com o nome
-> certo, sem nenhum link envolvido; login com esse e-mail e a senha definida na tela, numa aba
-> anônima, sem qualquer passo de ativação; de volta como o operador original, o operador de
-> teste foi removido pelo painel e saiu da lista. A Admin API do Supabase confirmou ao final que
-> não sobrou conta órfã — só o operador original permaneceu.
-
 ## Como o painel trata a sessão
+
+**Revisto em 2026-09-21 (SDD § D-03):** login passa a ser `POST /api/auth/login`, na própria
+API, sem provedor externo. O JWT é assinado pela API (`AUTH_JWT_SECRET`, HS256) e não tem lista
+de revogação — é auto-contido e stateless, mesmo comportamento de sessão que já existia com o
+Supabase.
 
 - **Onde a sessão vive:** no armazenamento do navegador do operador, sob a chave
   `veggiedent-admin-auth` — própria do painel, para que a LP servida no mesmo domínio nunca
   a compartilhe. É isso que faz a sessão sobreviver a recarregar a página.
-- **Renovação:** o token do Supabase é de vida curta e o painel o renova sozinho antes de
-  expirar. Se o Supabase ficar indisponível, a renovação falha e o operador é deslogado —
-  consequência aceita e declarada desde a T5, em que a API responde `401` quando não
-  consegue consultar o JWKS.
-- **Sair:** encerra a sessão no Supabase e apaga a chave do armazenamento. Se o servidor
-  falhar ao invalidar o token, a sessão local é apagada do mesmo jeito — sair é sempre
-  possível do lado do painel.
+- **Sem renovação automática:** o painel não troca o token sozinho antes de expirar — quando o
+  JWT expira, a próxima chamada administrativa responde `401` e o painel volta ao login. Não há
+  serviço externo cuja indisponibilidade poderia derrubar a sessão antes da hora.
+- **Sair:** apaga a chave do armazenamento local. Não há chamada de rede — desenho stateless
+  herdado do SDD § D-03: um token já emitido continua válido até expirar mesmo depois do
+  logout, mesmo comportamento que já existia com o Supabase Auth.
 - **Credenciais recusadas:** a mensagem é uma só, `E-mail ou senha inválidos.`, para senha
-  errada, e-mail inexistente e conta não confirmada. Separar esses casos diria a quem tenta
-  se aquele e-mail está cadastrado. Falha de rede tem mensagem própria, porque ali ninguém
-  chegou a julgar as credenciais.
+  errada e e-mail inexistente — a API responde o mesmo `401` genérico para os dois (SDD §
+  C-02), e o painel a exibe sem tentar refinar a distinção. Falha de rede tem mensagem
+  própria, porque ali ninguém chegou a julgar as credenciais.
 - **Nenhuma tela é alcançável sem sessão.** Um endereço interno aberto sem sessão leva ao
   login, e o painel volta a ele depois que o operador entra.

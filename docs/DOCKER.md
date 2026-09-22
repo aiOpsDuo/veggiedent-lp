@@ -106,20 +106,11 @@ pode entrar aqui**.
 | `VITE_EBOOK_DELIVERY_MODE` | não | `download` ou `email` (padrão) |
 | `PORTA_PROXY` | não | Porta única no hospedeiro. Padrão `8080` |
 
-Por enquanto o painel **não tem** nenhuma variável `VITE_` própria de
-autenticação — login passa a ser via API (`POST /api/auth/login`), não mais
-contra um provedor externo. Isso só é implementado nas tarefas
-`migracao-mysql/autenticacao-propria` e `migracao-mysql/painel-cliente`.
-
-**Nota de transição, válida só durante a fase `migracao-mysql`:** o serviço
-`proxy` deste `docker-compose.yml` ainda declara `VITE_SUPABASE_URL` e
-`VITE_SUPABASE_PUBLISHABLE_KEY` como argumentos de build obrigatórios — o
-painel só deixa de precisar deles quando `migracao-mysql/painel-cliente`
-trocar o cliente de autenticação por padrão. Até lá, quem for subir a pilha
-completa (`docker compose up --build -d`, todos os serviços) ainda precisa
-defini-las no `.env`, mesmo que `.env.example` não as documente mais. Rodar só
-`mysql`/`minio` (`docker compose up -d mysql minio`), como esta tarefa
-verifica, não exige essas duas variáveis.
+O painel **não tem** nenhuma variável `VITE_` própria de autenticação — login
+é via API (`POST /api/auth/login`), não mais contra um provedor externo
+(`migracao-mysql/autenticacao-propria` e `migracao-mysql/painel-cliente`). O
+serviço `proxy` deste `docker-compose.yml` não declara mais
+`VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` como argumento de build.
 
 Falta uma variável obrigatória e o `docker compose up` **para antes de subir
 nada**, nomeando qual falta — em vez de subir um painel que não autentica.
@@ -166,11 +157,12 @@ Esta é a pegadinha do modelo, e vale conhecê-la antes de depurar meia hora:
    responder `502` até ser reiniciado (`docker compose restart proxy`).
    `docker compose up -d` recria os dois e não tem esse problema. Reresolver em
    tempo de execução exigiria `zone`, que é do nginx comercial.
-7. **Node 24, não 20.** `@supabase/supabase-js` deixou de suportar Node 20 na
-   versão 2.110.0 (o projeto usa `^2.114`), porque `realtime-js` exige o
-   WebSocket nativo que só existe a partir do Node 22. Com Node 20 a API
-   inicializa os módulos e morre em laço de reinício. O pin está no
-   `docker/Dockerfile`.
+7. **Node 24, não 20**, fixado em `docker/Dockerfile`. O motivo original do pin
+   — `@supabase/supabase-js` exigindo o WebSocket nativo do Node 22+ — deixou
+   de existir: a dependência foi removida do projeto inteiro em
+   `migracao-mysql/migrar-conteudo-e-remover-supabase`. O pin em si não foi
+   revisitado por esta tarefa, que é só de documentação; `package.json` da
+   raiz continua declarando `engines.node >= 20`.
 
 ## Verificar
 
@@ -195,29 +187,23 @@ que o nginx de fato serve, com um **controle positivo** para garantir que a
 varredura está olhando os arquivos certos (uma varredura que não lê nada também
 devolve "0 ocorrências"). Segredos de servidor cobertos, conforme SDD § R-09
 revisado: `AUTH_JWT_SECRET`, `MYSQL_PASSWORD`/`MYSQL_ROOT_PASSWORD` e
-`MINIO_ROOT_PASSWORD` (a nota de transição acima explica por que
-`VITE_SUPABASE_PUBLISHABLE_KEY` segue sendo o controle positivo por enquanto):
+`MINIO_ROOT_PASSWORD` (o controle positivo é `veggiedent-admin-auth`, a chave
+fixa sob a qual o painel guarda a sessão no navegador — uma string do próprio
+código-fonte, não um segredo, então **deve** aparecer no bundle):
 
 ```bash
 JWT=$(grep '^AUTH_JWT_SECRET=' .env | cut -d= -f2-)
 DBPASS=$(grep '^MYSQL_PASSWORD=' .env | cut -d= -f2-)
 MINIOPASS=$(grep '^MINIO_ROOT_PASSWORD=' .env | cut -d= -f2-)
-PUB=$(grep '^VITE_SUPABASE_PUBLISHABLE_KEY=' .env | cut -d= -f2-)
 
-docker exec -e JWT="$JWT" -e DBPASS="$DBPASS" -e MINIOPASS="$MINIOPASS" -e PUB="$PUB" veggiedent-proxy-1 sh -c '
+docker exec -e JWT="$JWT" -e DBPASS="$DBPASS" -e MINIOPASS="$MINIOPASS" veggiedent-proxy-1 sh -c '
   R=/usr/share/nginx/html
   echo "AUTH_JWT_SECRET:     $(grep -rlF "$JWT" $R | wc -l) ocorrencias"    # 0
   echo "senha do MySQL:      $(grep -rlF "$DBPASS" $R | wc -l) ocorrencias" # 0
   echo "senha do MinIO:      $(grep -rlF "$MINIOPASS" $R | wc -l) ocorrencias" # 0
-  echo "controle positivo (a publicavel DEVE aparecer):"
-  grep -rlF "$PUB" $R'
+  echo "controle positivo (DEVE aparecer):"
+  grep -rlF "veggiedent-admin-auth" $R'
 ```
-
-O literal `sb_secret_` aparece **uma vez** no pacote do painel e isso é
-esperado: é um trecho do próprio `@supabase/supabase-js`, que classifica
-formatos de chave (`e.startsWith("sb_publishable_") || e.startsWith("sb_secret_")`).
-É o nome do formato, não uma chave — daí a varredura procurar `sb_secret_`
-**seguido de material de chave**, que é o que denunciaria um vazamento.
 
 Que o segredo também não está na imagem:
 
