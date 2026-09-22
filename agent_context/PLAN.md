@@ -860,7 +860,8 @@ Não há dado de produção a migrar: o Supabase em uso era só de desenvolvimen
 - Dependências: migracao-mysql/painel-cliente (já concluída)
 - Execução: sequencial
 - Toca documentação: não
-- Status: pendente
+- Status: **concluída** em 2026-09-22, PR [#11](https://github.com/aiOpsDuo/veggiedent-lp/pull/11) squash-mergeado em `main` (commit `00166e8`) e enviado ao remoto; branch e worktree removidos.
+- Verificação do orquestrador: confirmei os hashes citados pelo subagente (md5 e sha256 idênticos entre a URL antiga e o arquivo da LP) e revisei o diff — cópia byte-a-byte, `VEGGIEDENT_LOGO_URL`/`assets.ts` removidos sem consumidor órfão, comentário de `admin-api-client.ts` corrigido. Rodei eu mesmo `npm run test -w apps/admin` (260/260) e `npm run typecheck -w apps/admin` (limpo).
 
 ## Ordem de execução
 
