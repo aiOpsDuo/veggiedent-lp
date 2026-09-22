@@ -10,6 +10,7 @@ const ENVIRONMENT: Environment = {
   PORT: 3000,
   DATABASE_URL: 'mysql://user:pass@localhost:3306/db',
   MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_PUBLIC_URL: 'http://localhost:9000',
   MINIO_ROOT_USER: 'minioadmin',
   MINIO_ROOT_PASSWORD: 'minioadmin-secret',
   MINIO_BUCKET_IMAGES: 'veggiedent-images',
@@ -36,7 +37,9 @@ class FakeS3NotFoundError extends Error {
 describe('MinioMediaStorage', () => {
   it('emite a credencial pedindo ao cliente o bucket real da natureza, não o nome de domínio', async () => {
     const client = fakeClient()
-    client.presignedPutObject.mockResolvedValue('https://minio.local/veggiedent-images/abc/foto.png?assinatura')
+    client.presignedPutObject.mockResolvedValue(
+      'http://localhost:9000/veggiedent-images/abc/foto.png?assinatura',
+    )
     const storage = new MinioMediaStorage(client, ENVIRONMENT)
 
     const target = planUpload(
@@ -51,10 +54,33 @@ describe('MinioMediaStorage', () => {
       expect.any(Number),
     )
     expect(credential).toEqual({
-      uploadUrl: 'https://minio.local/veggiedent-images/abc/foto.png?assinatura',
+      uploadUrl: 'http://localhost:9000/veggiedent-images/abc/foto.png?assinatura',
       expiresInSeconds: expect.any(Number),
     })
     expect(credential.expiresInSeconds).toBeGreaterThan(0)
+  })
+
+  it('reescreve a origem da credencial de upload para o endereço público, preservando caminho e assinatura — achado de migracao-mysql/revisao-final: o navegador nunca alcança o host interno usado para assinar (ex.: "minio", só resolvível dentro da rede do compose)', async () => {
+    const client = fakeClient()
+    client.presignedPutObject.mockResolvedValue(
+      'http://minio:9000/veggiedent-videos/abc/video.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-SignedHeaders=host&X-Amz-Signature=abc123',
+    )
+    const environmentAtrasDeProxy: Environment = {
+      ...ENVIRONMENT,
+      MINIO_ENDPOINT: 'http://minio:9000',
+      MINIO_PUBLIC_URL: 'http://localhost:8080/storage',
+    }
+    const storage = new MinioMediaStorage(client, environmentAtrasDeProxy)
+
+    const target = planUpload(
+      { originalFilename: 'video.mp4', contentType: 'video/mp4', sizeBytes: 2048 },
+      'abc',
+    )
+    const credential = await storage.createUploadCredential(target)
+
+    expect(credential.uploadUrl).toBe(
+      'http://localhost:8080/storage/veggiedent-videos/abc/video.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-SignedHeaders=host&X-Amz-Signature=abc123',
+    )
   })
 
   it('consulta o objeto e traduz tamanho e tipo, com o bucket real', async () => {
@@ -94,6 +120,19 @@ describe('MinioMediaStorage', () => {
     const url = storage.publicUrlFor(policyFor('video').bucket, 'abc/video.mp4')
 
     expect(url).toBe('http://localhost:9000/veggiedent-videos/abc/video.mp4')
+  })
+
+  it('monta a URL pública com MINIO_PUBLIC_URL, não com MINIO_ENDPOINT (interno) — mesmo achado da credencial de upload', () => {
+    const environmentAtrasDeProxy: Environment = {
+      ...ENVIRONMENT,
+      MINIO_ENDPOINT: 'http://minio:9000',
+      MINIO_PUBLIC_URL: 'http://localhost:8080/storage',
+    }
+    const storage = new MinioMediaStorage(fakeClient(), environmentAtrasDeProxy)
+
+    const url = storage.publicUrlFor(policyFor('video').bucket, 'abc/video.mp4')
+
+    expect(url).toBe('http://localhost:8080/storage/veggiedent-videos/abc/video.mp4')
   })
 
   it('remove o objeto no bucket real', async () => {

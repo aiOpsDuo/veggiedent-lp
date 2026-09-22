@@ -8,6 +8,7 @@ process.env.NODE_ENV = 'test'
 process.env.PORT = '3000'
 process.env.DATABASE_URL = 'mysql://veggiedent_app:senha-de-teste@localhost:3306/veggiedent_test'
 process.env.MINIO_ENDPOINT = 'http://localhost:9000'
+process.env.MINIO_PUBLIC_URL = 'http://localhost:9000'
 process.env.MINIO_ROOT_USER = 'minioadmin-de-teste'
 process.env.MINIO_ROOT_PASSWORD = 'minioadmin-senha-de-teste'
 // Correção de retomada (migracao-mysql/modulo-midia, 2026-09-21): estes dois

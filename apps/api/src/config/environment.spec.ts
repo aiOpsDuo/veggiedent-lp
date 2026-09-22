@@ -7,6 +7,7 @@ import { DEFAULT_PORT } from './environment.schema'
 const validEnvironment = {
   DATABASE_URL: 'mysql://veggiedent_app:senha-ficticia@localhost:3306/veggiedent',
   MINIO_ENDPOINT: 'http://localhost:9000',
+  MINIO_PUBLIC_URL: 'http://localhost:9000',
   MINIO_ROOT_USER: 'minioadmin-ficticio',
   MINIO_ROOT_PASSWORD: 'minioadmin-senha-ficticia',
   MINIO_BUCKET_IMAGES: 'veggiedent-images',

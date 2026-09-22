@@ -102,11 +102,23 @@ export class FakeMinioClient {
    * O papel do navegador no passo 2 de D-05. Recusa uma URL que não tenha
    * sido emitida para exatamente este bucket e caminho, como o armazenamento
    * de verdade recusaria uma assinatura que não bate.
+   *
+   * Compara pela **query string** (onde mora a assinatura de verdade,
+   * `X-Amz-Credential` etc.), não pela URL inteira: desde que
+   * `MinioMediaStorage` passou a reescrever a origem da URL para o endereço
+   * público antes de devolvê-la (achado de `migracao-mysql/revisao-final` —
+   * o navegador nunca alcança o host interno usado para assinar), a URL que
+   * chega aqui legitimamente tem origem diferente da que este dublê emitiu.
+   * A identidade da credencial nunca esteve na origem; está no bucket, no
+   * caminho e na assinatura — os três continuam comparados.
    */
   uploadWithCredential(uploadUrl: string, bucket: string, path: string, file: StoredFile): void {
+    const incomingQuery = new URL(uploadUrl).search
     const credential = this.credentials.find(
       (issued) =>
-        issued.uploadUrl === uploadUrl && issued.bucket === bucket && issued.path === path,
+        new URL(issued.uploadUrl).search === incomingQuery &&
+        issued.bucket === bucket &&
+        issued.path === path,
     )
     if (!credential) {
       throw new Error(`Credencial inválida para ${keyOf(bucket, path)}.`)

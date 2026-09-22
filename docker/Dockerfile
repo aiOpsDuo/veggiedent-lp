@@ -74,6 +74,28 @@ COPY --from=build-api /repo/apps/api/dist /repo/apps/api/dist
 # O pacote de esquemas é uma dependência de workspace: `npm ci` deixou um link
 # simbólico em node_modules apontando para cá, então o `dist` precisa existir.
 COPY --from=build-api /repo/packages/content-schema/dist /repo/packages/content-schema/dist
+# `prisma/schema.prisma`, as migrações e `prisma.config.ts` não são gerados
+# pelo build (`npm run build -w apps/api` só emite `dist/`) — são a entrada,
+# não a saída. Sem eles, `docker compose exec api npm run migrate:db`
+# (documentado em docs/BANCO-DE-DADOS.md § "Em produção (contêiner)") falha
+# com "Could not find Prisma Schema", porque a imagem tem o `dist` mas não a
+# fonte que o Prisma CLI precisa ler. Não afeta a aplicação em execução — o
+# `PrismaClient` do processo lê `DATABASE_URL` do ambiente, nunca este
+# arquivo —, só o comando de migração rodado à parte (D-10: migração nunca
+# roda sozinha na subida do contêiner).
+COPY apps/api/prisma /repo/apps/api/prisma
+COPY apps/api/prisma.config.ts /repo/apps/api/prisma.config.ts
+# `apps/lp/src/content/content-snapshot.json` é a entrada de `migrate:content`
+# (`defaultSnapshotPath()` em `src/migration/content-snapshot.ts` sobe a
+# árvore de diretórios a partir de si mesmo até achar
+# `apps/lp/src/content/content-snapshot.json` — funciona sem mudança de
+# código porque preserva o mesmo caminho relativo do monorepo). Achado da
+# tarefa `migracao-mysql/revisao-final`, revisão de retomada: sem este
+# arquivo (16 KB, dado versionado, não segredo), `migrate:content` dentro do
+# contêiner falha com "Não encontrei apps/lp/src/content/content-snapshot.json
+# em nenhum diretório acima de /repo/apps/api/dist/migration" — a imagem não
+# tem `apps/lp/` nenhum, só o `dist/` da API e do pacote de esquemas.
+COPY apps/lp/src/content/content-snapshot.json /repo/apps/lp/src/content/content-snapshot.json
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
 

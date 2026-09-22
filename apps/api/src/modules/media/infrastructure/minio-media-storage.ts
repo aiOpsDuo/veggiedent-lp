@@ -133,7 +133,7 @@ export class MinioMediaStorage implements MediaStorage, OnModuleInit {
       target.path,
       CREDENTIAL_LIFETIME_SECONDS,
     )
-    return { uploadUrl, expiresInSeconds: CREDENTIAL_LIFETIME_SECONDS }
+    return { uploadUrl: this.toPublicUrl(uploadUrl), expiresInSeconds: CREDENTIAL_LIFETIME_SECONDS }
   }
 
   /**
@@ -155,8 +155,23 @@ export class MinioMediaStorage implements MediaStorage, OnModuleInit {
   }
 
   publicUrlFor(bucket: string, path: string): string {
-    const endpoint = this.environment.MINIO_ENDPOINT.replace(/\/+$/, '')
+    const endpoint = this.environment.MINIO_PUBLIC_URL.replace(/\/+$/, '')
     return `${endpoint}/${this.resolveBucket(bucket)}/${path}`
+  }
+
+  /**
+   * Troca só a origem (protocolo + host + porta) de uma URL assinada contra
+   * `MINIO_ENDPOINT` pela origem pública (`MINIO_PUBLIC_URL`), preservando
+   * caminho e query string intactos — é ali que mora a assinatura SigV4
+   * (`X-Amz-Signature` e companhia). A assinatura em si não muda: continua
+   * válida porque `docker/nginx.conf` (location `/storage/`) devolve, ao
+   * MinIO, o mesmo `Host` usado para assiná-la.
+   */
+  private toPublicUrl(signedUrl: string): string {
+    const signed = new URL(signedUrl)
+    const publicBase = new URL(this.environment.MINIO_PUBLIC_URL)
+    const publicPathPrefix = publicBase.pathname.replace(/\/+$/, '')
+    return `${publicBase.origin}${publicPathPrefix}${signed.pathname}${signed.search}`
   }
 
   async remove(bucket: string, path: string): Promise<void> {
