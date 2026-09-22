@@ -95,6 +95,15 @@ services:
       # — nenhuma variável nova precisa entrar no `.env`.
       DATABASE_URL: mysql://${MYSQL_USER}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      # Endereço público do MinIO — o que o navegador de fato alcança, através
+      # do proxy (docker/nginx.conf, location `/storage/`). Achado de
+      # migracao-mysql/revisao-final: `MINIO_ENDPOINT` acima só resolve dentro
+      # da rede do compose ("minio" não é um nome DNS fora dela), mas
+      # `publicUrlFor` e a URL pré-assinada de upload eram construídas com ele
+      # e entregues ao navegador — quebrava toda exibição de mídia e todo
+      # envio pelo painel nesta pilha, mascarado até aqui porque os testes e a
+      # verificação manual anterior rodavam com os dois endereços iguais.
+      MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:${PORTA_PROXY:-8080}/storage}
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?defina MINIO_ROOT_USER no .env da raiz}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?defina MINIO_ROOT_PASSWORD no .env da raiz}
       MINIO_BUCKET_IMAGES: ${MINIO_BUCKET_IMAGES:-veggiedent-images}

@@ -108,6 +108,8 @@ curl -s -X POST http://localhost:3000/api/admin/media/upload-url \
 
 **Revisto em 2026-09-21 (D-05, troca de Supabase Storage por MinIO):** a resposta tinha três campos de credencial (`signedUrl`, `token`, `resumableEndpoint`) porque o Supabase Storage oferecia um caminho de envio único e um protocolo retomável (TUS) em blocos, e o painel escolhia um dos dois. O MinIO não tem upload retomável, e D-05 decidiu não reproduzi-lo por multipart do protocolo S3: o teto de 50 MB do projeto (premissa do PRD) não justifica essa complexidade. Sobrou uma única forma de autorização — `uploadUrl` — e os outros dois campos saíram sem substituto.
 
+**O host de `uploadUrl` depende de onde o navegador está.** O exemplo acima é o formato de quem roda a API isolada, fora do Docker, com o MinIO exposto no mesmo endereço para os dois lados (`MINIO_ENDPOINT` = `MINIO_PUBLIC_URL`). Atrás de `docker compose` (`docs/DOCKER.md`), o `minio` do compose só resolve dentro da rede interna — a URL vem com o host público configurado em `MINIO_PUBLIC_URL` (padrão `http://localhost:8080/storage/...`), e o proxy (`docker/nginx.conf`, location `/storage/`) encaminha para o MinIO real preservando a assinatura. Achado da tarefa `migracao-mysql/revisao-final`: antes dessa correção, `uploadUrl` sempre trazia o host interno (`http://minio:9000/...`), inalcançável por qualquer navegador real.
+
 **2. Enviar os bytes, do navegador direto ao armazenamento.** Um único caminho, com a credencial acima e **sem** passar pela API: `PUT` na `uploadUrl`, com o `content-type` do arquivo no corpo da requisição e nenhum cabeçalho de sessão — é a própria URL que autoriza o envio:
 
 ```bash

@@ -8,6 +8,7 @@ mapa de caminhos que o domínio único de produção usa:
 | `/` | a LP estática |
 | `/admin` e `/admin/` | o painel estático, construído com `base: '/admin/'` |
 | `/api/*` | a API NestJS |
+| `/storage/*` | o MinIO (imagens e vídeos publicados, e o destino do upload direto do painel) |
 
 Isso existe por um motivo específico: o roteamento é a parte que o usuário
 enxerga e a que mais facilmente quebra, e neste projeto já custou um defeito
@@ -31,7 +32,13 @@ os dois convivem sem conflito de porta (ver "Derrubar", ao final).
 
 Dois serviços novos ficam por trás da `api`, nunca alcançáveis diretamente do
 hospedeiro — mesmo isolamento de rede já aplicado à própria API (só `expose`,
-nunca `ports`; ver "O que quem for publicar precisa saber", item 1):
+nunca `ports`; ver "O que quem for publicar precisa saber", item 1). Isso
+inclui o MinIO: o nome de serviço `minio` só resolve **dentro** da rede do
+compose, então o navegador (LP e painel) nunca alcança `MINIO_ENDPOINT`
+diretamente — é para isso que existe a rota `/storage/*` do proxy (tabela
+acima) e a variável `MINIO_PUBLIC_URL` (ver "Variáveis de ambiente", abaixo):
+achado real da tarefa `migracao-mysql/revisao-final`, que quebrava todo envio
+e toda exibição de mídia contra esta pilha até ser corrigido.
 
 | Serviço | Imagem | Porta interna | Função |
 |---|---|---|---|
@@ -87,7 +94,8 @@ nenhuma camada de imagem:
 | `MYSQL_PASSWORD` | sim | Senha do usuário de aplicação. Junto de `MYSQL_USER`/`MYSQL_DATABASE`, o próprio compose monta a `DATABASE_URL` que o Prisma espera — não há variável de connection string para preencher à parte |
 | `MINIO_ROOT_USER` | sim | Access key do MinIO. **Segredo** — jamais no navegador |
 | `MINIO_ROOT_PASSWORD` | sim | Secret key do MinIO. **Segredo** — jamais no navegador |
-| `MINIO_ENDPOINT` | não | Padrão `http://minio:9000` (nome do serviço na rede do compose) |
+| `MINIO_ENDPOINT` | não | Padrão `http://minio:9000` (nome do serviço na rede do compose) — só a API resolve este endereço |
+| `MINIO_PUBLIC_URL` | não | Padrão `http://localhost:${PORTA_PROXY:-8080}/storage` — o endereço que o **navegador** de fato alcança, através da rota `/storage/` do proxy (ver "Verificar", abaixo, e o achado registrado na tarefa `migracao-mysql/revisao-final`). Mude junto de `PORTA_PROXY`/`ALLOWED_ORIGINS` se publicar em outra porta ou domínio |
 | `MINIO_BUCKET_IMAGES` | não | Padrão `veggiedent-images` |
 | `MINIO_BUCKET_VIDEOS` | não | Padrão `veggiedent-videos` |
 | `AUTH_JWT_SECRET` | sim | **Segredo.** Assina o JWT próprio da aplicação (SDD § D-03) — quem o tiver forja a sessão de qualquer operador. Gere um valor por ambiente (`openssl rand -base64 32`), nunca reaproveite |
@@ -137,26 +145,34 @@ Esta é a pegadinha do modelo, e vale conhecê-la antes de depurar meia hora:
    balanceador do provedor, um Caddy, um Traefik) e encaminhe para a porta
    `8080`. O proxy já repassa `X-Forwarded-Proto` e `X-Forwarded-For`, então
    quem está atrás vê o esquema e o IP originais.
-3. **`ALLOWED_ORIGINS` precisa virar a origem pública.** Com o domínio único,
-   LP e painel chamam caminhos relativos e não existe requisição entre origens
-   — mas a variável é validada na inicialização e o valor padrão aponta para
-   `localhost`.
+3. **`ALLOWED_ORIGINS` e `MINIO_PUBLIC_URL` precisam virar o endereço público
+   real.** Com o domínio único, LP e painel chamam caminhos relativos e não
+   existe requisição entre origens — mas as duas variáveis são validadas na
+   inicialização e os valores padrão apontam para `localhost:8080`. Esquecer
+   `MINIO_PUBLIC_URL` não gera erro de subida (a API sobe normalmente): o
+   sintoma aparece só na hora de exibir ou enviar mídia, com o navegador
+   tentando alcançar um endereço que não existe fora do compose.
 4. **As migrações não rodam sozinhas.** A imagem não aplica nada ao banco.
-   Nesta tarefa (`migracao-mysql/infraestrutura`) o `mysql` do compose só sobe
-   vazio, com o banco (`MYSQL_DATABASE`) e o usuário de aplicação criados pela
-   própria imagem oficial — nenhum schema ainda. `migracao-mysql/persistencia-orm`
-   introduz o Prisma e `prisma migrate deploy`, que passa a ser a forma de
-   aplicar o schema (ver [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md), atualizado
-   naquela tarefa). Código na frente do banco **quebra de verdade**: se o
-   banco não tiver uma coluna que o código seleciona, a resposta é `500`, não
-   um campo vazio.
+   `npm run migrate:db -w apps/api` — rodado com `docker compose exec api sh -c
+   'cd /repo && npm run migrate:db -w apps/api'`, ou de fora do contêiner
+   contra a porta publicada temporariamente (ver
+   [BANCO-DE-DADOS.md](BANCO-DE-DADOS.md)) — aplica o schema via `prisma
+   migrate deploy`. A imagem da API inclui `apps/api/prisma/` (schema e
+   migrações) e `prisma.config.ts` justamente para que o primeiro comando
+   funcione sem precisar instalar nada a mais no contêiner (correção da
+   tarefa `migracao-mysql/revisao-final` — antes a imagem tinha o `dist/` mas
+   não a fonte que o Prisma CLI precisa ler, e o comando falhava com "Could
+   not find Prisma Schema"). Código na frente do banco **quebra de verdade**:
+   se o banco não tiver uma coluna que o código seleciona, a resposta é
+   `500`, não um campo vazio.
 5. **Nenhum segredo vive na imagem nem no repositório.** Verificável, não
    prometido — o procedimento está na seção seguinte.
-6. **O proxy resolve o nome `api` uma vez, ao carregar a configuração.** Se o
-   contêiner da API for **recriado sozinho** e ganhar outro IP, o proxy passa a
-   responder `502` até ser reiniciado (`docker compose restart proxy`).
-   `docker compose up -d` recria os dois e não tem esse problema. Reresolver em
-   tempo de execução exigiria `zone`, que é do nginx comercial.
+6. **O proxy resolve os nomes `api` e `minio` uma vez, ao carregar a
+   configuração.** Se um dos dois contêineres for **recriado sozinho** e
+   ganhar outro IP, o proxy passa a responder `502` na rota correspondente até
+   ser reiniciado (`docker compose restart proxy`). `docker compose up -d`
+   recria os três e não tem esse problema. Reresolver em tempo de execução
+   exigiria `zone`, que é do nginx comercial.
 7. **Node 24, não 20**, fixado em `docker/Dockerfile`. O motivo original do pin
    — `@supabase/supabase-js` exigindo o WebSocket nativo do Node 22+ — deixou
    de existir: a dependência foi removida do projeto inteiro em
@@ -180,6 +196,11 @@ curl -s $B/api/content | head -c 200                             # as seções
 
 # CSS de verdade, não um index.html devolvido no lugar do arquivo:
 curl -s $B/$(curl -s $B/ | grep -oE 'assets/[^"]+\.css') | head -c 80
+
+# Uma mídia publicada (se já houver conteúdo carregado) responde pela rota do
+# proxy, não pelo endereço interno "minio":
+curl -s -o /dev/null -w '%{http_code}\n' \
+  "$(curl -s $B/api/content | grep -oE '"https?://[^"]+/storage/[^"]+"' | head -1 | tr -d '"')"
 ```
 
 E a prova de que nenhuma credencial de servidor chega ao navegador — varrendo o

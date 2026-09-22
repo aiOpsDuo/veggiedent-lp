@@ -118,7 +118,7 @@ O que a carga precisa no ambiente (ela lê `apps/api/.env` se ele existir; ver
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
-| `MINIO_ENDPOINT` | sim | Endereço do MinIO de **destino**, o mesmo que a API está usando |
+| `MINIO_ENDPOINT` | sim | Endereço do MinIO de **destino**, o mesmo que a API está usando (a carga só o usa para conferir se o objeto já existe — `PublicStorageProbe` — nunca para montar uma URL entregue a alguém) |
 | `CMS_API_URL` | não | Raiz da API, com prefixo. Padrão `http://localhost:3000/api` |
 | `CMS_ACCESS_TOKEN` | — | Token de um operador. No lugar dele, as duas abaixo |
 | `CMS_OPERATOR_EMAIL`, `CMS_OPERATOR_PASSWORD` | — | Credenciais de um operador já criado (`seed:operator` ou pela tela Operadores), trocadas por um token via `POST /api/auth/login` |

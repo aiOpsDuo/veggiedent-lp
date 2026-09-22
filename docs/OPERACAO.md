@@ -8,6 +8,7 @@
 |---|---|---|
 | `DATABASE_URL` | sim | Connection string do MySQL, no formato que o Prisma espera: `mysql://usuario:senha@host:porta/banco` |
 | `MINIO_ENDPOINT` | sim | Endereço do MinIO (compatível com S3), alcançado só pela API |
+| `MINIO_PUBLIC_URL` | sim | Endereço do MinIO que o **navegador** de fato alcança — nunca igual a `MINIO_ENDPOINT` atrás do compose (ver `docs/DOCKER.md` § "Serviços de dados: mysql e minio", achado de `migracao-mysql/revisao-final`) |
 | `MINIO_ROOT_USER` | sim | Access key do MinIO. Segredo — jamais no cliente |
 | `MINIO_ROOT_PASSWORD` | sim | Secret key do MinIO. Segredo — jamais no cliente |
 | `MINIO_BUCKET_IMAGES` | sim | Nome do bucket de imagens |

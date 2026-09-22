@@ -19,8 +19,22 @@ export const environmentSchema = z.object({
   // por isso `z.string()` em vez de `z.url()`.
   DATABASE_URL: z.string().min(1),
   // Endereço do MinIO (compatível com S3), alcançado só pela API — nunca pelo
-  // navegador (SDD § D-05).
+  // navegador (SDD § D-05). No docker-compose isso é o nome do serviço na rede
+  // interna (`http://minio:9000`), que só o contêiner da API resolve.
   MINIO_ENDPOINT: z.url(),
+  // Endereço público do MinIO — o que o navegador de fato consegue alcançar.
+  // Achado da tarefa `migracao-mysql/revisao-final`: `publicUrlFor` e a URL
+  // pré-assinada de upload usavam `MINIO_ENDPOINT` (interno) para montar
+  // endereços entregues ao navegador (`<img src>`, upload direto do painel) —
+  // isso nunca falhava nos testes (que rodam com os dois endereços iguais,
+  // "http://localhost:9000") nem numa verificação manual com a API fora do
+  // Docker, só quebrava contra `docker compose up`, onde `minio` não resolve
+  // fora da rede do compose. `MinioMediaStorage` continua assinando a
+  // credencial de upload contra `MINIO_ENDPOINT` (é o host que precisa bater
+  // com a assinatura SigV4) e só reescreve a origem da URL para este valor; o
+  // proxy (`docker/nginx.conf`, location `/storage/`) devolve a chamada ao
+  // `Host` que a assinatura espera.
+  MINIO_PUBLIC_URL: z.url(),
   // Access key e secret key do MinIO. Nomeadas como o próprio contêiner as
   // recebe (`MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`), não como "chave de API"
   // genérica, para não perder o vínculo com a variável do docker-compose.
