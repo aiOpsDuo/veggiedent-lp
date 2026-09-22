@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { NavLink, Outlet, Link } from 'react-router-dom'
-import { VEGGIEDENT_LOGO_URL } from '@veggiedent/design-tokens'
+import logo from '../assets/logos/veggiedent-fresh-edc-logo.svg'
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -171,7 +171,7 @@ export function AdminLayout({ apiClient }: AdminLayoutProps): JSX.Element {
           aria-label="Ir para o painel"
           className="mb-6 flex items-center px-1"
         >
-          <img src={VEGGIEDENT_LOGO_URL} alt="Veggiedent" className="h-8 w-auto" />
+          <img src={logo} alt="Veggiedent" className="h-8 w-auto" />
         </Link>
         <div className="flex-1">
           <NavList collapsed={collapsed} />
@@ -201,7 +201,7 @@ export function AdminLayout({ apiClient }: AdminLayoutProps): JSX.Element {
           />
           <div className="relative flex h-full w-64 flex-col bg-white p-4 shadow-lg dark:bg-slate-900">
             <div className="mb-6 flex items-center justify-between">
-              <img src={VEGGIEDENT_LOGO_URL} alt="Veggiedent" className="h-8 w-auto" />
+              <img src={logo} alt="Veggiedent" className="h-8 w-auto" />
               <button
                 type="button"
                 aria-label="Fechar menu"
@@ -227,7 +227,7 @@ export function AdminLayout({ apiClient }: AdminLayoutProps): JSX.Element {
             >
               <Menu aria-hidden="true" className="h-5 w-5" />
             </button>
-            <img src={VEGGIEDENT_LOGO_URL} alt="Veggiedent" className="h-6 w-auto md:hidden" />
+            <img src={logo} alt="Veggiedent" className="h-6 w-auto md:hidden" />
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
             <button

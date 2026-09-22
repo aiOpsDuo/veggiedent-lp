@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { VEGGIEDENT_LOGO_URL } from '@veggiedent/design-tokens'
+import logo from '../assets/logos/veggiedent-fresh-edc-logo.svg'
 import { useAuth } from '../auth/auth-context'
 import type { SignInRejection } from '../auth/auth-gateway'
 
@@ -74,7 +74,7 @@ export function LoginScreen(): JSX.Element {
         className="w-full max-w-sm space-y-5 rounded-lg border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900"
       >
         <div className="space-y-3">
-          <img src={VEGGIEDENT_LOGO_URL} alt="Veggiedent" className="h-8 w-auto" />
+          <img src={logo} alt="Veggiedent" className="h-8 w-auto" />
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
               Painel Veggiedent

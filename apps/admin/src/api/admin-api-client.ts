@@ -143,9 +143,9 @@ function readErrorMessage(body: ApiErrorBody, status: number): string {
 /**
  * Cliente da API do CMS (SDD § "Visão de tiers").
  *
- * O painel fala com a API e só com ela para conteúdo, mídia e leads — o
- * Supabase é usado exclusivamente para autenticar. O token vai em cada
- * requisição, no mesmo cabeçalho que a guarda da API já lê.
+ * O painel fala com a API e só com ela — para conteúdo, mídia, leads e
+ * também para autenticar, na própria API. O token vai em cada requisição, no
+ * mesmo cabeçalho que a guarda da API já lê.
  */
 export class AdminApiClient
   implements SectionsGateway, MediaGateway, MetadataGateway, LeadsGateway, OperatorsGateway
