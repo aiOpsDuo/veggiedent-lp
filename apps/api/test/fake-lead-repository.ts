@@ -44,6 +44,10 @@ function toRow(lead: NewLead): Row {
     qual_produto_virbac: lead.qualProdutoVirbac,
     aceite_comunicacoes: lead.aceiteComunicacoes,
     origem: lead.origem,
+    aceite_lgpd: lead.aceiteLgpd,
+    aceite_lgpd_em: lead.aceiteLgpdEm,
+    aceite_lgpd_texto: lead.aceiteLgpdTexto,
+    aceite_lgpd_politica_url: lead.aceiteLgpdPoliticaUrl,
   }
 }
 
@@ -62,6 +66,10 @@ function toLead(row: Row): Lead {
     aceiteComunicacoes: Boolean(row.aceite_comunicacoes),
     origem: (row.origem as string | null) ?? null,
     createdAt: row.created_at as string,
+    aceiteLgpd: Boolean(row.aceite_lgpd),
+    aceiteLgpdEm: (row.aceite_lgpd_em as string | null) ?? null,
+    aceiteLgpdTexto: (row.aceite_lgpd_texto as string | null) ?? null,
+    aceiteLgpdPoliticaUrl: (row.aceite_lgpd_politica_url as string | null) ?? null,
   }
 }
 

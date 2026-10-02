@@ -567,3 +567,14 @@ Documentos afetados: PLAN.md, README.md, docs/ (tarefa `migracao-mysql/documenta
 Motivo: com a migração para MySQL + MinIO concluída, não existe mais "um projeto Supabase novo, de produção" para o qual migrar — o roteiro de 7 passos que este documento descrevia (criado em 2026-09-08, ver entrada de `ajustes/documentar-migracao-de-projeto`) deixou de fazer sentido. Avaliada a alternativa de substituí-lo por um roteiro de backup/restauração de MySQL + MinIO; decidido não fazer isso por não haver conteúdo real e proporcional para preencher (nenhum procedimento de backup foi implementado ou pedido) — um documento assim seria especulativo, exatamente o que a skill orienta a evitar.
 
 Impacto: `README.md` perde o link para o documento removido; nenhum outro documento dependia dele.
+
+## 2026-10-02 — Pedido do cliente: links reais para a Política de Privacidade e registro do consentimento LGPD
+
+Documentos afetados: PRD.md, SDD.md (§ "Modelo de dados", contrato de `POST /api/leads`, RN-01), PLAN.md (nova tarefa `ajustes/lgpd-links-e-registro-consentimento`)
+
+Motivo: dois pedidos do cliente. (1) O aceite do formulário era texto puro, sem link para a política, e o rodapé apontava para `/politica-de-privacidade`, `/termos-de-uso` e `/fale-conosco`, rotas que a LP nunca teve (o clique caía de volta na página). (2) O consentimento precisa ficar **registrado** no banco, para o Marketing gerir a base e remover o lead quando o titular revogar. Decidido com o cliente: guardar o aceite, o instante, o texto exibido e o endereço da política; sem IP nem user-agent.
+
+Isto revê, por decisão do cliente, a remoção da coluna `aceite_lgpd` registrada em 2026-09-02 (T18). A análise daquela entrada continua válida — um booleano que só pode ser `true` não prova nada sozinho —, e é por isso que o registro novo vem com o texto e a política aceitos, o caminho que a própria nota técnica de 2026-09-02 apontava. O booleano entra junto por pedido explícito do cliente.
+
+Impacto: endereço da política em um lugar só (`PRIVACY_POLICY_URL`, `packages/content-schema`), usado pelo link do aceite, pelo rodapé e pela API; migração `20261002144344_registra_consentimento_lgpd_em_leads` acrescenta quatro colunas a `leads` e preenche os leads existentes com `aceite_lgpd = true` e `aceite_lgpd_em = created_at` (todo lead gravado aceitou: a API sempre recusou o envio sem aceite); `POST /api/leads` aceita `aceite_lgpd_texto` opcional; listagem, CSV (4 colunas novas no fim) e tela de leads exibem o registro. A exclusão a pedido do titular já existia e não mudou. O critério de "pronto" e a verificação ficam em `PLAN.md`.
+

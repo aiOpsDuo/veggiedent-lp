@@ -26,6 +26,10 @@ interface LeadRow {
   aceiteComunicacoes: boolean
   origem: string | null
   createdAt: Date
+  aceiteLgpd: boolean
+  aceiteLgpdEm: Date | null
+  aceiteLgpdTexto: string | null
+  aceiteLgpdPoliticaUrl: string | null
 }
 
 function toLead(row: LeadRow): Lead {
@@ -43,6 +47,10 @@ function toLead(row: LeadRow): Lead {
     aceiteComunicacoes: row.aceiteComunicacoes,
     origem: row.origem,
     createdAt: row.createdAt.toISOString(),
+    aceiteLgpd: row.aceiteLgpd,
+    aceiteLgpdEm: row.aceiteLgpdEm === null ? null : row.aceiteLgpdEm.toISOString(),
+    aceiteLgpdTexto: row.aceiteLgpdTexto,
+    aceiteLgpdPoliticaUrl: row.aceiteLgpdPoliticaUrl,
   }
 }
 
@@ -99,7 +107,8 @@ export class MySqlLeadRepository implements LeadIntake, LeadRepository {
    * O `id` já chega pronto (`randomUUID()` gerado por `SubmitLeadUseCase`,
    * SDD § "DECISÃO — geração de UUID passa do banco para a aplicação" no topo
    * de `schema.prisma`): este método nunca gera identificador, só grava o que
-   * recebe.
+   * recebe. O mesmo vale para `aceiteLgpdEm` (relógio do servidor, posto pelo
+   * caso de uso): o texto ISO-8601 é aceito pelo Prisma como `DateTime`.
    */
   async record(lead: NewLead): Promise<void> {
     await this.prisma.lead.create({ data: { ...lead } })

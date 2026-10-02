@@ -31,6 +31,15 @@ Roda `prisma migrate dev`: compara o `schema.prisma` contra o banco, gera uma no
 
 Os dois comandos leem `DATABASE_URL` de `apps/api/.env` (nunca commitado — copie de `.env.example`) através de `dotenv`, carregado só por `apps/api/prisma.config.ts` (ver "Por que `prisma.config.ts`" abaixo). Em produção, `DATABASE_URL` já chega como variável de ambiente real do contêiner (`docker-compose.yml`), então não há `.env` para ler.
 
+### Migrações existentes
+
+| Migração | O que faz |
+|---|---|
+| `20260921135300_init` | As cinco tabelas, traduzidas das migrações Postgres (ver "Histórico" ao final) |
+| `20261002144344_registra_consentimento_lgpd_em_leads` | Registro do consentimento LGPD em `leads` (pedido do cliente, ver `agent_context/CHANGELOG.md` 2026-10-02): `aceite_lgpd`, `aceite_lgpd_em`, `aceite_lgpd_texto` e `aceite_lgpd_politica_url`. Além do `ALTER TABLE` gerado pelo Prisma, tem um `UPDATE` escrito à mão que preenche os leads existentes com `aceite_lgpd = true` e `aceite_lgpd_em = created_at` — todo lead gravado aceitou, porque a API sempre recusou o envio sem aceite. Texto e endereço ficam `NULL` nesses leads |
+
+Uma migração que precise mexer em dado existente segue o mesmo caminho: `migrate dev --create-only`, acrescentar o SQL à mão no `migration.sql` gerado, e só então aplicar.
+
 ### Subindo só o MySQL para testar localmente
 
 ```bash

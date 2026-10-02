@@ -52,6 +52,8 @@ export type { SectionSchemas } from './sections'
 
 export { siteMetadataSchema } from './site-metadata'
 
+export { LGPD_CONSENT_TEXT_MAX_LENGTH, PRIVACY_POLICY_URL } from './lgpd-consent'
+
 export { MESSAGES, minimumItemsMessage } from './messages'
 
 export { buildZodSchema } from './zod'

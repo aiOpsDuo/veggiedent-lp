@@ -42,7 +42,7 @@ const PRIMARY_KEYS: Readonly<Record<string, string>> = {
  * ordenar.
  */
 const COLUMN_DEFAULTS: Readonly<Record<string, Readonly<Record<string, () => unknown>>>> = {
-  leads: { created_at: () => new Date().toISOString() },
+  leads: { created_at: () => new Date().toISOString(), aceite_lgpd: () => false },
 }
 
 export interface RecordedCall {

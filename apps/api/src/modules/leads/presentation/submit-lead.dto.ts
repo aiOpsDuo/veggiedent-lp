@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { LGPD_CONSENT_TEXT_MAX_LENGTH } from '@veggiedent/content-schema'
 import { IsBoolean, IsOptional, IsString } from 'class-validator'
 
 /**
@@ -18,11 +19,12 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator'
  * e-mail — e um `422` ensina ao robô que o campo existe, que é exatamente o que
  * o honeypot evita.
  *
- * `aceite_lgpd` continua declarado aqui mesmo não sendo gravado em lugar nenhum:
- * ele é **entrada** da requisição, não campo do registro. O pipe global roda com
- * `forbidNonWhitelisted`, então um campo ausente deste DTO é recusado antes de
- * chegar ao domínio — tirá-lo daqui faria o envio **com** consentimento ser
- * rejeitado, exatamente o contrário da regra que a T18 preserva.
+ * O pipe global roda com `forbidNonWhitelisted`, então um campo ausente deste
+ * DTO é recusado antes de chegar ao domínio. É por isso que `aceite_lgpd` e
+ * `aceite_lgpd_texto` estão aqui; o instante do aceite e o endereço da
+ * política **não** estão, e não por esquecimento: os dois são decididos pelo
+ * servidor (`SubmitLeadUseCase`, `PRIVACY_POLICY_URL`), e um corpo que tente
+ * enviá-los é recusado com `422`.
  */
 export class SubmitLeadDto {
   @ApiPropertyOptional({ description: 'Nome do visitante.', example: 'Ana Souza' })
@@ -84,12 +86,21 @@ export class SubmitLeadDto {
 
   @ApiProperty({
     description:
-      'Consentimento com a Política de Privacidade. Obrigatório: sem ele o envio é recusado com 422. Não é gravado — é condição de envio, não dado do lead.',
+      'Consentimento com a Política de Privacidade. Obrigatório: sem ele o envio é recusado com 422. Gravado junto do lead, com o instante do aceite pelo relógio do servidor.',
     example: true,
   })
   @IsOptional()
   @IsBoolean({ message: 'Informe o consentimento LGPD como sim ou não.' })
   aceite_lgpd?: boolean
+
+  @ApiPropertyOptional({
+    description: `Texto do aceite da Política de Privacidade exatamente como o visitante o viu, em texto puro. Gravado junto do lead; até ${LGPD_CONSENT_TEXT_MAX_LENGTH} caracteres depois de aparadas as bordas.`,
+    example:
+      'Li e aceito a Política de Privacidade e autorizo o uso dos meus dados para receber o guia e comunicações relacionadas.',
+  })
+  @IsOptional()
+  @IsString({ message: 'Informe o texto do consentimento LGPD como texto.' })
+  aceite_lgpd_texto?: string
 
   @ApiPropertyOptional({ description: 'Aceite de comunicações de marketing.', example: true })
   @IsOptional()

@@ -23,12 +23,15 @@ import { porteLabel, simNaoLabel } from './lead-code-labels'
  * como 2 de setembro na tela — duas datas para o mesmo lead.
  *
  * As colunas são as da regra de negócio RN-01: uma por campo que o visitante
- * preenche, mais as operacionais que acompanham o registro. **Não existe coluna
- * de aceite da Política de Privacidade** — sem consentimento nenhum lead é
- * gravado, então ela só poderia dizer "sim" e não prova nada que a existência
- * da linha já não prove (ver `agent_context/CHANGELOG.md`, 2026-09-02). A
- * validação que exige o consentimento continua onde estava; o que sai é apenas
- * a coluna.
+ * preenche, mais as operacionais que acompanham o registro. As quatro últimas
+ * são o **registro do consentimento LGPD**, pedido pelo cliente em 2026-10-02
+ * para o Marketing gerir a base e atender a revogação. Até ali não havia
+ * coluna de aceite porque o banco não guardava nada além da constante "sim"
+ * (ver `agent_context/CHANGELOG.md`, 2026-09-02); agora a linha prova quando o
+ * aceite aconteceu, a que texto e a que política. Vão no fim, e não ao lado do
+ * aceite de comunicações, para não deslocar as colunas de quem já importa o
+ * arquivo por posição. Nos leads anteriores a 2026-10-02 o texto e o endereço
+ * saem vazios: não foram registrados.
  *
  * Desde que o repasse a sistema externo foi descontinuado (2026-09-03) este
  * arquivo é o **mecanismo de saída** do lead, não uma conveniência: o banco do
@@ -59,6 +62,13 @@ const COLUMNS: readonly { readonly header: string; readonly value: (lead: Lead) 
   { header: 'Qual produto Virbac', value: (lead) => lead.qualProdutoVirbac ?? '' },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => lead.origem ?? '' },
+  { header: 'Consentimento LGPD', value: (lead) => simOuNao(lead.aceiteLgpd) },
+  {
+    header: 'Consentimento LGPD em (Brasília)',
+    value: (lead) => (lead.aceiteLgpdEm === null ? '' : formatInstant(lead.aceiteLgpdEm)),
+  },
+  { header: 'Texto do consentimento LGPD', value: (lead) => lead.aceiteLgpdTexto ?? '' },
+  { header: 'Política de Privacidade aceita', value: (lead) => lead.aceiteLgpdPoliticaUrl ?? '' },
 ]
 
 export interface CsvFile {

@@ -1,4 +1,9 @@
-import { LEAD_COLUMNS, formatReceivedAt, mostRecentFirst } from './lead-columns'
+import {
+  LEAD_COLUMNS,
+  formatLgpdConsent,
+  formatReceivedAt,
+  mostRecentFirst,
+} from './lead-columns'
 import { leadDeTeste } from '../../test/fake-leads-gateway'
 
 /**
@@ -23,13 +28,8 @@ describe('Colunas da tela (regra de negócio RN-01)', () => {
       'Qual produto Virbac',
       'Aceite de comunicações',
       'Origem',
+      'Consentimento LGPD',
     ])
-  })
-
-  it('não tem coluna de aceite da Política de Privacidade', () => {
-    expect(cabecalhos.some((cabecalho) => /LGPD|Política de Privacidade/i.test(cabecalho))).toBe(
-      false,
-    )
   })
 
   it('escreve um traço no lugar do campo que o visitante não preencheu', () => {
@@ -45,6 +45,56 @@ describe('Colunas da tela (regra de negócio RN-01)', () => {
     const coluna = LEAD_COLUMNS.find((cada) => cada.header === 'Aceite de comunicações')
     expect(coluna?.value(leadDeTeste({ id: 'x', aceiteComunicacoes: true }))).toBe('Sim')
     expect(coluna?.value(leadDeTeste({ id: 'x', aceiteComunicacoes: false }))).toBe('Não')
+  })
+})
+
+/**
+ * O registro do consentimento LGPD, pedido pelo cliente em 2026-10-02 para o
+ * Marketing gerir a base e atender a revogação.
+ */
+describe('Consentimento LGPD', () => {
+  const coluna = LEAD_COLUMNS.find((cada) => cada.header === 'Consentimento LGPD')
+  const detalhes = (lead: ReturnType<typeof leadDeTeste>) => coluna?.details?.(lead) ?? []
+
+  it('diz Sim e quando, no fuso de Brasília', () => {
+    expect(
+      formatLgpdConsent(leadDeTeste({ id: 'x', aceiteLgpdEm: '2026-10-02T17:30:00.000Z' })),
+    ).toBe('Sim — 02/10/2026, 14:30')
+  })
+
+  it('sem instante registrado, diz só Sim, sem inventar data', () => {
+    expect(formatLgpdConsent(leadDeTeste({ id: 'x', aceiteLgpdEm: null }))).toBe('Sim')
+  })
+
+  it('diz Não quando o lead não tem aceite', () => {
+    expect(formatLgpdConsent(leadDeTeste({ id: 'x', aceiteLgpd: false }))).toBe('Não')
+  })
+
+  it('os detalhes trazem o texto aceito e a política, como link', () => {
+    expect(detalhes(leadDeTeste({ id: 'x' }))).toEqual([
+      { label: 'Texto aceito', value: 'Li e aceito a Política de Privacidade.' },
+      {
+        label: 'Política aceita',
+        value: 'https://br.virbac.com/home/legal-notice.html',
+        href: 'https://br.virbac.com/home/legal-notice.html',
+      },
+    ])
+  })
+
+  it('no lead novo sem texto enviado, não o confunde com um lead antigo', () => {
+    expect(detalhes(leadDeTeste({ id: 'x', aceiteLgpdTexto: null }))[0]).toEqual({
+      label: 'Texto aceito',
+      value: 'Não enviado no formulário',
+    })
+  })
+
+  it('no lead antigo, diz que o texto e a política não foram registrados', () => {
+    const antigo = leadDeTeste({ id: 'x', aceiteLgpdTexto: null, aceiteLgpdPoliticaUrl: null })
+
+    expect(detalhes(antigo)).toEqual([
+      { label: 'Texto aceito', value: 'Não registrado (lead anterior a 02/10/2026)' },
+      { label: 'Política aceita', value: 'Não registrado (lead anterior a 02/10/2026)' },
+    ])
   })
 })
 

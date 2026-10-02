@@ -176,8 +176,7 @@ model Lead {
   usaProdutoVirbac  String? @map("usa_produto_virbac") @db.VarChar(255)
   qualProdutoVirbac String? @map("qual_produto_virbac") @db.VarChar(255)
 
-  /// Opt-in de marketing. Varia de verdade entre true/false — por isso e guardado
-  /// (ao contrario de `aceite_lgpd`, removido: ver nota do SDD § "Modelo de dados").
+  /// Opt-in de marketing. Varia de verdade entre true/false — por isso e guardado.
   aceiteComunicacoes Boolean @map("aceite_comunicacoes")
 
   origem String? @db.VarChar(64)
@@ -185,9 +184,31 @@ model Lead {
   /// UTC.
   createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
 
-  // Sem `aceite_lgpd` (consentimento e condicao de envio, nao dado do
-  // registro) nem `rdstation_status`/`rdstation_error` (integracao
-  // descontinuada) — as duas colunas caem antes de chegar a este schema.
+  // Registro do consentimento com a Politica de Privacidade (LGPD) — pedido do
+  // cliente de 2026-10-02, para o Marketing gerir a base e remover o lead
+  // quando o titular revogar o consentimento. O aceite continua sendo condicao
+  // de envio (a API recusa sem ele); o que muda e que agora ele e GRAVADO, com
+  // o instante, o texto exibido e o endereco da politica — o booleano sozinho
+  // seria a constante que a T18 removeu (SDD § "Modelo de dados").
+
+  /// Sempre true em lead novo. O default false so existe para a migracao
+  /// acrescentar a coluna a linhas existentes, que ela mesma preenche em seguida.
+  aceiteLgpd Boolean @default(false) @map("aceite_lgpd")
+
+  /// UTC, relogio do servidor (nunca do navegador). Nos leads anteriores a
+  /// coluna, preenchido com `created_at` pela migracao.
+  aceiteLgpdEm DateTime? @map("aceite_lgpd_em") @db.DateTime(3)
+
+  /// Texto do aceite exatamente como o visitante o viu. Nulo nos leads
+  /// anteriores a 2026-10-02, quando o texto nao era registrado.
+  aceiteLgpdTexto String? @map("aceite_lgpd_texto") @db.VarChar(500)
+
+  /// Endereco da politica aceita, definido pela API (PRIVACY_POLICY_URL de
+  /// packages/content-schema), nunca pelo navegador. Nulo nos leads antigos.
+  aceiteLgpdPoliticaUrl String? @map("aceite_lgpd_politica_url") @db.VarChar(500)
+
+  // Sem `rdstation_status`/`rdstation_error` (integracao descontinuada) —
+  // as colunas caem antes de chegar a este schema.
 
   /// Espelha `leads_created_at_desc_idx` (supabase/migrations/20260902120300_create_leads.sql):
   /// serve GET /api/admin/leads (listagem paginada, mais recente primeiro) e seu filtro por periodo.

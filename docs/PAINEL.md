@@ -241,10 +241,11 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 - **Filtro por período:** dois dias, inclusivos nos dois extremos. O corte do dia é feito pela
   API, também em horário de Brasília. O painel manda o dia escolhido e não converte nada — fuso
   resolvido em dois lugares vira dois resultados diferentes na primeira vez que um deles mudar.
-- **Colunas:** uma por campo que o visitante preenche, mais data de recebimento e origem.
-  **Não há coluna de aceite da Política de Privacidade**:
-  sem consentimento nenhum lead é gravado, então ela só poderia dizer "sim" e não prova nada
-  que a existência da linha já não prove.
+- **Colunas:** uma por campo que o visitante preenche, mais data de recebimento e origem, e por
+  último **Consentimento LGPD** (desde 2026-10-02): `Sim — 02/10/2026, 14:30`, com o instante do
+  aceite em horário de Brasília. `Ver detalhes` na célula abre o texto que o visitante aceitou e
+  o endereço da política. Nos leads anteriores a 02/10/2026 os dois aparecem como "Não
+  registrado" — o aceite existiu (sem ele a API nunca gravou lead), mas o texto não era guardado.
 - **Exportação em CSV:** `Exportar CSV do período` baixa o arquivo respeitando o **filtro
   aplicado** — o que está digitado sem filtrar não conta, porque exportaria um período que o
   operador não viu na tela. O arquivo é montado pela API e entregue ao navegador **sem ser

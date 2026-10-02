@@ -126,17 +126,25 @@ describe('Listagem de leads', () => {
   })
 
   /**
-   * A coluna de aceite da Política de Privacidade não existe, e não por
-   * esquecimento: sem consentimento nenhum lead é gravado, então ela só poderia
-   * dizer "sim" (ver `agent_context/CHANGELOG.md`, 2026-09-02).
+   * O registro do consentimento LGPD (pedido do cliente de 2026-10-02): o
+   * aceite e quando, na célula; o texto aceito e a política, nos detalhes.
    */
-  it('não tem coluna de aceite da Política de Privacidade', async () => {
-    montarLeads(new FakeLeadsGateway({ leads: TODOS }))
-    await screen.findByRole('table')
+  it('mostra o consentimento LGPD, com o texto aceito e a política nos detalhes', async () => {
+    montarLeads(new FakeLeadsGateway({ leads: [DO_MEIO] }))
 
-    const cabecalhos = screen.getAllByRole('columnheader').map((cabecalho) => cabecalho.textContent)
-    expect(cabecalhos).not.toContain('Aceite LGPD')
-    expect(document.body.textContent).not.toMatch(/LGPD/)
+    const linha = (await screen.findAllByRole('row'))[1] as HTMLElement
+    const celulas = within(linha).getAllByRole('cell')
+    const consentimento = celulas.find((celula) => celula.textContent?.startsWith('Sim — '))
+    expect(consentimento).toHaveTextContent('Sim — 03/09/2026, 09:00')
+
+    await userEvent.click(within(consentimento as HTMLElement).getByText(/Ver detalhes/))
+
+    expect(within(consentimento as HTMLElement).getByText('Li e aceito a Política de Privacidade.')).toBeVisible()
+    expect(
+      within(consentimento as HTMLElement).getByRole('link', {
+        name: 'https://br.virbac.com/home/legal-notice.html',
+      }),
+    ).toHaveAttribute('target', '_blank')
   })
 })
 

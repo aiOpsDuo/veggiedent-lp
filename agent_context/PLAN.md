@@ -875,6 +875,17 @@ Doze tarefas planejadas mais duas de `ajustes` descobertas durante a execução,
 - Status: **concluída** em 2026-09-22, PR [#11](https://github.com/aiOpsDuo/veggiedent-lp/pull/11) squash-mergeado em `main` (commit `00166e8`) e enviado ao remoto; branch e worktree removidos.
 - Verificação do orquestrador: confirmei os hashes citados pelo subagente (md5 e sha256 idênticos entre a URL antiga e o arquivo da LP) e revisei o diff — cópia byte-a-byte, `VEGGIEDENT_LOGO_URL`/`assets.ts` removidos sem consumidor órfão, comentário de `admin-api-client.ts` corrigido. Rodei eu mesmo `npm run test -w apps/admin` (260/260) e `npm run typecheck -w apps/admin` (limpo).
 
+### ajustes/lgpd-links-e-registro-consentimento
+- **Identificador (v1.5.0):** `ajustes/lgpd-links-e-registro-consentimento` — origem: pedido do cliente (2026-10-02).
+- Descrição: (1) link real para a Política de Privacidade no aceite do formulário (nova aba, sem marcar a caixa ao clicar) e destinos reais nos links institucionais do rodapé; (2) gravar o consentimento LGPD junto do lead — aceite, instante (servidor), texto exibido e endereço da política — e exibi-lo na listagem, no CSV e na tela de leads.
+- Rastreável a: `agent_context/CHANGELOG.md`, 2026-10-02; SDD § "Modelo de dados" (nota de 2026-10-02) e RN-01.
+- Classificação: comportamental (migração, contrato de `POST /api/leads`, CSV).
+- Critério de "pronto": `npm run typecheck`, `npm test` e `npm run build` passam a partir da raiz; a migração aplica sobre um banco com leads e preenche `aceite_lgpd`/`aceite_lgpd_em` deles; `verify-schema.mjs` em exit 0; `POST /api/leads` sem aceite continua `422`; com aceite, a linha tem os quatro campos (instante do servidor, política da API).
+- Dependências: nenhuma pendente
+- Execução: sequencial
+- Toca documentação: sim — `docs/API.md`, `docs/BANCO-DE-DADOS.md`, `docs/MANUTENCAO.md`, `docs/PAINEL.md`, PRD e SDD
+- Status: **implementada, aguardando revisão e commit** em 2026-10-02, branch local `ajustes/lgpd-links-e-registro-consentimento` (sem commit).
+
 ## Ordem de execução
 
 ```

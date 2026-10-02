@@ -8,15 +8,24 @@ import type { LeadView } from './leads-gateway'
  * regra de negócio RN-01 exige do CSV, para que a tela e o arquivo exportado
  * não contem histórias diferentes.
  *
- * **Não há coluna de aceite da Política de Privacidade**, pelo motivo registrado
- * em `agent_context/CHANGELOG.md`: sem consentimento nenhum lead é gravado,
- * então a coluna só poderia dizer "sim" e não prova nada que a existência da
- * linha já não prove.
+ * A última coluna é o **registro do consentimento LGPD** (pedido do cliente de
+ * 2026-10-02, ver `agent_context/CHANGELOG.md`): o aceite e quando ele
+ * aconteceu, na célula, e o texto aceito e a política, nos detalhes que a
+ * célula abre — texto longo demais para caber numa linha da tabela.
  */
+
+/** Um par rótulo e valor dos detalhes de uma célula; `href` faz do valor um link. */
+export interface LeadDetail {
+  readonly label: string
+  readonly value: string
+  readonly href?: string
+}
 
 export interface LeadColumn {
   readonly header: string
   readonly value: (lead: LeadView) => string
+  /** O que a célula mostra ao ser aberta, quando o valor resumido não basta. */
+  readonly details?: (lead: LeadView) => readonly LeadDetail[]
 }
 
 /** O que a tela escreve onde o visitante não preencheu nada. */
@@ -42,6 +51,35 @@ export function formatReceivedAt(instant: string): string {
   return formatBrasiliaDateTime(instant) ?? UNREADABLE_DATE
 }
 
+/**
+ * Leads anteriores a 2026-10-02 aceitaram a política — sem aceite a API nunca
+ * gravou lead nenhum —, mas o texto e o endereço não eram guardados. O
+ * endereço é o sinal: a API o grava em todo lead novo, sem depender do
+ * navegador. Já o texto vem do formulário e pode faltar num lead novo (envio
+ * que não passou pela LP) — e aí a tela não pode culpar a data.
+ */
+const NOT_RECORDED = 'Não registrado (lead anterior a 02/10/2026)'
+const TEXT_NOT_SENT = 'Não enviado no formulário'
+
+/** "Sim — 02/09/2026, 12:00": o aceite e o instante dele, no fuso de Brasília. */
+export function formatLgpdConsent(lead: LeadView): string {
+  if (!lead.aceiteLgpd) {
+    return 'Não'
+  }
+  return lead.aceiteLgpdEm === null ? 'Sim' : `Sim — ${formatReceivedAt(lead.aceiteLgpdEm)}`
+}
+
+function lgpdConsentDetails(lead: LeadView): readonly LeadDetail[] {
+  const url = lead.aceiteLgpdPoliticaUrl
+  const missingText = url === null ? NOT_RECORDED : TEXT_NOT_SENT
+  return [
+    { label: 'Texto aceito', value: lead.aceiteLgpdTexto ?? missingText },
+    url === null
+      ? { label: 'Política aceita', value: NOT_RECORDED }
+      : { label: 'Política aceita', value: url, href: url },
+  ]
+}
+
 export const LEAD_COLUMNS: readonly LeadColumn[] = [
   { header: 'Recebido em', value: (lead) => formatReceivedAt(lead.createdAt) },
   { header: 'Nome', value: (lead) => lead.nome },
@@ -55,6 +93,7 @@ export const LEAD_COLUMNS: readonly LeadColumn[] = [
   { header: 'Qual produto Virbac', value: (lead) => text(lead.qualProdutoVirbac) },
   { header: 'Aceite de comunicações', value: (lead) => simOuNao(lead.aceiteComunicacoes) },
   { header: 'Origem', value: (lead) => text(lead.origem) },
+  { header: 'Consentimento LGPD', value: formatLgpdConsent, details: lgpdConsentDetails },
 ]
 
 /**

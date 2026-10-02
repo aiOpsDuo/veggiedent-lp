@@ -91,8 +91,14 @@ const EXPECTED_TABLES = {
     { name: 'aceite_comunicacoes', columnType: 'tinyint(1)', nullable: false },
     { name: 'origem', columnType: 'varchar(64)', nullable: true },
     { name: 'created_at', columnType: 'datetime(3)', nullable: false },
-    // Sem `aceite_lgpd`/`rdstation_status`/`rdstation_error` — removidas nas
-    // migracoes Postgres originais (ver docs/BANCO-DE-DADOS.md).
+    // Registro do consentimento LGPD — pedido do cliente de 2026-10-02
+    // (migracao *_registra_consentimento_lgpd_em_leads).
+    { name: 'aceite_lgpd', columnType: 'tinyint(1)', nullable: false },
+    { name: 'aceite_lgpd_em', columnType: 'datetime(3)', nullable: true },
+    { name: 'aceite_lgpd_texto', columnType: 'varchar(500)', nullable: true },
+    { name: 'aceite_lgpd_politica_url', columnType: 'varchar(500)', nullable: true },
+    // Sem `rdstation_status`/`rdstation_error` — removidas nas migracoes
+    // Postgres originais (ver docs/BANCO-DE-DADOS.md).
   ],
   operators: [
     { name: 'id', columnType: 'char(36)', nullable: false },

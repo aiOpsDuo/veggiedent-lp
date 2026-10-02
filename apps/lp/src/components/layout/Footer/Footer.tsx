@@ -1,3 +1,4 @@
+import { PRIVACY_POLICY_URL } from "@veggiedent/content-schema";
 import logo from "../../../assets/logos/veggiedent-fresh-edc-logo.svg";
 
 // Footer/Legal — Design System v1.2, secao 9.13.
@@ -19,10 +20,20 @@ const LOGO_ALT = "Veggiedent®, por Virbac";
 const SPECIES_DISCLAIMER = "Produto indicado exclusivamente para cães.";
 const COPYRIGHT = "© 2026 Virbac. Todos os direitos reservados.";
 
+// Links institucionais: paginas do site da Virbac Brasil, abertas em nova aba
+// (2026-10-02). Ate aqui apontavam para /politica-de-privacidade,
+// /termos-de-uso e /fale-conosco, rotas que esta LP nunca teve — o clique caia
+// de volta na propria pagina. "Termos de uso" leva ao mesmo aviso legal da
+// politica de privacidade porque o site da Virbac nao tem pagina de termos
+// separada; a politica vem de PRIVACY_POLICY_URL, a mesma constante do aceite
+// do formulario e do registro do consentimento na API.
+const TERMS_OF_USE_URL = "https://br.virbac.com/home/legal-notice.html";
+const CONTACT_URL = "https://br.virbac.com/contato";
+
 const LEGAL_LINKS = [
-  { href: "/politica-de-privacidade", label: "Política de privacidade" },
-  { href: "/termos-de-uso", label: "Termos de uso" },
-  { href: "/fale-conosco", label: "Fale conosco" },
+  { href: PRIVACY_POLICY_URL, label: "Política de privacidade" },
+  { href: TERMS_OF_USE_URL, label: "Termos de uso" },
+  { href: CONTACT_URL, label: "Fale conosco" },
 ] as const;
 
 export function Footer() {
@@ -37,11 +48,14 @@ export function Footer() {
         >
           {LEGAL_LINKS.map((link) => (
             <a
-              key={link.href}
+              key={link.label}
               href={link.href}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm text-ink-700 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
             >
               {link.label}
+              <span className="sr-only"> (abre em nova aba)</span>
             </a>
           ))}
         </nav>

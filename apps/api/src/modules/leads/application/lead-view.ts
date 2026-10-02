@@ -4,8 +4,9 @@ import type { Lead } from '../domain/lead'
  * O que as rotas de lead devolvem. Formas de saída, sem regra de negócio: a
  * apresentação não monta resposta e o domínio não conhece a forma do JSON.
  *
- * `LeadView` não tem aceite da Política de Privacidade porque o lead não o tem:
- * o consentimento é condição de envio e não é gravado (SDD § "Modelo de dados").
+ * `LeadView` traz o registro do consentimento LGPD desde 2026-10-02. Nos leads
+ * anteriores a essa data, `aceiteLgpdTexto` e `aceiteLgpdPoliticaUrl` vêm
+ * `null`: o texto e o endereço não eram guardados (ver `domain/lead.ts`).
  */
 
 /** Resposta de `POST /api/leads`. */
@@ -27,6 +28,10 @@ export interface LeadView {
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
   readonly createdAt: string
+  readonly aceiteLgpd: boolean
+  readonly aceiteLgpdEm: string | null
+  readonly aceiteLgpdTexto: string | null
+  readonly aceiteLgpdPoliticaUrl: string | null
 }
 
 /** Uma página da listagem administrativa, com o que a paginação precisa. */

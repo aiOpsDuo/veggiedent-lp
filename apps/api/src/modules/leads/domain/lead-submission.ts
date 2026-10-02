@@ -1,3 +1,4 @@
+import { LGPD_CONSENT_TEXT_MAX_LENGTH, PRIVACY_POLICY_URL } from '@veggiedent/content-schema'
 import { FieldValidationError } from '../../../shared/domain/field-validation.error'
 
 /**
@@ -13,11 +14,13 @@ import { FieldValidationError } from '../../../shared/domain/field-validation.er
  * `usaProdutoVirbac` e `qualProdutoVirbac`, que o relay descartava — o risco
  * R-01 do SDD.
  *
- * **O consentimento LGPD é condição de envio, não campo do lead.** Ele chega em
- * `RawLeadSubmission`, é exigido aqui e some: `LeadSubmission` não o carrega e o
- * banco não o guarda. Persisti-lo significaria gravar a constante `true` em toda
- * linha, porque sem ele nenhuma linha nasce — informação zero (SDD § "Modelo de
- * dados"; `agent_context/CHANGELOG.md`, 2026-09-02).
+ * **O consentimento LGPD é condição de envio e, desde 2026-10-02, também
+ * registro.** Sem ele o envio é recusado, como sempre foi. Aceito, o lead passa
+ * a carregar a prova do aceite, que o cliente pediu para o Marketing gerir a
+ * base e atender a revogação (`agent_context/CHANGELOG.md`, 2026-10-02): o
+ * texto que o visitante viu, como a LP o enviou, e o endereço da política —
+ * este, decidido aqui, nunca pelo navegador. O instante do aceite não nasce
+ * aqui: é o relógio do servidor, posto por `SubmitLeadUseCase`.
  */
 
 export const PORTES_DE_CACHORRO = ['pequeno', 'medio', 'grande'] as const
@@ -36,6 +39,12 @@ export interface LeadSubmission {
   readonly qualProdutoVirbac: string | null
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
+  /** Só existe lead com aceite: sem ele `toLeadSubmission` recusa o envio. */
+  readonly aceiteLgpd: true
+  /** O texto do aceite como o visitante o viu; `null` quando a LP não o enviou. */
+  readonly aceiteLgpdTexto: string | null
+  /** Sempre `PRIVACY_POLICY_URL`, de `@veggiedent/content-schema`. */
+  readonly aceiteLgpdPoliticaUrl: string
 }
 
 /** O corpo como chega do formulário, antes de qualquer regra ser aplicada. */
@@ -50,6 +59,7 @@ export interface RawLeadSubmission {
   readonly usa_produto_virbac?: string
   readonly qual_produto_virbac?: string
   readonly aceite_lgpd?: boolean
+  readonly aceite_lgpd_texto?: string
   readonly aceite_comunicacoes?: boolean
   readonly origem?: string
   /** Honeypot: ver `isHoneypotTriggered`. */
@@ -62,6 +72,7 @@ const MENSAGENS = {
   nome: 'Nome é obrigatório.',
   email: 'E-mail inválido.',
   aceite_lgpd: 'Consentimento LGPD é obrigatório.',
+  aceite_lgpd_texto: `O texto do consentimento LGPD deve ter no máximo ${LGPD_CONSENT_TEXT_MAX_LENGTH} caracteres.`,
   porte_cachorro: 'Valor inválido.',
 } as const
 
@@ -97,6 +108,10 @@ function erros(raw: RawLeadSubmission): Record<string, string> {
   if (raw.aceite_lgpd !== true) {
     encontrados.aceite_lgpd = MENSAGENS.aceite_lgpd
   }
+  const textoDoAceite = opcional(raw.aceite_lgpd_texto)
+  if (textoDoAceite !== null && textoDoAceite.length > LGPD_CONSENT_TEXT_MAX_LENGTH) {
+    encontrados.aceite_lgpd_texto = MENSAGENS.aceite_lgpd_texto
+  }
   const porte = opcional(raw.porte_cachorro)
   if (porte !== null && !isPorteDeCachorro(porte)) {
     encontrados.porte_cachorro = MENSAGENS.porte_cachorro
@@ -129,5 +144,8 @@ export function toLeadSubmission(raw: RawLeadSubmission): LeadSubmission {
     qualProdutoVirbac: opcional(raw.qual_produto_virbac),
     aceiteComunicacoes: raw.aceite_comunicacoes === true,
     origem: opcional(raw.origem),
+    aceiteLgpd: true,
+    aceiteLgpdTexto: opcional(raw.aceite_lgpd_texto),
+    aceiteLgpdPoliticaUrl: PRIVACY_POLICY_URL,
   }
 }

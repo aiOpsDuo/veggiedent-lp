@@ -24,6 +24,18 @@ const LEAD: Lead = {
   aceiteComunicacoes: false,
   origem: 'lp-veggiedent',
   createdAt: '2026-09-02T13:45:07.123Z',
+  aceiteLgpd: true,
+  aceiteLgpdEm: '2026-09-02T13:45:07.000Z',
+  aceiteLgpdTexto: 'Li e aceito a Política de Privacidade.',
+  aceiteLgpdPoliticaUrl: 'https://br.virbac.com/home/legal-notice.html',
+}
+
+/** Lead gravado antes de 2026-10-02: a migração só pôde preencher o aceite e o instante. */
+const LEAD_ANTIGO: Lead = {
+  ...LEAD,
+  aceiteLgpdEm: LEAD.createdAt,
+  aceiteLgpdTexto: null,
+  aceiteLgpdPoliticaUrl: null,
 }
 
 const BOM = '﻿'
@@ -53,17 +65,41 @@ describe('Colunas do CSV (regra de negócio RN-01)', () => {
       'Qual produto Virbac',
       'Aceite de comunicações',
       'Origem',
+      'Consentimento LGPD',
+      'Consentimento LGPD em (Brasília)',
+      'Texto do consentimento LGPD',
+      'Política de Privacidade aceita',
+    ])
+  })
+})
+
+/**
+ * O registro do consentimento LGPD, pedido pelo cliente em 2026-10-02 para o
+ * Marketing gerir a base e atender a revogação. Até ali o CSV não tinha coluna
+ * de aceite, porque o banco não guardava nada além da constante "sim" (ver
+ * `agent_context/CHANGELOG.md`, 2026-09-02 e 2026-10-02).
+ */
+describe('Registro do consentimento LGPD no CSV', () => {
+  const ultimasColunas = (lead: Lead): string[] => {
+    const linha = linhas(toCsv([lead]).content)[1] as string
+    return linha.split('";"').slice(-4).map((celula) => celula.replace(/^"|"$/g, ''))
+  }
+
+  it('traz o aceite, o instante em Brasília, o texto e a política aceita', () => {
+    expect(ultimasColunas(LEAD)).toEqual([
+      'sim',
+      '02/09/2026 10:45:07',
+      'Li e aceito a Política de Privacidade.',
+      'https://br.virbac.com/home/legal-notice.html',
     ])
   })
 
-  /**
-   * O aceite da Política de Privacidade é condição de envio, não dado variável:
-   * sem ele nenhum lead é gravado, então a coluna só poderia dizer "sim" (ver
-   * `agent_context/CHANGELOG.md`, 2026-09-02).
-   */
-  it('não tem coluna de aceite da Política de Privacidade', () => {
-    expect(colunas().some((coluna) => /LGPD|Política de Privacidade/i.test(coluna))).toBe(false)
-    expect(toCsv([LEAD]).content).not.toMatch(/LGPD/)
+  it('no lead antigo, deixa vazios o texto e a política, que não foram registrados', () => {
+    expect(ultimasColunas(LEAD_ANTIGO)).toEqual(['sim', '02/09/2026 10:45:07', '', ''])
+  })
+
+  it('sem instante registrado, deixa a célula vazia em vez de inventar uma data', () => {
+    expect(ultimasColunas({ ...LEAD_ANTIGO, aceiteLgpdEm: null })[1]).toBe('')
   })
 })
 

@@ -1,4 +1,5 @@
 import { HttpStatus } from '@nestjs/common'
+import { LGPD_CONSENT_TEXT_MAX_LENGTH, PRIVACY_POLICY_URL } from '@veggiedent/content-schema'
 import request from 'supertest'
 import { startContentHarness, type ContentHarness } from './content-harness'
 import type { Row } from './fake-supabase'
@@ -15,7 +16,8 @@ import type { Row } from './fake-supabase'
  *    sem nenhum segundo sistema de onde recuperá-lo.
  * 2. **O honeypot não grava e responde sucesso.**
  * 3. **O consentimento continua sendo condição de envio** — sem ele, `422` e
- *    nenhuma linha.
+ *    nenhuma linha — e, desde 2026-10-02, é gravado com o instante do servidor,
+ *    o texto exibido e o endereço da política.
  * 4. **Os três campos que o relay antigo descartava** chegam à tabela (R-01).
  *
  * Nenhum caso fala com a rede: o banco é o dublê em memória do harness.
@@ -32,6 +34,8 @@ const ENVIO_COMPLETO = {
   usa_produto_virbac: 'sim',
   qual_produto_virbac: 'Veggiedent Fresh',
   aceite_lgpd: true,
+  aceite_lgpd_texto:
+    'Li e aceito a Política de Privacidade e autorizo o uso dos meus dados para receber o guia e comunicações relacionadas.',
   aceite_comunicacoes: true,
   origem: 'lp-veggiedent',
 }
@@ -137,8 +141,7 @@ describe('captura de lead', () => {
   })
 
   /**
-   * O consentimento com a Política de Privacidade não é gravado — a coluna
-   * `aceite_lgpd` saiu da tabela na T18 —, mas continua sendo **condição de
+   * O consentimento com a Política de Privacidade continua sendo **condição de
    * envio** (SDD § "Modelo de dados"; PLAN.md § T18).
    */
   describe('o consentimento continua sendo condição de envio', () => {
@@ -167,12 +170,79 @@ describe('captura de lead', () => {
       expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
       expect(resposta.body.fields).toHaveProperty('aceite_lgpd')
     })
+  })
 
-    it('marcado, o lead é gravado sem nenhuma coluna de consentimento', async () => {
+  /**
+   * Pedido do cliente de 2026-10-02: o aceite passa a ser **registrado**, para
+   * o Marketing gerir a base e remover o lead quando o titular revogar o
+   * consentimento. O instante e o endereço da política são do servidor; só o
+   * texto exibido vem do formulário.
+   */
+  describe('o consentimento é registrado junto do lead', () => {
+    it('grava o aceite, o instante do servidor, o texto exibido e a política', async () => {
+      const antes = new Date().toISOString()
       const resposta = await enviar(ENVIO_COMPLETO)
+      const depois = new Date().toISOString()
 
       expect(resposta.status).toBe(HttpStatus.OK)
-      expect(Object.keys(unicoLead())).not.toContain('aceite_lgpd')
+      const lead = unicoLead()
+      expect(lead).toMatchObject({
+        aceite_lgpd: true,
+        aceite_lgpd_texto: ENVIO_COMPLETO.aceite_lgpd_texto,
+        aceite_lgpd_politica_url: PRIVACY_POLICY_URL,
+      })
+      const instante = lead.aceite_lgpd_em as string
+      expect(instante >= antes && instante <= depois).toBe(true)
+    })
+
+    it('sem o texto, grava o aceite mesmo assim, com o texto nulo', async () => {
+      const envio: Record<string, unknown> = { ...ENVIO_COMPLETO }
+      delete envio.aceite_lgpd_texto
+
+      const resposta = await enviar(envio)
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+      expect(unicoLead()).toMatchObject({ aceite_lgpd: true, aceite_lgpd_texto: null })
+    })
+
+    it('apara as bordas do texto antes de gravar', async () => {
+      await enviar({ ...ENVIO_COMPLETO, aceite_lgpd_texto: '  Li e aceito.  ' })
+
+      expect(unicoLead()).toMatchObject({ aceite_lgpd_texto: 'Li e aceito.' })
+    })
+
+    it('texto que não é texto responde 422 no formato único de erro, sem gravar', async () => {
+      const resposta = await enviar({ ...ENVIO_COMPLETO, aceite_lgpd_texto: 42 })
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.error).toBe('Dados inválidos.')
+      expect(resposta.body.fields).toHaveProperty('aceite_lgpd_texto')
+      expect(leadsGravados()).toHaveLength(0)
+    })
+
+    it(`texto com mais de ${LGPD_CONSENT_TEXT_MAX_LENGTH} caracteres responde 422, sem gravar`, async () => {
+      const resposta = await enviar({
+        ...ENVIO_COMPLETO,
+        aceite_lgpd_texto: 'a'.repeat(LGPD_CONSENT_TEXT_MAX_LENGTH + 1),
+      })
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.fields).toHaveProperty('aceite_lgpd_texto')
+      expect(leadsGravados()).toHaveLength(0)
+    })
+
+    /**
+     * O instante e o endereço da política provam quando e a que o visitante
+     * consentiu — o navegador não tem voz sobre nenhum dos dois.
+     */
+    it.each([
+      ['o instante do aceite', { aceite_lgpd_em: '2020-01-01T00:00:00.000Z' }],
+      ['o endereço da política', { aceite_lgpd_politica_url: 'https://mau.exemplo/politica' }],
+    ])('recusa com 422 o corpo que tenta definir %s', async (_campo, extra) => {
+      const resposta = await enviar({ ...ENVIO_COMPLETO, ...extra })
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(leadsGravados()).toHaveLength(0)
     })
   })
 

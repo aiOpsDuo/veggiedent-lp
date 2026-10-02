@@ -34,6 +34,10 @@ function lead(id: string, createdAt: string, overrides: Row = {}): Row {
     aceite_comunicacoes: true,
     origem: 'lp-veggiedent',
     created_at: createdAt,
+    aceite_lgpd: true,
+    aceite_lgpd_em: createdAt,
+    aceite_lgpd_texto: 'Li e aceito a Política de Privacidade.',
+    aceite_lgpd_politica_url: 'https://br.virbac.com/home/legal-notice.html',
     ...overrides,
   }
 }
@@ -111,6 +115,17 @@ describe('rotas administrativas de leads', () => {
         conheceVirbac: 'sim',
         usaProdutoVirbac: 'não',
         qualProdutoVirbac: null,
+      })
+    })
+
+    it('devolve o registro do consentimento LGPD', async () => {
+      const resposta = await comToken(agente().get(ROTA))
+
+      expect(resposta.body.leads[0]).toMatchObject({
+        aceiteLgpd: true,
+        aceiteLgpdEm: '2026-09-05T08:00:00.000Z',
+        aceiteLgpdTexto: 'Li e aceito a Política de Privacidade.',
+        aceiteLgpdPoliticaUrl: 'https://br.virbac.com/home/legal-notice.html',
       })
     })
 
@@ -265,14 +280,19 @@ describe('rotas administrativas de leads', () => {
     })
 
     /**
-     * O aceite da Política de Privacidade é condição de envio, não dado do lead
-     * (SDD § RN-01). Nem a coluna nem o valor podem reaparecer no arquivo que
-     * chega à equipe de marketing.
+     * O registro do consentimento LGPD (pedido do cliente de 2026-10-02) sai na
+     * planilha que chega ao Marketing, que é quem atende a revogação.
      */
-    it('não traz coluna nem valor de aceite da Política de Privacidade', async () => {
+    it('traz o registro do consentimento LGPD', async () => {
       const resposta = await comToken(agente().get(EXPORTACAO))
 
-      expect(resposta.text).not.toMatch(/LGPD|Política de Privacidade/i)
+      const [cabecalho, primeira] = resposta.text.split('\r\n')
+      expect(cabecalho).toContain(
+        '"Consentimento LGPD";"Consentimento LGPD em (Brasília)";"Texto do consentimento LGPD";"Política de Privacidade aceita"',
+      )
+      expect(primeira).toContain(
+        '"sim";"05/09/2026 05:00:00";"Li e aceito a Política de Privacidade.";"https://br.virbac.com/home/legal-notice.html"',
+      )
     })
 
     it('respeita o mesmo filtro de período da listagem', async () => {

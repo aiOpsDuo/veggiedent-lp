@@ -4,7 +4,7 @@ import { useAuth } from '../auth/auth-context'
 import { Card } from '../shared/Card'
 import { Notice } from '../shared/Notice'
 import { downloadInBrowser, type FileDownload } from './file-download'
-import { LEAD_COLUMNS, mostRecentFirst } from './lead-columns'
+import { LEAD_COLUMNS, mostRecentFirst, type LeadColumn } from './lead-columns'
 import type { LeadPeriod, LeadView, LeadsGateway, LeadsPage, LeadsQuery } from './leads-gateway'
 
 /**
@@ -42,7 +42,7 @@ const EMPTY_PERIOD: LeadPeriod = { from: '', to: '' }
 const FIRST_PAGE = 1
 
 /**
- * A tabela tem 13 colunas, e "Ações" (excluir) ficava fora da área visível em
+ * A tabela tem 14 colunas, e "Ações" (excluir) ficava fora da área visível em
  * telas normais, sem nenhum indício de que havia mais conteúdo à direita
  * (T30-f). Fixá-la com `sticky` resolve os dois problemas de uma vez: o botão
  * de excluir está sempre alcançável, e a sombra à esquerda é o próprio indício
@@ -338,9 +338,10 @@ function LeadRow({
       {LEAD_COLUMNS.map((column) => (
         <td
           key={column.header}
-          className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-300"
+          className="whitespace-nowrap px-3 py-2 align-top text-slate-700 dark:text-slate-300"
         >
           {column.value(lead)}
+          <CellDetails column={column} lead={lead} />
         </td>
       ))}
       <td className={ACTIONS_BODY_CELL_CLASS}>
@@ -380,6 +381,52 @@ function LeadRow({
         )}
       </td>
     </tr>
+  )
+}
+
+/**
+ * Os detalhes de uma célula, fechados por padrão: o texto do aceite LGPD tem
+ * uma frase inteira, e aberto em toda linha alargaria a tabela para todos os
+ * leads por causa de um só.
+ */
+function CellDetails({
+  column,
+  lead,
+}: {
+  readonly column: LeadColumn
+  readonly lead: LeadView
+}): JSX.Element | null {
+  const details = column.details?.(lead) ?? []
+  if (details.length === 0) {
+    return null
+  }
+  return (
+    <details className="mt-1 text-xs">
+      <summary className="cursor-pointer text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200">
+        {`Ver detalhes: ${column.header}`}
+      </summary>
+      <dl className="mt-1 max-w-sm space-y-1 whitespace-normal">
+        {details.map((detail) => (
+          <div key={detail.label}>
+            <dt className="font-medium text-slate-800 dark:text-slate-200">{detail.label}</dt>
+            <dd className="break-words">
+              {detail.href === undefined ? (
+                detail.value
+              ) : (
+                <a
+                  href={detail.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  {detail.value}
+                </a>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
   )
 }
 

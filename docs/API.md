@@ -12,7 +12,7 @@ desenvolvimento as mesmas rotas respondem em `http://localhost:5173/api/…`. A 
 | `GET /api/health` | Sonda de operação. Responde `{"status":"ok"}`. |
 | `GET /api/content` | Todo o conteúdo publicado em **uma** resposta: `{ sections, metadata }`. Seções não publicadas e itens de lista não publicados são **omitidos**; os itens vêm na ordem definida no painel. |
 | `GET /api/seo` | Só os metadados da página, para o injetor de borda: `{ title, description, ogImageUrl, canonicalUrl }`. Campos ausentes vêm `null`, para que o injetor use a reserva do HTML estático em vez de falhar. |
-| `POST /api/leads` | Recebe o formulário da LP: valida e **grava o lead**. Responde `200 {"success":true}`; dados inválidos respondem `422` com erro por campo; falha de gravação responde `500`, porque o lead se perderia. Ver "Captura e consulta de leads". |
+| `POST /api/leads` | Recebe o formulário da LP: valida e **grava o lead**, com o registro do consentimento LGPD. Responde `200 {"success":true}`; dados inválidos respondem `422` com erro por campo; falha de gravação responde `500`, porque o lead se perderia. Ver "Captura e consulta de leads". |
 
 **Login (público, credenciais no corpo):**
 
@@ -175,10 +175,21 @@ curl -s -X PUT http://localhost:3000/api/admin/sections/faq \
 **A ordem de `POST /api/leads` é a regra, não detalhe de implementação:**
 
 1. **Honeypot.** O formulário tem um campo invisível (`website`). Preenchido, a resposta é **sucesso** e nada acontece: nenhum lead é gravado. Responder erro ensinaria ao robô que o campo existe.
-2. **Validação.** Nome não vazio, e-mail com forma de e-mail, consentimento LGPD marcado e porte dentro de `pequeno | medio | grande`. São as regras do relay serverless aposentado, preservadas. Recusa responde `422` com as chaves `nome`, `email`, `aceite_lgpd` e `porte_cachorro` em `fields`, que é como o formulário da LP marca o campo errado.
+2. **Validação.** Nome não vazio, e-mail com forma de e-mail, consentimento LGPD marcado e porte dentro de `pequeno | medio | grande`. São as regras do relay serverless aposentado, preservadas. Recusa responde `422` com as chaves `nome`, `email`, `aceite_lgpd` e `porte_cachorro` em `fields`, que é como o formulário da LP marca o campo errado. O texto do aceite (`aceite_lgpd_texto`, ver abaixo) que não for texto, ou passar de 500 caracteres depois de aparado, também responde `422`, com a chave `aceite_lgpd_texto`.
 3. **Gravação.** É o **único** destino do lead, e o último passo. Se ela falhar, o visitante vê `500` — e tem de ser assim: responder sucesso a um lead que não foi gravado o perderia em silêncio, sem nenhum segundo sistema de onde recuperá-lo. Não há `catch` em volta da gravação, e há teste de regressão provado por mutação para que não volte a haver.
 
 **Os três campos que se perdiam em produção.** `conheceVirbac`, `usaProdutoVirbac` e `qualProdutoVirbac` eram coletados pelo formulário e descartados antes do envio pelo relay serverless — risco R-01 do SDD. Neste endpoint eles são gravados como `conhece_virbac`, `usa_produto_virbac` e `qual_produto_virbac`, e saem no CSV.
+
+**Registro do consentimento LGPD (desde 2026-10-02).** A pedido do cliente, para o Marketing gerir a base e remover o lead quando o titular revogar o consentimento, o aceite é gravado junto do lead em quatro colunas:
+
+| Coluna | Quem define | Conteúdo |
+|---|---|---|
+| `aceite_lgpd` | API | `true` — sem aceite não há lead |
+| `aceite_lgpd_em` | API | Instante do aceite, pelo relógio do servidor (UTC) |
+| `aceite_lgpd_texto` | LP | O texto do aceite exatamente como o visitante o viu, em texto puro. Opcional no corpo; aparado; até 500 caracteres; ausente vira `null` |
+| `aceite_lgpd_politica_url` | API | `PRIVACY_POLICY_URL` de `packages/content-schema` — o mesmo endereço do link do formulário e do rodapé |
+
+O instante e o endereço da política **não** são campos do corpo: um envio que tente defini-los é recusado com `422` (`forbidNonWhitelisted`), porque é o que prova quando e a que o visitante consentiu. A listagem administrativa devolve os quatro como `aceiteLgpd`, `aceiteLgpdEm`, `aceiteLgpdTexto` e `aceiteLgpdPoliticaUrl`. Nos leads gravados antes de 2026-10-02 a migração preencheu `aceite_lgpd = true` e `aceite_lgpd_em = created_at` (todos aceitaram — a API sempre recusou o envio sem aceite); o texto e o endereço ficam `null`, porque não eram guardados.
 
 **Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`.
 
@@ -204,7 +215,11 @@ curl -s -X PUT http://localhost:3000/api/admin/sections/faq \
 | 10 | `Qual produto Virbac` | Idem |
 | 11 | `Aceite de comunicações` | Opt-in de marketing: `sim` ou `não` |
 | 12 | `Origem` | Origem declarada do envio |
+| 13 | `Consentimento LGPD` | `sim` (registro do consentimento, desde 2026-10-02) |
+| 14 | `Consentimento LGPD em (Brasília)` | Instante do aceite, no mesmo formato da data de envio |
+| 15 | `Texto do consentimento LGPD` | Vazio nos leads anteriores a 2026-10-02 |
+| 16 | `Política de Privacidade aceita` | Endereço da política; vazio nos leads anteriores a 2026-10-02 |
 
-São **12 colunas**. As duas do RD Station (`Status RD Station` e `Erro RD Station`) saíram em 2026-09-03, junto com a integração e com as colunas `rdstation_status` e `rdstation_error` da tabela.
+São **16 colunas**. As quatro do consentimento ficam no fim para não deslocar quem já importa o arquivo por posição. As duas do RD Station (`Status RD Station` e `Erro RD Station`) saíram em 2026-09-03, junto com a integração e com as colunas `rdstation_status` e `rdstation_error` da tabela.
 
-**Por que não existe coluna — nem registro — de aceite da Política de Privacidade.** O consentimento é **condição de envio**, não dado do lead: sem ele `POST /api/leads` recusa com `422` e nenhuma linha nasce. Guardá-lo significaria gravar a constante `true` em toda linha, e exportar uma coluna que só pode dizer "sim" — informação zero, que não prova nada que a existência da própria linha, somada à data de envio, já não prove. Por isso a tabela `leads` **não tem** a coluna `aceite_lgpd` (removida pela migração `20260903130000_drop_aceite_lgpd_from_leads.sql`) e o arquivo exportado não tem a coluna correspondente. A validação que **exige** o consentimento continua exatamente onde estava, coberta por teste de regressão: o que deixou de existir é apenas a gravação do resultado dela. Se um dia for preciso provar **a que texto** a pessoa consentiu — cenário real depois de a Política de Privacidade mudar —, o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro (ver `agent_context/CHANGELOG.md`, 2026-09-02).
+**Histórico — por que até 2026-10-02 não havia coluna de aceite.** O consentimento é **condição de envio**, não dado do lead: sem ele `POST /api/leads` recusa com `422` e nenhuma linha nasce. Guardá-lo significaria gravar a constante `true` em toda linha, e exportar uma coluna que só pode dizer "sim" — informação zero, que não prova nada que a existência da própria linha, somada à data de envio, já não prove. Por isso a tabela `leads` **não tem** a coluna `aceite_lgpd` (removida pela migração `20260903130000_drop_aceite_lgpd_from_leads.sql`) e o arquivo exportado não tem a coluna correspondente. A validação que **exige** o consentimento continua exatamente onde estava, coberta por teste de regressão: o que deixou de existir é apenas a gravação do resultado dela. Se um dia for preciso provar **a que texto** a pessoa consentiu — cenário real depois de a Política de Privacidade mudar —, o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro (ver `agent_context/CHANGELOG.md`, 2026-09-02). Revisto em 2026-10-02 por decisão do cliente: o registro novo guarda o texto e a política aceitos, não só o booleano (ver "Registro do consentimento LGPD" acima).

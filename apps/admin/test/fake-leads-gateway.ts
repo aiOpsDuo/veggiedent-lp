@@ -133,6 +133,10 @@ export function leadDeTeste(overrides: Partial<LeadView> & Pick<LeadView, 'id'>)
     aceiteComunicacoes: true,
     origem: 'lp-veggiedent',
     createdAt: '2026-09-03T12:00:00.000Z',
+    aceiteLgpd: true,
+    aceiteLgpdEm: '2026-09-03T12:00:00.000Z',
+    aceiteLgpdTexto: 'Li e aceito a Política de Privacidade.',
+    aceiteLgpdPoliticaUrl: 'https://br.virbac.com/home/legal-notice.html',
     ...overrides,
   }
 }

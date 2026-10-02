@@ -27,6 +27,10 @@ const ROW = {
   aceiteComunicacoes: true,
   origem: 'lp-veggiedent',
   createdAt: new Date('2026-09-02T13:00:00.000Z'),
+  aceiteLgpd: true,
+  aceiteLgpdEm: new Date('2026-09-02T13:00:00.000Z'),
+  aceiteLgpdTexto: 'Li e aceito a Política de Privacidade.',
+  aceiteLgpdPoliticaUrl: 'https://br.virbac.com/home/legal-notice.html',
 }
 
 function fakePrisma() {
@@ -64,6 +68,10 @@ describe('MySqlLeadRepository', () => {
         qualProdutoVirbac: ROW.qualProdutoVirbac,
         aceiteComunicacoes: true,
         origem: ROW.origem,
+        aceiteLgpd: true,
+        aceiteLgpdEm: '2026-09-02T13:00:00.000Z',
+        aceiteLgpdTexto: ROW.aceiteLgpdTexto,
+        aceiteLgpdPoliticaUrl: ROW.aceiteLgpdPoliticaUrl,
       }
 
       await repository.record(novo)
@@ -95,7 +103,37 @@ describe('MySqlLeadRepository', () => {
         aceiteComunicacoes: ROW.aceiteComunicacoes,
         origem: ROW.origem,
         createdAt: '2026-09-02T13:00:00.000Z',
+        aceiteLgpd: true,
+        aceiteLgpdEm: '2026-09-02T13:00:00.000Z',
+        aceiteLgpdTexto: ROW.aceiteLgpdTexto,
+        aceiteLgpdPoliticaUrl: ROW.aceiteLgpdPoliticaUrl,
       })
+    })
+
+    /** Lead anterior a 2026-10-02: só o aceite e o instante vieram da migração. */
+    it('traduz o lead antigo, sem texto nem política registrados', async () => {
+      const { prisma, lead } = fakePrisma()
+      lead.findUnique.mockResolvedValue({
+        ...ROW,
+        aceiteLgpdTexto: null,
+        aceiteLgpdPoliticaUrl: null,
+      })
+      const repository = new MySqlLeadRepository(prisma)
+
+      expect(await repository.findById(ROW.id)).toMatchObject({
+        aceiteLgpd: true,
+        aceiteLgpdEm: '2026-09-02T13:00:00.000Z',
+        aceiteLgpdTexto: null,
+        aceiteLgpdPoliticaUrl: null,
+      })
+    })
+
+    it('mantém nulo o instante do aceite que o banco não tem', async () => {
+      const { prisma, lead } = fakePrisma()
+      lead.findUnique.mockResolvedValue({ ...ROW, aceiteLgpdEm: null })
+      const repository = new MySqlLeadRepository(prisma)
+
+      expect((await repository.findById(ROW.id))?.aceiteLgpdEm).toBeNull()
     })
 
     it('devolve null quando o Prisma não encontra a linha', async () => {

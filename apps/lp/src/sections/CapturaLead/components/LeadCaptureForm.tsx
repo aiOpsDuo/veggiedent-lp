@@ -2,9 +2,11 @@ import { useMemo, useRef, useState } from "react";
 import {
   OPCAO_SIM,
   PORTE_OPTIONS,
+  PRIVACY_POLICY_URL,
   SIM_NAO_OPTIONS,
 } from "@veggiedent/content-schema";
 import { useLeadForm } from "../hooks/useLeadForm";
+import { consentLabelText } from "../utils/consent-label";
 import { env } from "../../../config/env";
 import { useTracking } from "../../../hooks/useTracking";
 import { FormField } from "./FormField";
@@ -53,8 +55,14 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
     }),
     [content.errorNome, content.errorEmail, content.errorAceiteLgpd],
   );
+  // O texto do aceite como o visitante o le na tela — e o que vai gravado no
+  // lead como prova do consentimento (pedido do cliente de 2026-10-02).
+  const aceiteLgpdTexto = useMemo(
+    () => consentLabelText(content.lgpdLabel),
+    [content.lgpdLabel],
+  );
   const { values, errors, status, setValue, handleBlur, submit } =
-    useLeadForm(errorMessages);
+    useLeadForm(errorMessages, aceiteLgpdTexto);
   const porteOptions = useMemo(
     () => optionViews(PORTE_OPTIONS, content),
     [content],
@@ -245,6 +253,7 @@ export function LeadCaptureForm({ content }: LeadCaptureFormProps) {
         <ConsentCheckbox
           ref={aceiteLgpdRef}
           label={content.lgpdLabel}
+          policyUrl={PRIVACY_POLICY_URL}
           checked={values.aceiteLgpd}
           onChange={(checked) => setValue("aceiteLgpd", checked)}
           error={errors.aceiteLgpd}

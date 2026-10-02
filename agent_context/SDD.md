@@ -135,6 +135,12 @@ O usuário confirmou repositório único com pastas separadas. O repositório pa
 | `aceite_comunicacoes` | `TINYINT(1)` | Opt-in de marketing. Varia de verdade entre `true` e `false`, por isso é guardado |
 | `origem` | `VARCHAR(64)` | |
 | `created_at` | `DATETIME(3)` | UTC |
+| `aceite_lgpd` | `TINYINT(1)` | Aceite da Política de Privacidade. `true` em todo lead (ver nota de 2026-10-02 abaixo) |
+| `aceite_lgpd_em` | `DATETIME(3)` | UTC, relógio do servidor. Nos leads anteriores à coluna, preenchido com `created_at` |
+| `aceite_lgpd_texto` | `VARCHAR(500)` | Texto do aceite como o visitante o viu. Nulo nos leads anteriores a 2026-10-02 |
+| `aceite_lgpd_politica_url` | `VARCHAR(500)` | Endereço da política aceita, definido pela API (`PRIVACY_POLICY_URL`). Nulo nos leads anteriores a 2026-10-02 |
+
+**Revisto em 2026-10-02 — o consentimento passa a ser registrado.** O cliente pediu que o aceite fique gravado no banco, para o Marketing gerir a base e remover o lead quando o titular revogar o consentimento. Decidido com ele: guardar o aceite, o instante (servidor), o texto exibido e o endereço da política; sem IP nem user-agent. O aceite continua sendo condição de envio (`422` sem ele). É o caminho que a nota abaixo já apontava — guardar **a que texto** a pessoa consentiu, e não só um booleano —; o booleano entra junto por pedido explícito do cliente. Migração `20261002144344_registra_consentimento_lgpd_em_leads`, com preenchimento dos leads existentes. Ver `agent_context/CHANGELOG.md`, 2026-10-02. A nota original fica como histórico:
 
 **Por que não existe coluna `aceite_lgpd`.** O consentimento com a Política de Privacidade é **condição de envio**: sem ele o formulário é recusado com `422` e nenhum registro nasce. Guardar a coluna significaria gravar a constante `true` em toda linha — informação zero, e uma coluna inútil na exportação. A prova de consentimento é a própria existência do registro somada a `created_at`. Se um dia for preciso provar **a que texto** a pessoa consentiu (por exemplo, depois de a Política de Privacidade mudar), o campo correto a criar é a versão do texto aceito, não um booleano que só pode ser verdadeiro. Ver `agent_context/CHANGELOG.md`, entrada de 2026-09-02 sobre este erro de modelagem.
 
@@ -336,7 +342,7 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 |---|---|---|
 | `GET /api/content` | Todo o conteúdo publicado, em uma resposta. Seções e itens não publicados são omitidos. | `{ sections: Record<SectionKey, SectionData>, metadata: SiteMetadata }` |
 | `GET /api/seo` | Só os metadados. Consumido pelo injetor de SEO. | `{ title, description, ogImageUrl, canonicalUrl }` |
-| `POST /api/leads` | Recebe o formulário: valida e grava. | `200 { success: true }` · `422` com `fields` · `200 { success: true }` também quando o honeypot é acionado, sem gravar nem repassar |
+| `POST /api/leads` | Recebe o formulário: valida e grava (desde 2026-10-02, com o registro do consentimento LGPD; aceita `aceite_lgpd_texto` opcional, até 500 caracteres). | `200 { success: true }` · `422` com `fields` · `200 { success: true }` também quando o honeypot é acionado, sem gravar nem repassar |
 
 `POST /api/leads` grava o lead **antes** de tentar o RD Station e responde sucesso se a gravação deu certo, registrando o resultado do repasse em `rdstation_status`. Uma falha do RD Station nunca faz o visitante ver erro nem faz o lead ser perdido.
 
@@ -441,7 +447,7 @@ Deve ser possível exportar, em formato `.csv`, os leads recebidos pelos formul�
 - **Uma coluna por campo do formulário**, com cabeçalho em português legível pelo operador — não o nome técnico da coluna do banco.
 - Cobertura obrigatória dos campos que o visitante preenche: nome, e-mail, telefone, nome do cachorro, porte do cachorro, cidade e estado, conhece a Virbac, usa produto Virbac, qual produto Virbac, e o opt-in de comunicações.
 - Colunas operacionais que acompanham cada lead: data de envio (em horário de Brasília) e origem.
-- **Não existe coluna de aceite da Política de Privacidade**, pelo motivo registrado em "Modelo de dados": ele é condição de envio, não dado variável.
+- ~~**Não existe coluna de aceite da Política de Privacidade**, pelo motivo registrado em "Modelo de dados": ele é condição de envio, não dado variável.~~ **Revisto em 2026-10-02:** o registro do consentimento (aceite, instante em horário de Brasília, texto exibido e política aceita) sai em quatro colunas no fim do arquivo, a pedido do cliente — ver "Modelo de dados".
 - Separador `;` e BOM UTF-8, para o arquivo abrir corretamente no Excel em português.
 - A exportação respeita os filtros de período aplicados na consulta.
 - Exige autenticação, como todo acesso a lead.

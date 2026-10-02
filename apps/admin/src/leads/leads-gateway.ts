@@ -7,11 +7,10 @@
 /**
  * Um lead como o painel o exibe.
  *
- * **Não existe `aceiteLgpd` aqui, e nem no lead que a API devolve.** O
- * consentimento com a Política de Privacidade é condição de envio, não dado do
- * registro: sem ele nenhum lead nasce, então a coluna só poderia dizer "sim" e
- * não distinguiria um lead de outro (ver `agent_context/CHANGELOG.md`,
- * 2026-09-02).
+ * Os quatro campos `aceiteLgpd*` são o registro do consentimento com a Política
+ * de Privacidade, gravado desde 2026-10-02 a pedido do cliente (ver
+ * `agent_context/CHANGELOG.md`). Nos leads anteriores a essa data o texto e o
+ * endereço da política vêm `null`: não eram guardados.
  */
 export interface LeadView {
   readonly id: string
@@ -27,6 +26,13 @@ export interface LeadView {
   readonly aceiteComunicacoes: boolean
   readonly origem: string | null
   readonly createdAt: string
+  readonly aceiteLgpd: boolean
+  /** Instante do aceite, ISO-8601 em UTC. */
+  readonly aceiteLgpdEm: string | null
+  /** O texto do aceite como o visitante o viu. */
+  readonly aceiteLgpdTexto: string | null
+  /** O endereço da Política de Privacidade aceita. */
+  readonly aceiteLgpdPoliticaUrl: string | null
 }
 
 export interface LeadsPage {

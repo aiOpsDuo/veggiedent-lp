@@ -132,7 +132,8 @@ export const capturaLeadSchema = {
       name: 'lgpdLabel',
       type: 'texto-longo',
       label: 'Texto do aceite da Política de Privacidade',
-      help: 'Frase ao lado da caixa de seleção obrigatória, antes do botão de envio.',
+      help:
+        'Frase ao lado da caixa de seleção obrigatória, antes do botão de envio. A expressão "Política de Privacidade" vira link para a política; sem ela no texto, o link "(ler a Política de Privacidade)" é acrescentado no fim. O texto exibido é gravado junto de cada lead.',
       required: true,
     },
     {

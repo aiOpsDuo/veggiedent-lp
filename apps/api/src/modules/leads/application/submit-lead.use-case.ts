@@ -26,6 +26,11 @@ const SUCCESS: LeadSubmissionResult = { success: true }
  *    — responder sucesso a um lead que não foi gravado — perderia o dado em
  *    silêncio. Nenhum `catch` envolve `record`: a exceção sobe até o filtro
  *    global, que responde `500`, e o visitante reenvia.
+ *
+ * O instante do consentimento LGPD é posto aqui, pelo relógio do servidor:
+ * é a prova de quando o aceite aconteceu, e o corpo da requisição não tem
+ * campo para ele — um instante vindo do navegador diria o que o navegador
+ * quisesse.
  */
 @Injectable()
 export class SubmitLeadUseCase {
@@ -37,7 +42,11 @@ export class SubmitLeadUseCase {
     }
 
     const submission = toLeadSubmission(raw)
-    await this.intake.record({ ...submission, id: randomUUID() })
+    await this.intake.record({
+      ...submission,
+      id: randomUUID(),
+      aceiteLgpdEm: new Date().toISOString(),
+    })
     return SUCCESS
   }
 }

@@ -16,7 +16,7 @@
 
   Fora do pacote, duas coisas continuam sendo trabalho manual: a LP só exibe o campo quando o componente da seção passar a renderizá-lo; e um campo **obrigatório** acrescentado depois da migração inicial (T9) invalida os documentos já gravados até que alguém preencha o valor pelo painel — para evitar isso, crie-o com `required: false`, preencha o conteúdo e só então torne-o obrigatório.
 
-- **Excluir um lead a pedido do titular (LGPD):** a exclusão é **definitiva e não tem desfazer** — é isso que o titular está pedindo.
+- **Excluir um lead a pedido do titular (LGPD):** a exclusão é **definitiva e não tem desfazer** — é isso que o titular está pedindo. Vale também para a **revogação do consentimento**: desde 2026-10-02 cada lead guarda quando e a que texto o titular consentiu (coluna **Consentimento LGPD** da tela, `Ver detalhes`; quatro últimas colunas do CSV) — consulte antes de excluir, se o pedido precisar dessa resposta, porque a exclusão apaga o registro junto.
 
   **Pelo painel, que é o caminho normal:**
 

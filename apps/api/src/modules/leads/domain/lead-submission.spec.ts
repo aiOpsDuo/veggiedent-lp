@@ -1,3 +1,4 @@
+import { LGPD_CONSENT_TEXT_MAX_LENGTH, PRIVACY_POLICY_URL } from '@veggiedent/content-schema'
 import { FieldValidationError } from '../../../shared/domain/field-validation.error'
 import {
   isHoneypotTriggered,
@@ -60,13 +61,53 @@ describe('validação do envio de lead', () => {
   })
 
   /**
-   * O consentimento é condição de envio, não campo do lead: ele é exigido e
-   * depois desaparece. Se voltasse a ser carregado, voltaria a ser gravado — a
-   * constante `true` em toda linha que a T18 removeu do banco
-   * (SDD § "Modelo de dados").
+   * Desde 2026-10-02 o consentimento é também registro (pedido do cliente): o
+   * lead carrega o aceite, o texto que o visitante viu e o endereço da
+   * política. O endereço é do servidor — vem de `@veggiedent/content-schema`,
+   * a mesma constante dos links da LP —, nunca do corpo da requisição.
    */
-  it('não carrega o consentimento para dentro do lead', () => {
-    expect(toLeadSubmission(VALIDO)).not.toHaveProperty('aceiteLgpd')
+  describe('registro do consentimento LGPD', () => {
+    it('carrega o aceite e o endereço da política para dentro do lead', () => {
+      expect(toLeadSubmission(VALIDO)).toMatchObject({
+        aceiteLgpd: true,
+        aceiteLgpdPoliticaUrl: PRIVACY_POLICY_URL,
+      })
+    })
+
+    it('guarda o texto do aceite sem os espaços das bordas', () => {
+      expect(
+        toLeadSubmission({ ...VALIDO, aceite_lgpd_texto: '  Li e aceito a Política.  ' })
+          .aceiteLgpdTexto,
+      ).toBe('Li e aceito a Política.')
+    })
+
+    it('sem texto enviado, o texto fica nulo e o envio continua aceito', () => {
+      expect(toLeadSubmission(VALIDO).aceiteLgpdTexto).toBeNull()
+      expect(toLeadSubmission({ ...VALIDO, aceite_lgpd_texto: '   ' }).aceiteLgpdTexto).toBeNull()
+    })
+
+    it(`aceita texto com exatamente ${LGPD_CONSENT_TEXT_MAX_LENGTH} caracteres`, () => {
+      const limite = 'a'.repeat(LGPD_CONSENT_TEXT_MAX_LENGTH)
+      expect(toLeadSubmission({ ...VALIDO, aceite_lgpd_texto: limite }).aceiteLgpdTexto).toBe(
+        limite,
+      )
+    })
+
+    it('mede o limite depois de aparar as bordas', () => {
+      const comBordas = `  ${'a'.repeat(LGPD_CONSENT_TEXT_MAX_LENGTH)}  `
+      expect(toLeadSubmission({ ...VALIDO, aceite_lgpd_texto: comBordas }).aceiteLgpdTexto).toHaveLength(
+        LGPD_CONSENT_TEXT_MAX_LENGTH,
+      )
+    })
+
+    it(`recusa texto com mais de ${LGPD_CONSENT_TEXT_MAX_LENGTH} caracteres`, () => {
+      expect(
+        camposRecusados({
+          ...VALIDO,
+          aceite_lgpd_texto: 'a'.repeat(LGPD_CONSENT_TEXT_MAX_LENGTH + 1),
+        }),
+      ).toEqual({ aceite_lgpd_texto: expect.stringContaining(`${LGPD_CONSENT_TEXT_MAX_LENGTH}`) })
+    })
   })
 
   it('recusa porte fora da lista', () => {

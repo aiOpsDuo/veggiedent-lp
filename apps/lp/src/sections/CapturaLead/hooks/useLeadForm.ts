@@ -26,10 +26,14 @@ const initialValues: LeadFormValues = {
   aceiteComunicacoes: false,
 };
 /**
- * O estado do formulario. Recebe as mensagens de erro em vez de importa-las
- * porque elas sao conteudo do CMS, e o hook nao fala com o CMS.
+ * O estado do formulario. Recebe as mensagens de erro e o texto do aceite LGPD
+ * em vez de importa-los porque eles sao conteudo do CMS, e o hook nao fala com
+ * o CMS. O texto do aceite vai junto do lead como prova do consentimento.
  */
-export function useLeadForm(errorMessages: LeadFormErrorMessages) {
+export function useLeadForm(
+  errorMessages: LeadFormErrorMessages,
+  aceiteLgpdTexto: string,
+) {
   const [values, setValues] = useState<LeadFormValues>(initialValues);
   const [errors, setErrors] = useState<LeadFormErrors>({});
   const [touched, setTouched] = useState<
@@ -90,7 +94,7 @@ export function useLeadForm(errorMessages: LeadFormErrorMessages) {
     setStatus("submitting");
 
     try {
-      await submitLead(values);
+      await submitLead(values, aceiteLgpdTexto);
       setStatus("success");
       track("form_submit_success", { form_id: "lead_capture" });
       return "success";
@@ -102,7 +106,7 @@ export function useLeadForm(errorMessages: LeadFormErrorMessages) {
       });
       return "error";
     }
-  }, [values, track, errorMessages]);
+  }, [values, track, errorMessages, aceiteLgpdTexto]);
 
   return { values, errors, status, setValue, handleBlur, submit };
 }
