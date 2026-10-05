@@ -1,15 +1,19 @@
 import { ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import { IsInt, IsOptional, IsString } from 'class-validator'
+import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator'
+import { EMAIL_FILTER_MAX_LENGTH } from '../domain/lead-filter'
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE } from '../domain/lead-query'
 
 /**
  * Parâmetros de `GET /api/admin/leads` (SDD § "Endpoints administrativos").
  *
  * Como no DTO de envio, aqui só se verifica forma. O calendário (`2026-02-31`
- * não existe), a ordem entre as duas datas e os limites da paginação são regra,
- * e ficam em `domain/lead-query.ts` — o mesmo lugar que a exportação consulta,
- * para que os dois endpoints não divirjam sobre o que é um período válido.
+ * não existe), a ordem entre as duas datas, o que é uma busca por e-mail vazia
+ * e os limites da paginação são regra, e ficam em `domain/lead-filter.ts` e
+ * `domain/lead-query.ts` — o mesmo lugar que a exportação consulta, para que
+ * os dois endpoints não divirjam sobre o que é um recorte válido. O teto de
+ * tamanho do e-mail fica aqui porque é forma: um trecho maior que a coluna
+ * não chega a ser pergunta.
  *
  * `@Type(() => Number)` é necessário porque todo parâmetro de query chega como
  * texto; sem ele, `page=2` seria a string `'2'` e nunca um inteiro.
@@ -24,6 +28,19 @@ export class ListLeadsQueryDto {
   @IsOptional()
   @IsString({ message: 'Informe a data final no formato AAAA-MM-DD.' })
   to?: string
+
+  @ApiPropertyOptional({
+    description: `Trecho do e-mail, sem diferenciar maiúsculas de minúsculas; %, _ e \\ valem como texto. Até ${EMAIL_FILTER_MAX_LENGTH} caracteres; vazio não filtra.`,
+    example: 'maria@',
+  })
+  @IsOptional()
+  // Abaixo do teto de propósito: o decorador de baixo é checado primeiro, e
+  // `email` repetido na URL (uma lista) precisa ouvir "texto", não "tamanho".
+  @MaxLength(EMAIL_FILTER_MAX_LENGTH, {
+    message: `A busca por e-mail aceita até ${EMAIL_FILTER_MAX_LENGTH} caracteres.`,
+  })
+  @IsString({ message: 'Informe o e-mail da busca como texto.' })
+  email?: string
 
   @ApiPropertyOptional({ description: 'Página, a partir de 1.', example: 1, default: 1 })
   @IsOptional()

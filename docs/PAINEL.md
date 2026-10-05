@@ -208,7 +208,7 @@ não existe outra rota pública além dela.
 |---|---|---|
 | Seções da página | `/admin/secoes` | As 9 seções, na ordem da página, com data da última edição e visibilidade |
 | Metadados da página | `/admin/metadados` | Título, descrição, endereço oficial e imagem de compartilhamento |
-| Leads recebidos | `/admin/leads` | Consulta, filtro por período, exportação em CSV e exclusão |
+| Leads recebidos | `/admin/leads` | Consulta, busca por e-mail, filtro por período, exportação em CSV e exclusão |
 | Operadores do painel | `/admin/operadores` | Lista (com nome), cria com e-mail/senha/nome e remove operadores |
 
 Editar um campo em "Seções da página" ou "Metadados da página" e tentar navegar para outra tela
@@ -241,13 +241,19 @@ A imagem de compartilhamento continua vazia enquanto a Virbac não aprovar a art
 - **Filtro por período:** dois dias, inclusivos nos dois extremos. O corte do dia é feito pela
   API, também em horário de Brasília. O painel manda o dia escolhido e não converte nada — fuso
   resolvido em dois lugares vira dois resultados diferentes na primeira vez que um deles mudar.
+- **Busca por e-mail (desde 2026-10-05):** o campo `Buscar por e-mail` acha o lead por um trecho
+  do endereço (`maria@`, `@gmail`), sem diferenciar maiúsculas de minúsculas. Fica no mesmo
+  formulário do período: `Filtrar` ou Enter aplicam os dois juntos, `Limpar filtro` limpa os
+  dois, e a lista volta para a página 1. Sem resultado, a tela diz *"Nenhum lead encontrado para
+  este e-mail."* — com período aplicado, *"… no período escolhido."*, porque o lead pode existir
+  fora dele. É o primeiro passo da exclusão a pedido do titular.
 - **Colunas:** uma por campo que o visitante preenche, mais data de recebimento e origem, e por
   último **Consentimento LGPD** (desde 2026-10-02): `Sim — 02/10/2026, 14:30`, com o instante do
   aceite em horário de Brasília. `Ver detalhes` na célula abre o texto que o visitante aceitou e
   o endereço da política. Nos leads anteriores a 02/10/2026 os dois aparecem como "Não
   registrado" — o aceite existiu (sem ele a API nunca gravou lead), mas o texto não era guardado.
 - **Exportação em CSV:** `Exportar CSV do período` baixa o arquivo respeitando o **filtro
-  aplicado** — o que está digitado sem filtrar não conta, porque exportaria um período que o
+  aplicado**, busca por e-mail incluída — o que está digitado sem filtrar não conta, porque exportaria um período que o
   operador não viu na tela. O arquivo é montado pela API e entregue ao navegador **sem ser
   reescrito**, para que o BOM UTF-8 e o separador `;` que fazem o Excel em português abrir a
   planilha certa cheguem intactos.

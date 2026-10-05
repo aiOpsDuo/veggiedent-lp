@@ -7,7 +7,7 @@ import {
   leadDeTeste,
 } from '../../test/fake-leads-gateway'
 import { montarTela } from '../../test/painel-autenticado'
-import type { LeadsExport } from './leads-gateway'
+import type { LeadView, LeadsExport } from './leads-gateway'
 import { LeadsScreen } from './LeadsScreen'
 
 /**
@@ -67,13 +67,13 @@ function lerBytes(blob: Blob): Promise<Uint8Array> {
 const BOM_UTF8 = [0xef, 0xbb, 0xbf]
 
 /** Os nomes exibidos, na ordem em que a tabela os desenha. */
-async function nomesNaTela(): Promise<string[]> {
+async function nomesNaTela(conhecidos: readonly LeadView[] = TODOS): Promise<string[]> {
   const tabela = await screen.findByRole('table')
   return within(tabela)
     .getAllByRole('row')
     .slice(1)
     .map((linha) => linha.textContent ?? '')
-    .map((texto) => TODOS.find((lead) => texto.includes(lead.nome))?.nome ?? texto)
+    .map((texto) => conhecidos.find((lead) => texto.includes(lead.nome))?.nome ?? texto)
 }
 
 async function filtrarPor(de: string, ate: string): Promise<void> {
@@ -165,7 +165,12 @@ describe('Filtro por período (horário de Brasília)', () => {
 
     await filtrarPor('2026-09-02', '2026-09-02')
 
-    expect(gateway.consultas.at(-1)).toEqual({ from: '2026-09-02', to: '2026-09-02', page: 1 })
+    expect(gateway.consultas.at(-1)).toEqual({
+      from: '2026-09-02',
+      to: '2026-09-02',
+      email: '',
+      page: 1,
+    })
   })
 
   it('devolve o conjunto inteiro ao limpar o filtro', async () => {
@@ -180,6 +185,154 @@ describe('Filtro por período (horário de Brasília)', () => {
   })
 })
 
+/**
+ * A busca por e-mail (pedido do cliente de 2026-10-05): o titular pede a
+ * exclusão informando o e-mail, e o Marketing precisa achar o lead dele. Os
+ * e-mails têm maiúsculas gravadas de propósito — quem atende copia o endereço
+ * de uma mensagem, raramente na mesma caixa em que o visitante o digitou.
+ */
+describe('Busca por e-mail (pedido do titular, LGPD)', () => {
+  const MARIA = leadDeTeste({
+    id: 'dddddddd-0000-4000-8000-000000000001',
+    nome: 'Maria Souza',
+    email: 'Maria_Souza@Gmail.com',
+    createdAt: '2026-09-01T15:00:00.000Z',
+  })
+  const MARIA_DE_NOVO = leadDeTeste({
+    id: 'dddddddd-0000-4000-8000-000000000002',
+    nome: 'Maria S.',
+    email: 'maria_souza@gmail.com',
+    createdAt: '2026-09-04T15:00:00.000Z',
+  })
+  const JOAO = leadDeTeste({
+    id: 'dddddddd-0000-4000-8000-000000000003',
+    nome: 'João Lima',
+    email: 'joao@exemplo.com',
+    createdAt: '2026-09-05T15:00:00.000Z',
+  })
+  const COM_EMAILS = [MARIA, MARIA_DE_NOVO, JOAO]
+
+  const campoDeBusca = (): HTMLElement =>
+    screen.getByRole('searchbox', { name: 'Buscar por e-mail' })
+
+  async function montarComEmails(
+    options: { readonly pageSize?: number } = {},
+  ): Promise<FakeLeadsGateway> {
+    const gateway = new FakeLeadsGateway({ leads: COM_EMAILS, ...options })
+    montarLeads(gateway)
+    await screen.findByRole('table')
+    return gateway
+  }
+
+  it('oferece o campo de busca com rótulo visível, junto do período', async () => {
+    await montarComEmails()
+
+    expect(campoDeBusca()).toHaveAttribute('type', 'search')
+    expect(screen.getByText('Buscar por e-mail').tagName).toBe('LABEL')
+    expect(campoDeBusca().closest('form')).toBe(screen.getByLabelText('De').closest('form'))
+  })
+
+  it('aplica a busca ao apertar Enter, sem diferenciar maiúsculas', async () => {
+    const gateway = await montarComEmails()
+
+    await userEvent.type(campoDeBusca(), 'MARIA_souza{Enter}')
+
+    expect(await nomesNaTela(COM_EMAILS)).toEqual(['Maria S.', 'Maria Souza'])
+    expect(gateway.consultas.at(-1)).toEqual({ from: '', to: '', email: 'MARIA_souza', page: 1 })
+    expect(screen.getByRole('status')).toHaveTextContent('2 leads encontrados para este e-mail.')
+  })
+
+  it('não busca enquanto o e-mail só está digitado', async () => {
+    const gateway = await montarComEmails()
+
+    await userEvent.type(campoDeBusca(), 'joao@')
+
+    expect(gateway.consultas).toHaveLength(1)
+    expect(await nomesNaTela(COM_EMAILS)).toHaveLength(3)
+  })
+
+  it('o botão Filtrar aplica a busca junto do período', async () => {
+    const gateway = await montarComEmails()
+    await userEvent.type(campoDeBusca(), 'maria')
+
+    await filtrarPor('2026-09-04', '2026-09-05')
+
+    expect(gateway.consultas.at(-1)).toEqual({
+      from: '2026-09-04',
+      to: '2026-09-05',
+      email: 'maria',
+      page: 1,
+    })
+    expect(await nomesNaTela(COM_EMAILS)).toEqual(['Maria S.'])
+    expect(screen.getByRole('status')).toHaveTextContent('1 lead encontrado para este e-mail.')
+  })
+
+  it('volta para a primeira página ao mudar a busca', async () => {
+    const gateway = await montarComEmails({ pageSize: 2 })
+    await userEvent.click(screen.getByRole('button', { name: 'Próxima página' }))
+    expect(await nomesNaTela(COM_EMAILS)).toEqual(['Maria Souza'])
+
+    await userEvent.type(campoDeBusca(), '@gmail{Enter}')
+
+    expect(gateway.consultas.at(-1)).toMatchObject({ email: '@gmail', page: 1 })
+    expect(await nomesNaTela(COM_EMAILS)).toEqual(['Maria S.', 'Maria Souza'])
+  })
+
+  it('Limpar filtro apaga a busca e devolve a lista inteira', async () => {
+    const gateway = await montarComEmails()
+    await userEvent.type(campoDeBusca(), 'joao{Enter}')
+    expect(await nomesNaTela(COM_EMAILS)).toEqual(['João Lima'])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Limpar filtro' }))
+
+    expect(campoDeBusca()).toHaveValue('')
+    expect(gateway.consultas.at(-1)).toEqual({ from: '', to: '', email: '', page: 1 })
+    expect(await nomesNaTela(COM_EMAILS)).toHaveLength(3)
+  })
+
+  it('diz que nenhum lead tem aquele e-mail, e não que o período está vazio', async () => {
+    await montarComEmails()
+
+    await userEvent.type(campoDeBusca(), 'ninguem@exemplo.com{Enter}')
+
+    expect(await screen.findByText('Nenhum lead encontrado para este e-mail.')).toBeInTheDocument()
+    expect(screen.queryByText('Nenhum lead recebido no período.')).toBeNull()
+    expect(screen.queryByRole('table')).toBeNull()
+  })
+
+  /** Para quem atende o titular, "não achei" sem a ressalva do período leva a uma resposta errada. */
+  it('com período aplicado, avisa que a busca vazia é só naquele período', async () => {
+    await montarComEmails()
+    await userEvent.type(campoDeBusca(), 'joao@')
+
+    await filtrarPor('2026-09-01', '2026-09-01')
+
+    expect(
+      await screen.findByText('Nenhum lead encontrado para este e-mail no período escolhido.'),
+    ).toBeInTheDocument()
+  })
+
+  it('exporta só os leads da busca aplicada', async () => {
+    const gateway = await montarComEmails()
+    await userEvent.type(campoDeBusca(), 'maria_souza{Enter}')
+    await nomesNaTela(COM_EMAILS)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar CSV do período' }))
+
+    expect(gateway.exportacoes).toEqual([{ from: '', to: '', email: 'maria_souza' }])
+  })
+
+  it('exporta a busca aplicada, não a que está digitada sem aplicar', async () => {
+    const gateway = await montarComEmails()
+    await userEvent.type(campoDeBusca(), 'maria{Enter}')
+    await userEvent.type(campoDeBusca(), '_outra')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Exportar CSV do período' }))
+
+    expect(gateway.exportacoes).toEqual([{ from: '', to: '', email: 'maria' }])
+  })
+})
+
 describe('Exportação em CSV (regra de negócio RN-01)', () => {
   it('exporta com os filtros aplicados na tela', async () => {
     const gateway = new FakeLeadsGateway({ leads: TODOS })
@@ -189,7 +342,7 @@ describe('Exportação em CSV (regra de negócio RN-01)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Exportar CSV do período' }))
 
-    expect(gateway.exportacoes).toEqual([{ from: '2026-09-02', to: '2026-09-02' }])
+    expect(gateway.exportacoes).toEqual([{ from: '2026-09-02', to: '2026-09-02', email: '' }])
   })
 
   /**
@@ -205,7 +358,7 @@ describe('Exportação em CSV (regra de negócio RN-01)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Exportar CSV do período' }))
 
-    expect(gateway.exportacoes).toEqual([{ from: '2026-09-01', to: '2026-09-01' }])
+    expect(gateway.exportacoes).toEqual([{ from: '2026-09-01', to: '2026-09-01', email: '' }])
   })
 
   it('entrega ao operador exatamente os bytes que a API respondeu', async () => {

@@ -1,9 +1,10 @@
 import { FieldValidationError } from '../../../shared/domain/field-validation.error'
-import { toLeadPeriod, type LeadPeriod } from './lead-period'
+import { toLeadFilter, type LeadFilter, type LeadFilterInput } from './lead-filter'
 
 /**
- * A consulta da listagem administrativa: o recorte por data mais a página
- * (SDD § "Endpoints administrativos" — "Lista paginada, mais recente primeiro").
+ * A consulta da listagem administrativa: o recorte (período e e-mail, ver
+ * `lead-filter.ts`) mais a página (SDD § "Endpoints administrativos" — "Lista
+ * paginada, mais recente primeiro").
  *
  * A ordenação não é parâmetro. O SDD fixa "mais recente primeiro" e o índice da
  * migração é descendente sobre `created_at`; deixar a ordem aberta seria
@@ -20,15 +21,12 @@ export const EXPORT_ROW_LIMIT = 10000
 const PAGE_MESSAGE = 'A página precisa ser um número inteiro a partir de 1.'
 const PAGE_SIZE_MESSAGE = `O tamanho da página precisa estar entre 1 e ${MAX_PAGE_SIZE}.`
 
-export interface LeadQuery {
-  readonly period: LeadPeriod
+export interface LeadQuery extends LeadFilter {
   readonly page: number
   readonly pageSize: number
 }
 
-export interface LeadQueryInput {
-  readonly from?: string
-  readonly to?: string
+export interface LeadQueryInput extends LeadFilterInput {
   readonly page?: number
   readonly pageSize?: number
 }
@@ -55,7 +53,7 @@ function toPageSize(pageSize: number | undefined): number {
 
 export function toLeadQuery(input: LeadQueryInput): LeadQuery {
   return {
-    period: toLeadPeriod(input.from, input.to),
+    ...toLeadFilter(input),
     page: toPage(input.page),
     pageSize: toPageSize(input.pageSize),
   }

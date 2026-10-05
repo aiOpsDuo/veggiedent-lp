@@ -12,8 +12,10 @@ import type { Row } from './fake-supabase'
  *    exclusão respondem `401` sem token, e nada do conteúdo aparece na resposta.
  * 2. **A listagem vem do mais recente ao mais antigo**, paginada.
  * 3. **O filtro por período inclui os dois dias extremos por inteiro.**
- * 4. **O CSV abre no Excel em português**: BOM, ponto e vírgula, acentuação.
- * 5. **A exclusão apaga de verdade** — é o pedido do titular, e não há desfazer.
+ * 4. **A busca por e-mail acha o titular** por trecho, sem diferenciar
+ *    maiúsculas, com `%` e `_` como texto — somada ao período e à paginação.
+ * 5. **O CSV abre no Excel em português**: BOM, ponto e vírgula, acentuação.
+ * 6. **A exclusão apaga de verdade** — é o pedido do titular, e não há desfazer.
  */
 
 const ROTA = '/api/admin/leads'
@@ -190,6 +192,128 @@ describe('rotas administrativas de leads', () => {
       )
 
       expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+    })
+  })
+
+  /**
+   * A busca por e-mail (pedido do cliente de 2026-10-05): o Marketing recebe o
+   * pedido de exclusão com o e-mail do titular e precisa achar o lead dele.
+   * Os cinco leads abaixo têm e-mails escolhidos para cada borda — maiúsculas
+   * gravadas, `_` e `%` que não podem virar curinga, e duas pessoas no mesmo
+   * domínio para o total da paginação.
+   */
+  describe('busca por e-mail', () => {
+    const MARIA = 'aaaaaaaa-0000-4000-8000-000000000001'
+    const MARIA_DE_NOVO = 'aaaaaaaa-0000-4000-8000-000000000002'
+    const MARIAXS = 'aaaaaaaa-0000-4000-8000-000000000003'
+    const CEM_POR_CENTO = 'aaaaaaaa-0000-4000-8000-000000000004'
+    const JOAO = 'aaaaaaaa-0000-4000-8000-000000000005'
+
+    beforeEach(() => {
+      harness.database.seed('leads', [
+        lead(MARIA, '2026-09-01T15:00:00.000Z', { email: 'Maria_Souza@Gmail.com' }),
+        lead(MARIA_DE_NOVO, '2026-09-03T15:00:00.000Z', { email: 'maria_souza@gmail.com' }),
+        lead(MARIAXS, '2026-09-03T16:00:00.000Z', { email: 'mariaXsouza@gmail.com' }),
+        lead(CEM_POR_CENTO, '2026-09-04T15:00:00.000Z', { email: 'cem100%@exemplo.com' }),
+        lead(JOAO, '2026-09-05T15:00:00.000Z', { email: 'joao@exemplo.com', nome: 'João Lima' }),
+      ])
+    })
+
+    const idsDaBusca = async (filtros: Record<string, string | number>): Promise<string[]> => {
+      const resposta = await comToken(agente().get(ROTA).query(filtros))
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+      return resposta.body.leads.map((item: { id: string }) => item.id)
+    }
+
+    it('acha por trecho do e-mail', async () => {
+      expect(await idsDaBusca({ email: '@exemplo' })).toEqual([JOAO, CEM_POR_CENTO])
+    })
+
+    it('não diferencia maiúsculas de minúsculas', async () => {
+      expect(await idsDaBusca({ email: 'MARIA_SOUZA@' })).toEqual([MARIA_DE_NOVO, MARIA])
+    })
+
+    it('trata _ como texto, não como qualquer caractere', async () => {
+      expect(await idsDaBusca({ email: 'a_s' })).toEqual([MARIA_DE_NOVO, MARIA])
+    })
+
+    it('trata % como texto, não como qualquer trecho', async () => {
+      expect(await idsDaBusca({ email: '%' })).toEqual([CEM_POR_CENTO])
+    })
+
+    it('apara as bordas, e busca vazia não filtra', async () => {
+      expect(await idsDaBusca({ email: '  joao@  ' })).toEqual([JOAO])
+      expect(await idsDaBusca({ email: '   ' })).toHaveLength(5)
+    })
+
+    const GMAIL_NO_DIA_3 = { email: 'gmail', from: '2026-09-03', to: '2026-09-03', pageSize: 1 }
+
+    it('se soma ao período, e o total conta só o que passou pelos dois', async () => {
+      const resposta = await comToken(agente().get(ROTA).query({ ...GMAIL_NO_DIA_3, page: 1 }))
+
+      expect(resposta.body).toMatchObject({ total: 2, page: 1, pageSize: 1 })
+      expect(resposta.body.leads.map((item: { id: string }) => item.id)).toEqual([MARIAXS])
+    })
+
+    it('a segunda página da busca continua de onde a primeira parou', async () => {
+      expect(await idsDaBusca({ ...GMAIL_NO_DIA_3, page: 2 })).toEqual([MARIA_DE_NOVO])
+    })
+
+    it('nenhum e-mail encontrado devolve lista vazia e total zero, não erro', async () => {
+      const resposta = await comToken(agente().get(ROTA).query({ email: 'ninguem@' }))
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+      expect(resposta.body).toMatchObject({ leads: [], total: 0 })
+    })
+
+    it('busca mais longa que a coluna de e-mail é recusada com 422', async () => {
+      const resposta = await comToken(agente().get(ROTA).query({ email: 'a'.repeat(256) }))
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.fields).toHaveProperty('email')
+    })
+
+    it('e-mail repetido na URL é recusado com 422, pedindo texto', async () => {
+      const resposta = await comToken(agente().get(`${ROTA}?email=maria&email=joao`))
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      expect(resposta.body.fields).toEqual({ email: 'Informe o e-mail da busca como texto.' })
+    })
+
+    it('aceita a busca no tamanho exato da coluna', async () => {
+      const resposta = await comToken(agente().get(ROTA).query({ email: 'a'.repeat(255) }))
+
+      expect(resposta.status).toBe(HttpStatus.OK)
+    })
+
+    it('a exportação traz só os leads da busca', async () => {
+      const resposta = await comToken(agente().get(EXPORTACAO).query({ email: 'MARIA_souza' }))
+
+      const linhas = resposta.text.split('\r\n').filter((linha) => linha.length > 0)
+      expect(linhas).toHaveLength(3)
+      expect(resposta.text).toContain('"Maria_Souza@Gmail.com"')
+      expect(resposta.text).toContain('"maria_souza@gmail.com"')
+      expect(resposta.text).not.toContain('mariaXsouza')
+      expect(resposta.text).not.toContain('João Lima')
+    })
+
+    it('a exportação soma a busca ao período', async () => {
+      const resposta = await comToken(
+        agente().get(EXPORTACAO).query({ email: 'maria_souza', from: '2026-09-03' }),
+      )
+
+      const linhas = resposta.text.split('\r\n').filter((linha) => linha.length > 0)
+      expect(linhas).toHaveLength(2)
+      expect(resposta.text).toContain('"maria_souza@gmail.com"')
+    })
+
+    it('a exportação recusa a busca longa demais com 422', async () => {
+      const resposta = await comToken(agente().get(EXPORTACAO).query({ email: 'a'.repeat(256) }))
+
+      expect(resposta.status).toBe(HttpStatus.UNPROCESSABLE_ENTITY)
+      // A rota declara `text/csv`, então o erro chega como texto; o corpo é o JSON de sempre.
+      expect(JSON.parse(resposta.text).fields).toHaveProperty('email')
     })
   })
 

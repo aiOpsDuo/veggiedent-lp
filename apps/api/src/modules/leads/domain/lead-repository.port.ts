@@ -1,5 +1,5 @@
 import type { Lead } from './lead'
-import type { LeadPeriod } from './lead-period'
+import type { LeadFilter } from './lead-filter'
 import type { LeadQuery } from './lead-query'
 
 /** Token de injeção da porta. O domínio declara; a infraestrutura implementa. */
@@ -21,8 +21,8 @@ export interface LeadsPage {
  */
 export interface LeadRepository {
   list(query: LeadQuery): Promise<LeadsPage>
-  /** Todos os leads do período, do mais recente ao mais antigo, para o CSV. */
-  listForExport(period: LeadPeriod, limit: number): Promise<readonly Lead[]>
+  /** Todos os leads do recorte, do mais recente ao mais antigo, para o CSV. */
+  listForExport(filter: LeadFilter, limit: number): Promise<readonly Lead[]>
   findById(id: string): Promise<Lead | null>
   /** Exclusão definitiva, para pedido do titular (LGPD). Não há desfazer. */
   delete(id: string): Promise<void>

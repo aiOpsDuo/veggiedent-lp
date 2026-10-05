@@ -52,7 +52,19 @@ export interface LeadPeriod {
   readonly to: string
 }
 
-export interface LeadsQuery extends LeadPeriod {
+/**
+ * O recorte que a listagem e a exportação recebem: o período e, desde
+ * 2026-10-05, um trecho do e-mail — para o Marketing achar o lead de quem pede
+ * a exclusão dos próprios dados (LGPD). A API compara sem diferenciar
+ * maiúsculas de minúsculas e com `%` e `_` como texto; o painel só repassa o
+ * que foi digitado.
+ */
+export interface LeadsFilter extends LeadPeriod {
+  /** Trecho do e-mail. Vazio ou ausente significa "sem busca". */
+  readonly email?: string
+}
+
+export interface LeadsQuery extends LeadsFilter {
   readonly page: number
 }
 
@@ -76,6 +88,6 @@ export type LeadDeleteResult =
 
 export interface LeadsGateway {
   listLeads(accessToken: string, query: LeadsQuery): Promise<LeadsPageResult>
-  exportLeads(accessToken: string, period: LeadPeriod): Promise<LeadsExportResult>
+  exportLeads(accessToken: string, filter: LeadsFilter): Promise<LeadsExportResult>
   deleteLead(accessToken: string, id: string): Promise<LeadDeleteResult>
 }

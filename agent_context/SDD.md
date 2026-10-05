@@ -367,7 +367,7 @@ Todos os corpos são JSON em UTF-8. Erros seguem um formato único:
 | `GET /api/admin/operators` | Lista os operadores (e-mail, criado em) |
 | `POST /api/admin/operators` | Recebe e-mail, senha e nome; cria a conta pronta para uso gravando direto em `operators` com senha em hash (D-09, revisado — antes via Admin API do Supabase) |
 | `DELETE /api/admin/operators/:id` | Remove um operador. Recusado com `409` se for o próprio operador autenticado, ou o último operador restante |
-| `GET /api/admin/leads` | Lista paginada, mais recente primeiro. Filtros `from` e `to` por data |
+| `GET /api/admin/leads` | Lista paginada, mais recente primeiro. Filtros `from` e `to` por data e `email` por trecho (desde 2026-10-05) |
 | `GET /api/admin/leads/export` | Exportação em CSV com separador `;` e BOM UTF-8, respeitando os filtros |
 | `DELETE /api/admin/leads/:id` | Exclusão definitiva de um lead, para pedido do titular |
 

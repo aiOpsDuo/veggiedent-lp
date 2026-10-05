@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common'
 import { Prisma, type PrismaClient } from '../../../generated/prisma/client'
 import { PRISMA_CLIENT } from '../../../shared/infrastructure/prisma-client'
 import type { Lead, NewLead } from '../domain/lead'
+import type { LeadFilter } from '../domain/lead-filter'
 import type { LeadIntake } from '../domain/lead-intake.port'
 import type { LeadPeriod } from '../domain/lead-period'
 import type { LeadQuery } from '../domain/lead-query'
@@ -80,6 +81,35 @@ function whereForPeriod(period: LeadPeriod): Prisma.LeadWhereInput {
   return { createdAt }
 }
 
+/**
+ * O trecho do e-mail como texto literal dentro do `LIKE` do MySQL.
+ *
+ * O `contains` do Prisma vira `LIKE '%trecho%'` **sem escapar** o trecho
+ * (conferido contra o MySQL 8 em 2026-10-05: `contains: '_'` trazia todos os
+ * leads). Sem esta função, quem busca `maria_s` acharia também `mariaXs`, e
+ * `%` sozinho traria a base inteira. `\` é o escape padrão do `LIKE` no MySQL
+ * (o servidor não roda com `NO_BACKSLASH_ESCAPES`), e escapa a si mesmo.
+ */
+function literalForLike(text: string): string {
+  return text.replace(/[\\%_]/g, (character) => `\\${character}`)
+}
+
+/**
+ * O recorte inteiro — período **e** e-mail — para a listagem, a contagem e a
+ * exportação, que por isso nunca divergem entre si.
+ *
+ * Sem `mode: 'insensitive'` (o Prisma não o oferece para MySQL): quem ignora
+ * maiúsculas e minúsculas é a collation `utf8mb4_unicode_ci` da tabela
+ * `leads` (migração `20260921135300_init`).
+ */
+function whereForFilter(filter: LeadFilter): Prisma.LeadWhereInput {
+  const where = whereForPeriod(filter.period)
+  if (filter.email === null) {
+    return where
+  }
+  return { ...where, email: { contains: literalForLike(filter.email) } }
+}
+
 /** `true` quando o Prisma reporta que a linha já não existia (delete/update). */
 function isRecordNotFound(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === RECORD_NOT_FOUND
@@ -123,7 +153,7 @@ export class MySqlLeadRepository implements LeadIntake, LeadRepository {
    * `count` não roda uma vez por linha da página).
    */
   async list(query: LeadQuery): Promise<LeadsPage> {
-    const where = whereForPeriod(query.period)
+    const where = whereForFilter(query)
     const skip = (query.page - 1) * query.pageSize
 
     const [rows, total] = await this.prisma.$transaction([
@@ -139,9 +169,9 @@ export class MySqlLeadRepository implements LeadIntake, LeadRepository {
     return { leads: rows.map(toLead), total }
   }
 
-  async listForExport(period: LeadPeriod, limit: number): Promise<readonly Lead[]> {
+  async listForExport(filter: LeadFilter, limit: number): Promise<readonly Lead[]> {
     const rows = await this.prisma.lead.findMany({
-      where: whereForPeriod(period),
+      where: whereForFilter(filter),
       orderBy: { createdAt: 'desc' },
       take: limit,
     })

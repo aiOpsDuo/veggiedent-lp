@@ -578,3 +578,10 @@ Isto revê, por decisão do cliente, a remoção da coluna `aceite_lgpd` registr
 
 Impacto: endereço da política em um lugar só (`PRIVACY_POLICY_URL`, `packages/content-schema`), usado pelo link do aceite, pelo rodapé e pela API; migração `20261002144344_registra_consentimento_lgpd_em_leads` acrescenta quatro colunas a `leads` e preenche os leads existentes com `aceite_lgpd = true` e `aceite_lgpd_em = created_at` (todo lead gravado aceitou: a API sempre recusou o envio sem aceite); `POST /api/leads` aceita `aceite_lgpd_texto` opcional; listagem, CSV (4 colunas novas no fim) e tela de leads exibem o registro. A exclusão a pedido do titular já existia e não mudou. O critério de "pronto" e a verificação ficam em `PLAN.md`.
 
+## 2026-10-05 — Pedido do cliente: busca por e-mail na tela de leads
+
+Documentos afetados: SDD.md (§ "Endpoints administrativos", linha de `GET /api/admin/leads`)
+
+Motivo: o Marketing atende pedidos de remoção de dados (LGPD) a partir do e-mail do titular, e a tela de leads só filtrava por período — achar a pessoa exigia percorrer páginas ou exportar o CSV.
+
+Impacto: parâmetro opcional `email` em `GET /api/admin/leads` e `GET /api/admin/leads/export` — trecho do e-mail, aparado, sem diferenciar maiúsculas (collation `utf8mb4_unicode_ci`), com `%`, `_` e `\` como texto (o `contains` do Prisma não os escapa no MySQL; o adaptador escapa), até 255 caracteres (`422` acima disso), somado ao período e refletido no `total`. No painel, campo `Buscar por e-mail` no formulário do período (Enter ou `Filtrar` aplicam, `Limpar filtro` limpa, volta à página 1), mensagem própria para busca sem resultado e exportação com a busca aplicada. Sem migração; a exclusão não mudou. Documentação em `docs/API.md`, `docs/PAINEL.md` e `docs/MANUTENCAO.md`.

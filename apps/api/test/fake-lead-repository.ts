@@ -1,4 +1,5 @@
 import type { Lead, NewLead } from '../src/modules/leads/domain/lead'
+import type { LeadFilter } from '../src/modules/leads/domain/lead-filter'
 import type { LeadIntake } from '../src/modules/leads/domain/lead-intake.port'
 import type { LeadPeriod } from '../src/modules/leads/domain/lead-period'
 import type { LeadQuery } from '../src/modules/leads/domain/lead-query'
@@ -89,6 +90,22 @@ function withinPeriod(row: Row, period: LeadPeriod): boolean {
   return true
 }
 
+/**
+ * O trecho do e-mail como o MySQL o compara: sem diferenciar maiúsculas de
+ * minúsculas (collation `_ci`) e como texto literal — `%` e `_` aqui nunca
+ * foram curinga, que é exatamente o que `MySqlLeadRepository` garante ao
+ * escapá-los.
+ */
+function withinFilter(row: Row, filter: LeadFilter): boolean {
+  if (!withinPeriod(row, filter.period)) {
+    return false
+  }
+  return (
+    filter.email === null ||
+    (row.email as string).toLowerCase().includes(filter.email.toLowerCase())
+  )
+}
+
 function byCreatedAtDesc(a: Row, b: Row): number {
   return (b.created_at as string) < (a.created_at as string) ? -1 : 1
 }
@@ -112,19 +129,19 @@ export class FakeLeadRepository implements LeadIntake, LeadRepository {
     this.failIfConfigured()
     const matching = this.database
       .rows(TABLE)
-      .filter((row) => withinPeriod(row, query.period))
+      .filter((row) => withinFilter(row, query))
       .sort(byCreatedAtDesc)
     const start = (query.page - 1) * query.pageSize
     const page = matching.slice(start, start + query.pageSize)
     return { leads: page.map(toLead), total: matching.length }
   }
 
-  async listForExport(period: LeadPeriod, limit: number): Promise<readonly Lead[]> {
+  async listForExport(filter: LeadFilter, limit: number): Promise<readonly Lead[]> {
     this.database.record({ table: TABLE, operation: 'select' })
     this.failIfConfigured()
     return this.database
       .rows(TABLE)
-      .filter((row) => withinPeriod(row, period))
+      .filter((row) => withinFilter(row, filter))
       .sort(byCreatedAtDesc)
       .slice(0, limit)
       .map(toLead)

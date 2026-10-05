@@ -8,7 +8,7 @@ import { toLeadView, type LeadsPageView } from './lead-view'
 
 /**
  * A listagem do painel: mais recente primeiro, paginada, com filtro por período
- * (SDD § "Endpoints administrativos" e § C-12).
+ * e por trecho do e-mail (SDD § "Endpoints administrativos" e § C-12).
  */
 @Injectable()
 export class ListLeadsUseCase {

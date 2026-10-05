@@ -46,7 +46,9 @@ export class AdminLeadsController {
   @ApiOperation({
     summary: 'Lista os leads, do mais recente ao mais antigo.',
     description:
-      'Paginada. Os filtros from e to são dias no formato AAAA-MM-DD, inclusivos nos dois extremos, interpretados em UTC.',
+      'Paginada. Os filtros from e to são dias no formato AAAA-MM-DD, inclusivos nos dois extremos, no horário de Brasília. ' +
+      'O filtro email traz os leads cujo e-mail contém o trecho informado, sem diferenciar maiúsculas de minúsculas; ' +
+      '%, _ e \\ valem como texto. Os filtros se somam, e o total conta só o que passou por eles.',
   })
   async listar(@Query() filtros: ListLeadsQueryDto): Promise<LeadsPageView> {
     return this.listLeads.execute(filtros)
@@ -60,7 +62,7 @@ export class AdminLeadsController {
   @Header('Content-Type', CSV_CONTENT_TYPE)
   @ApiProduces(CSV_CONTENT_TYPE)
   @ApiOperation({
-    summary: 'Exporta os leads do período em CSV.',
+    summary: 'Exporta os leads do período (e da busca por e-mail) em CSV.',
     description:
       'Separador ponto e vírgula e BOM UTF-8, para abrir no Excel em português com a acentuação correta. Respeita os mesmos filtros da listagem.',
   })
@@ -68,7 +70,7 @@ export class AdminLeadsController {
     @Query() filtros: ExportLeadsQueryDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<string> {
-    const arquivo = await this.exportLeads.execute(filtros.from, filtros.to)
+    const arquivo = await this.exportLeads.execute(filtros)
     response.setHeader('Content-Disposition', `attachment; filename="${arquivo.filename}"`)
     return arquivo.content
   }

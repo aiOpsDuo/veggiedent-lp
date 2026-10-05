@@ -21,11 +21,11 @@
   **Pelo painel, que é o caminho normal:**
 
   1. **Registre o pedido** antes de apagar: quem pediu, por qual canal e quando. Depois da exclusão não sobra no banco nada que ligue o pedido ao registro apagado — só o log do servidor, que guarda o identificador do lead e o do operador que executou.
-  2. Abra **Leads recebidos** no painel. Se souber a data do envio, use o filtro por período para encurtar a lista; o dia é o de Brasília.
-  3. **Se o titular quiser uma cópia dos próprios dados antes**, use `Exportar CSV do período` e recorte a linha dele.
+  2. Abra **Leads recebidos** no painel e **busque pelo e-mail do titular** em `Buscar por e-mail` (Enter aplica). A busca acha por trecho e não diferencia maiúsculas, então colar o endereço do pedido basta. Deixe o período **vazio**: com ele preenchido, um envio fora das datas não aparece — e a tela avisa *"… no período escolhido."* quando for esse o caso.
+  3. **Se o titular quiser uma cópia dos próprios dados antes**, use `Exportar CSV do período` com a busca aplicada: o arquivo sai só com os leads dele.
   4. Na linha do titular, clique em **Excluir o lead de \<nome\>**. Nada é apagado neste clique: a linha passa a perguntar *"Excluir para sempre? Não há desfazer."*.
   5. Confirme em **Confirmar a exclusão do lead de \<nome\>**. A linha some da lista e a tela confirma com *"Lead excluído definitivamente."*.
-  6. **Um mesmo titular pode ter mais de um envio.** O pedido alcança **todos** eles: repita para cada linha com aquele e-mail, e confira a lista depois.
+  6. **Um mesmo titular pode ter mais de um envio.** O pedido alcança **todos** eles: repita para cada linha que a busca trouxe, e confira que ela termina em *"Nenhum lead encontrado para este e-mail."*. A busca por trecho pode trazer outra pessoa com e-mail parecido (`ana@` também acha `joana@`): confira o endereço inteiro antes de confirmar.
   7. **A exclusão é definitiva e não há de onde restaurar.** Desde 2026-09-03 o lead existe só neste banco: apagado aqui, some para sempre. É o comportamento que o pedido do titular exige — mas confira a linha antes de confirmar.
 
   **Pela API**, quando for preciso fazer em lote ou sem abrir o painel:
@@ -34,12 +34,12 @@
   2. **Encontre o lead pelo e-mail do titular**, com um token de operador válido:
 
      ```bash
-     curl -s "$API_BASE_URL/api/admin/leads?from=2026-01-01&to=2026-12-31" \
-       -H "authorization: Bearer $TOKEN_DO_OPERADOR" | jq '.leads[] | select(.email == "titular@exemplo.com") | {id, email, createdAt}'
+     curl -s -G "$API_BASE_URL/api/admin/leads" --data-urlencode "email=titular@exemplo.com" \
+       -H "authorization: Bearer $TOKEN_DO_OPERADOR" | jq '.leads[] | {id, email, createdAt}'
      ```
 
-     Um mesmo titular pode ter mais de um envio; o pedido de exclusão alcança **todos** eles.
-  3. **Se ele quiser uma cópia dos próprios dados antes**, exporte o período com `GET /api/admin/leads/export` e recorte a linha dele — a exportação já sai em CSV legível.
+     A busca é por trecho, sem diferenciar maiúsculas: confira o `email` de cada resultado antes de apagar. Um mesmo titular pode ter mais de um envio; o pedido de exclusão alcança **todos** eles.
+  3. **Se ele quiser uma cópia dos próprios dados antes**, exporte com a mesma busca (`GET /api/admin/leads/export?email=…`) — o CSV sai só com os leads dele.
   4. **Apague cada identificador encontrado:**
 
      ```bash

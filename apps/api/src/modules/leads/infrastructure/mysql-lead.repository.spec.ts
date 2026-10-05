@@ -152,7 +152,7 @@ describe('MySqlLeadRepository', () => {
       lead.count.mockResolvedValue(0)
       const repository = new MySqlLeadRepository(prisma)
 
-      await repository.list({ period: { from: null, to: null }, page: 1, pageSize: 50 })
+      await repository.list({ period: { from: null, to: null }, email: null, page: 1, pageSize: 50 })
 
       expect(lead.findMany).toHaveBeenCalledWith({
         where: {},
@@ -169,7 +169,7 @@ describe('MySqlLeadRepository', () => {
       lead.count.mockResolvedValue(0)
       const repository = new MySqlLeadRepository(prisma)
 
-      await repository.list({ period: { from: null, to: null }, page: 3, pageSize: 20 })
+      await repository.list({ period: { from: null, to: null }, email: null, page: 3, pageSize: 20 })
 
       expect(lead.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: 40, take: 20 }),
@@ -182,7 +182,7 @@ describe('MySqlLeadRepository', () => {
       lead.count.mockResolvedValue(1)
       const repository = new MySqlLeadRepository(prisma)
 
-      const pagina = await repository.list({ period: { from: null, to: null }, page: 1, pageSize: 50 })
+      const pagina = await repository.list({ period: { from: null, to: null }, email: null, page: 1, pageSize: 50 })
 
       expect($transaction).toHaveBeenCalledTimes(1)
       expect(pagina.total).toBe(1)
@@ -204,7 +204,7 @@ describe('MySqlLeadRepository', () => {
       const repository = new MySqlLeadRepository(prisma)
       const period = toLeadPeriod('2026-09-02', '2026-09-02')
 
-      await repository.list({ period, page: 1, pageSize: 50 })
+      await repository.list({ period, email: null, page: 1, pageSize: 50 })
 
       expect(lead.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -233,10 +233,55 @@ describe('MySqlLeadRepository', () => {
       const repository = new MySqlLeadRepository(prisma)
       const period = toLeadPeriod('2026-09-02')
 
-      await repository.list({ period, page: 1, pageSize: 50 })
+      await repository.list({ period, email: null, page: 1, pageSize: 50 })
 
       const { where } = lead.findMany.mock.calls[0][0] as { where: Prisma.LeadWhereInput }
       expect(where).toEqual({ createdAt: { gte: '2026-09-02T03:00:00.000Z' } })
+    })
+
+    it('busca o trecho do e-mail com contains, somado ao período, na página e no total', async () => {
+      const { prisma, lead } = fakePrisma()
+      lead.findMany.mockResolvedValue([])
+      lead.count.mockResolvedValue(0)
+      const repository = new MySqlLeadRepository(prisma)
+      const period = toLeadPeriod('2026-09-02', '2026-09-02')
+
+      await repository.list({ period, email: 'Maria@', page: 1, pageSize: 50 })
+
+      const where = {
+        createdAt: {
+          gte: '2026-09-02T03:00:00.000Z',
+          lte: '2026-09-03T02:59:59.999Z',
+        },
+        email: { contains: 'Maria@' },
+      }
+      expect(lead.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }))
+      expect(lead.count).toHaveBeenCalledWith({ where })
+    })
+
+    /**
+     * O `contains` do Prisma não escapa os curingas do `LIKE` no MySQL. Sem o
+     * escape, `_` casaria com qualquer caractere e `%` com qualquer trecho —
+     * a busca de um e-mail traria leads de outras pessoas.
+     */
+    it.each([
+      ['maria_s@', 'maria\\_s@'],
+      ['100%', '100\\%'],
+      ['a\\b', 'a\\\\b'],
+    ])('busca %s como texto literal', async (digitado, noLike) => {
+      const { prisma, lead } = fakePrisma()
+      lead.findMany.mockResolvedValue([])
+      lead.count.mockResolvedValue(0)
+      const repository = new MySqlLeadRepository(prisma)
+
+      await repository.list({
+        period: { from: null, to: null },
+        email: digitado,
+        page: 1,
+        pageSize: 50,
+      })
+
+      expect(lead.count).toHaveBeenCalledWith({ where: { email: { contains: noLike } } })
     })
   })
 
@@ -247,7 +292,7 @@ describe('MySqlLeadRepository', () => {
       const repository = new MySqlLeadRepository(prisma)
       const period = toLeadPeriod('2026-09-02', '2026-09-02')
 
-      const exportados = await repository.listForExport(period, 10000)
+      const exportados = await repository.listForExport({ period, email: null }, 10000)
 
       expect(lead.findMany).toHaveBeenCalledWith({
         where: {
@@ -260,6 +305,18 @@ describe('MySqlLeadRepository', () => {
         take: 10000,
       })
       expect(exportados).toEqual([expect.objectContaining({ id: ROW.id })])
+    })
+
+    it('usa a mesma busca por e-mail da listagem, escapada do mesmo jeito', async () => {
+      const { prisma, lead } = fakePrisma()
+      lead.findMany.mockResolvedValue([])
+      const repository = new MySqlLeadRepository(prisma)
+
+      await repository.listForExport({ period: { from: null, to: null }, email: 'ana_c' }, 10000)
+
+      expect(lead.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { email: { contains: 'ana\\_c' } } }),
+      )
     })
   })
 

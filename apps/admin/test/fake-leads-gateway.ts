@@ -1,8 +1,8 @@
 import type {
   LeadDeleteResult,
-  LeadPeriod,
   LeadView,
   LeadsExportResult,
+  LeadsFilter,
   LeadsGateway,
   LeadsPageResult,
   LeadsQuery,
@@ -14,8 +14,10 @@ import type {
  * ordenação e a exclusão exercitados nos testes são o código de produção.
  *
  * Ele **recorta o período do jeito que a API recorta**, em horário de Brasília
- * (SDD § C-12), e pagina sobre o mesmo conjunto ordenado que ela pagina —
- * senão a página 2 do dublê traria leads que a página 2 da API não traria.
+ * (SDD § C-12), **busca o e-mail do jeito que a API busca** — trecho, sem
+ * diferenciar maiúsculas, `%` e `_` como texto —, e pagina sobre o mesmo
+ * conjunto filtrado e ordenado que ela pagina — senão a página 2 do dublê
+ * traria leads que a página 2 da API não traria.
  *
  * O que ele faz de propósito é entregar cada página na ordem **inversa** da
  * esperada, pelo mesmo motivo que o dublê de seções embaralha a lista: a ordem
@@ -54,8 +56,8 @@ function endOfDay(day: string): number {
 export class FakeLeadsGateway implements LeadsGateway {
   /** Toda consulta recebida, na ordem em que chegou. */
   readonly consultas: LeadsQuery[] = []
-  /** Todo período pedido para exportação. */
-  readonly exportacoes: LeadPeriod[] = []
+  /** Todo recorte (período e busca) pedido para exportação. */
+  readonly exportacoes: LeadsFilter[] = []
   /** Todo identificador cuja exclusão foi pedida à API. */
   readonly exclusoes: string[] = []
 
@@ -72,7 +74,7 @@ export class FakeLeadsGateway implements LeadsGateway {
     }
 
     const noPeriodo = this.leads
-      .filter((lead) => this.dentroDoPeriodo(lead, query))
+      .filter((lead) => this.dentroDoPeriodo(lead, query) && this.casaComABusca(lead, query))
       .sort((esquerda, direita) => Date.parse(direita.createdAt) - Date.parse(esquerda.createdAt))
     const pageSize = this.options.pageSize ?? DEFAULT_PAGE_SIZE
     const inicio = (query.page - 1) * pageSize
@@ -87,8 +89,8 @@ export class FakeLeadsGateway implements LeadsGateway {
     }
   }
 
-  async exportLeads(_accessToken: string, period: LeadPeriod): Promise<LeadsExportResult> {
-    this.exportacoes.push(period)
+  async exportLeads(_accessToken: string, filter: LeadsFilter): Promise<LeadsExportResult> {
+    this.exportacoes.push(filter)
     if (this.options.failExportWith !== undefined) {
       return { status: 'falha', message: this.options.failExportWith }
     }
@@ -110,11 +112,16 @@ export class FakeLeadsGateway implements LeadsGateway {
     return { status: 'excluido' }
   }
 
-  private dentroDoPeriodo(lead: LeadView, period: LeadPeriod): boolean {
+  private dentroDoPeriodo(lead: LeadView, filter: LeadsFilter): boolean {
     const instante = Date.parse(lead.createdAt)
-    const depoisDoInicio = period.from === '' || instante >= startOfDay(period.from)
-    const antesDoFim = period.to === '' || instante <= endOfDay(period.to)
+    const depoisDoInicio = filter.from === '' || instante >= startOfDay(filter.from)
+    const antesDoFim = filter.to === '' || instante <= endOfDay(filter.to)
     return depoisDoInicio && antesDoFim
+  }
+
+  private casaComABusca(lead: LeadView, filter: LeadsFilter): boolean {
+    const trecho = (filter.email ?? '').trim().toLowerCase()
+    return trecho === '' || lead.email.toLowerCase().includes(trecho)
   }
 }
 

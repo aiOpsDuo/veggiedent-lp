@@ -42,8 +42,8 @@ Sucesso responde `200 { "accessToken": "...", "expiresInSeconds": 43200 }` — u
 | `POST /api/admin/media` | Confirma o upload e registra a mídia. Devolve o registro com a URL pública. |
 | `GET /api/admin/media/:id` | Registro de uma mídia. |
 | `DELETE /api/admin/media/:id` | Remove registro e arquivo. Responde `409` quando a mídia está em uso. |
-| `GET /api/admin/leads` | Lista os leads, **do mais recente ao mais antigo**, paginada. Parâmetros `from`, `to`, `page` e `pageSize`. Devolve `{ leads, total, page, pageSize }`. |
-| `GET /api/admin/leads/export` | Exportação em CSV dos leads do período, com os mesmos filtros `from` e `to` da listagem. |
+| `GET /api/admin/leads` | Lista os leads, **do mais recente ao mais antigo**, paginada. Parâmetros `from`, `to`, `email`, `page` e `pageSize`. Devolve `{ leads, total, page, pageSize }`. |
+| `GET /api/admin/leads/export` | Exportação em CSV dos leads do período, com os mesmos filtros `from`, `to` e `email` da listagem. |
 | `DELETE /api/admin/leads/:id` | Exclusão **definitiva** de um lead, a pedido do titular (LGPD). Responde `204`; identificador inexistente ou malformado responde `404`. |
 
 O contrato completo está no [SDD § "Contratos de dados/API/interfaces"](../agent_context/SDD.md).
@@ -194,6 +194,8 @@ O instante e o endereço da política **não** são campos do corpo: um envio qu
 **Filtros `from` e `to`** são dias no formato `AAAA-MM-DD`, **inclusivos nos dois extremos**: `from=2026-09-01&to=2026-09-03` traz também o lead enviado às 23h50 do dia 3. Data fora do formato, dia inexistente no calendário (`2026-02-31`) e período invertido respondem `422`.
 
 **O dia é o de Brasília (UTC−3), não o de UTC.** O recorte é feito no fuso de quem opera o painel: um lead enviado às 23h de 2 de setembro entra no filtro do dia 2, ainda que o banco o guarde como 3 de setembro às 02h em UTC. `from=2026-09-02&to=2026-09-02` vira, para o banco, o intervalo `2026-09-02T03:00:00.000Z` a `2026-09-03T02:59:59.999Z`. O deslocamento é fixo em −03:00 porque o Brasil não observa horário de verão desde 2019; se voltar a observar, a mudança é em um lugar só (`apps/api/src/modules/leads/domain/brasilia-time.ts`), que é o mesmo módulo de onde a data do CSV sai.
+
+**Busca `email` (desde 2026-10-05).** Traz os leads cujo e-mail **contém** o trecho informado, sem diferenciar maiúsculas de minúsculas: `email=maria@` e `email=@GMAIL` funcionam. O trecho é aparado; vazio (ou só espaços) não filtra. `%`, `_` e `\` valem como texto, não como curinga — `email=maria_s` não traz `mariaXs@…`. Até 255 caracteres (o tamanho da coluna); acima disso, ou repetido na URL, responde `422` com a chave `email` em `fields`. Soma-se ao período, e `total` conta só o que passou pelos dois. Existe para achar o lead de quem pede a exclusão dos próprios dados (LGPD) — ver [MANUTENCAO.md](MANUTENCAO.md).
 
 **Paginação:** `page` a partir de 1 (padrão 1) e `pageSize` de 1 a 200 (padrão 50). Página além da última devolve lista vazia com o `total` correto, nunca erro.
 

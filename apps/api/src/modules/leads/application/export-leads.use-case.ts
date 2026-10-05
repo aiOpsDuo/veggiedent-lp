@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { toLeadPeriod } from '../domain/lead-period'
+import { toLeadFilter, type LeadFilterInput } from '../domain/lead-filter'
 import {
   LEAD_REPOSITORY,
   type LeadRepository,
@@ -22,9 +22,9 @@ export class ExportLeadsUseCase {
     @Inject(LEAD_REPOSITORY) private readonly repository: LeadRepository,
   ) {}
 
-  async execute(from?: string, to?: string): Promise<CsvFile> {
-    const period = toLeadPeriod(from, to)
-    const leads = await this.repository.listForExport(period, EXPORT_ROW_LIMIT)
+  async execute(input: LeadFilterInput): Promise<CsvFile> {
+    const filter = toLeadFilter(input)
+    const leads = await this.repository.listForExport(filter, EXPORT_ROW_LIMIT)
     return toCsv(leads)
   }
 }

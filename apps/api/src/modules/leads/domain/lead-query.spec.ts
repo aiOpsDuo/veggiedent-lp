@@ -1,10 +1,12 @@
 import { FieldValidationError } from '../../../shared/domain/field-validation.error'
+import { toLeadFilter } from './lead-filter'
 import { toLeadPeriod } from './lead-period'
 import { DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, toLeadQuery } from './lead-query'
 
 /**
- * As bordas do filtro por período e da paginação (SDD § C-12). São as duas
- * entradas que vêm da tela e que ninguém digita com cuidado.
+ * As bordas do filtro por período, da busca por e-mail e da paginação
+ * (SDD § C-12). São as entradas que vêm da tela e que ninguém digita com
+ * cuidado.
  */
 
 describe('período da consulta de leads', () => {
@@ -60,10 +62,38 @@ describe('período da consulta de leads', () => {
   })
 })
 
+describe('busca por e-mail da consulta de leads', () => {
+  it('sem busca, não filtra por e-mail', () => {
+    expect(toLeadFilter({}).email).toBeNull()
+  })
+
+  it('busca só com espaços é o mesmo que nenhuma busca', () => {
+    expect(toLeadFilter({ email: '   ' }).email).toBeNull()
+  })
+
+  it('apara as bordas do que foi colado', () => {
+    expect(toLeadFilter({ email: '  Maria@Exemplo.com \t' }).email).toBe('Maria@Exemplo.com')
+  })
+
+  /** A tradução para a sintaxe do banco é do adaptador; o domínio guarda o texto digitado. */
+  it('guarda %, _ e \\ como foram digitados', () => {
+    expect(toLeadFilter({ email: '100%_a\\b' }).email).toBe('100%_a\\b')
+  })
+
+  it('soma a busca ao período e à página', () => {
+    expect(toLeadQuery({ from: '2026-09-02', email: 'maria', page: 2 })).toMatchObject({
+      period: { from: '2026-09-02T03:00:00.000Z', to: null },
+      email: 'maria',
+      page: 2,
+    })
+  })
+})
+
 describe('paginação da consulta de leads', () => {
   it('sem parâmetro, começa na primeira página com o tamanho padrão', () => {
     expect(toLeadQuery({})).toEqual({
       period: { from: null, to: null },
+      email: null,
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
     })

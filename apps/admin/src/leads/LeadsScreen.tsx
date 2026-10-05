@@ -5,16 +5,19 @@ import { Card } from '../shared/Card'
 import { Notice } from '../shared/Notice'
 import { downloadInBrowser, type FileDownload } from './file-download'
 import { LEAD_COLUMNS, mostRecentFirst, type LeadColumn } from './lead-columns'
-import type { LeadPeriod, LeadView, LeadsGateway, LeadsPage, LeadsQuery } from './leads-gateway'
+import type { LeadView, LeadsFilter, LeadsGateway, LeadsPage, LeadsQuery } from './leads-gateway'
 
 /**
  * A tela de leads (SDD § C-12): listagem do mais recente ao mais antigo, filtro
- * por período, exportação em CSV e exclusão definitiva a pedido do titular.
+ * por período e busca por e-mail, exportação em CSV e exclusão definitiva a
+ * pedido do titular. A busca por e-mail (pedido do cliente de 2026-10-05) é o
+ * caminho para achar o lead de quem pede a exclusão — depois, a exclusão de
+ * sempre.
  *
  * O filtro tem dois estados de propósito — o que está digitado e o que está
  * aplicado. A exportação usa o **aplicado**, que é o mesmo recorte que a tabela
- * está mostrando; usar o digitado exportaria um período que o operador ainda
- * não viu.
+ * está mostrando; usar o digitado exportaria um período (ou uma busca) que o
+ * operador ainda não viu.
  *
  * O recorte do dia é feito pela API, em horário de Brasília. O painel manda o
  * dia escolhido e não converte nada: fuso resolvido em dois lugares vira dois
@@ -37,7 +40,10 @@ type Notice =
   | { readonly tone: 'sucesso'; readonly message: string }
   | { readonly tone: 'falha'; readonly message: string }
 
-const EMPTY_PERIOD: LeadPeriod = { from: '', to: '' }
+/** O filtro do formulário, com a busca sempre presente — vazia é "sem busca". */
+type TypedFilter = Required<LeadsFilter>
+
+const EMPTY_FILTER: TypedFilter = { from: '', to: '', email: '' }
 
 const FIRST_PAGE = 1
 
@@ -56,6 +62,9 @@ const ACTIONS_BODY_CELL_CLASS =
 const EXPORTED_MESSAGE = 'Exportação concluída. O arquivo foi baixado.'
 const DELETED_MESSAGE = 'Lead excluído definitivamente.'
 
+/** Maior que a coluna `leads.email`, a busca seria recusada pela API. */
+const EMAIL_SEARCH_MAX_LENGTH = 255
+
 export function LeadsScreen({
   gateway,
   download = downloadInBrowser,
@@ -63,8 +72,8 @@ export function LeadsScreen({
   const { state: authState } = useAuth()
   const accessToken = authState.status === 'ativa' ? authState.session.accessToken : null
 
-  const [typedPeriod, setTypedPeriod] = useState<LeadPeriod>(EMPTY_PERIOD)
-  const [query, setQuery] = useState<LeadsQuery>({ ...EMPTY_PERIOD, page: FIRST_PAGE })
+  const [typedFilter, setTypedFilter] = useState<TypedFilter>(EMPTY_FILTER)
+  const [query, setQuery] = useState<LeadsQuery>({ ...EMPTY_FILTER, page: FIRST_PAGE })
   const [listing, setListing] = useState<Listing>({ status: 'carregando' })
   const [notice, setNotice] = useState<Notice | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
@@ -96,14 +105,14 @@ export function LeadsScreen({
   const applyFilter = (): void => {
     setNotice(null)
     setConfirmingId(null)
-    setQuery({ ...typedPeriod, page: FIRST_PAGE })
+    setQuery({ ...typedFilter, page: FIRST_PAGE })
   }
 
   const clearFilter = (): void => {
-    setTypedPeriod(EMPTY_PERIOD)
+    setTypedFilter(EMPTY_FILTER)
     setNotice(null)
     setConfirmingId(null)
-    setQuery({ ...EMPTY_PERIOD, page: FIRST_PAGE })
+    setQuery({ ...EMPTY_FILTER, page: FIRST_PAGE })
   }
 
   const goToPage = (page: number): void => {
@@ -116,7 +125,11 @@ export function LeadsScreen({
       return
     }
     setBusy(true)
-    const result = await gateway.exportLeads(accessToken, { from: query.from, to: query.to })
+    const result = await gateway.exportLeads(accessToken, {
+      from: query.from,
+      to: query.to,
+      email: query.email,
+    })
     setBusy(false)
     if (result.status === 'ok') {
       download(result.value)
@@ -155,16 +168,16 @@ export function LeadsScreen({
         </p>
       </header>
 
-      <PeriodFilter
-        period={typedPeriod}
-        onChange={setTypedPeriod}
+      <LeadsFilterForm
+        filter={typedFilter}
+        onChange={setTypedFilter}
         onApply={applyFilter}
         onClear={clearFilter}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p role="status" className="text-sm text-slate-600 dark:text-slate-400">
-          {summaryOf(listing)}
+          {summaryOf(listing, query)}
         </p>
         <button
           type="button"
@@ -186,9 +199,7 @@ export function LeadsScreen({
       )}
 
       {listing.status === 'pronto' && leads.length === 0 && (
-        <p className="text-sm text-slate-600 dark:text-slate-400">
-          Nenhum lead recebido no período.
-        </p>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{emptyMessageOf(query)}</p>
       )}
 
       {leads.length > 0 && (
@@ -236,7 +247,11 @@ export function LeadsScreen({
   )
 }
 
-function summaryOf(listing: Listing): string {
+function isSearchingEmail(query: LeadsQuery): boolean {
+  return (query.email ?? '').trim().length > 0
+}
+
+function summaryOf(listing: Listing, query: LeadsQuery): string {
   if (listing.status === 'carregando') {
     return 'Carregando os leads…'
   }
@@ -244,17 +259,42 @@ function summaryOf(listing: Listing): string {
     return 'Não foi possível listar os leads.'
   }
   const { total } = listing.page
+  if (isSearchingEmail(query)) {
+    return total === 1
+      ? '1 lead encontrado para este e-mail.'
+      : `${total} leads encontrados para este e-mail.`
+  }
   return total === 1 ? '1 lead no período.' : `${total} leads no período.`
 }
 
-interface PeriodFilterProps {
-  readonly period: LeadPeriod
-  readonly onChange: (period: LeadPeriod) => void
+/**
+ * A lista vazia de uma busca por e-mail é a resposta a "este titular tem lead
+ * aqui?", e não pode ser confundida com um período sem envios. Com período
+ * aplicado junto, a mensagem diz isso: o lead pode existir fora dele.
+ */
+function emptyMessageOf(query: LeadsQuery): string {
+  if (!isSearchingEmail(query)) {
+    return 'Nenhum lead recebido no período.'
+  }
+  return query.from === '' && query.to === ''
+    ? 'Nenhum lead encontrado para este e-mail.'
+    : 'Nenhum lead encontrado para este e-mail no período escolhido.'
+}
+
+interface LeadsFilterFormProps {
+  readonly filter: TypedFilter
+  readonly onChange: (filter: TypedFilter) => void
   readonly onApply: () => void
   readonly onClear: () => void
 }
 
-function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps): JSX.Element {
+/**
+ * Busca e período no mesmo formulário: `Filtrar` e Enter em qualquer campo
+ * aplicam os três juntos, e `Limpar filtro` limpa os três — dois botões de
+ * aplicar, um por filtro, deixariam a tabela mostrando um recorte que nenhum
+ * dos dois descreve sozinho.
+ */
+function LeadsFilterForm({ filter, onChange, onApply, onClear }: LeadsFilterFormProps): JSX.Element {
   return (
     <form
       noValidate
@@ -264,6 +304,25 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
       }}
       className="animate-fade-in-up flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
     >
+      <div className="min-w-[16rem] flex-1 space-y-1">
+        <label
+          htmlFor="leads-email"
+          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+        >
+          Buscar por e-mail
+        </label>
+        <input
+          id="leads-email"
+          type="search"
+          value={filter.email}
+          maxLength={EMAIL_SEARCH_MAX_LENGTH}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="Ex.: maria@ ou @gmail.com"
+          onChange={(event) => onChange({ ...filter, email: event.target.value })}
+          className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+        />
+      </div>
       <div className="space-y-1">
         <label
           htmlFor="leads-de"
@@ -274,8 +333,8 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
         <input
           id="leads-de"
           type="date"
-          value={period.from}
-          onChange={(event) => onChange({ ...period, from: event.target.value })}
+          value={filter.from}
+          onChange={(event) => onChange({ ...filter, from: event.target.value })}
           className="rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>
@@ -289,8 +348,8 @@ function PeriodFilter({ period, onChange, onApply, onClear }: PeriodFilterProps)
         <input
           id="leads-ate"
           type="date"
-          value={period.to}
-          onChange={(event) => onChange({ ...period, to: event.target.value })}
+          value={filter.to}
+          onChange={(event) => onChange({ ...filter, to: event.target.value })}
           className="rounded border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
       </div>

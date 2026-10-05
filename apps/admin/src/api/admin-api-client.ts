@@ -10,8 +10,8 @@ import type {
 } from '../content/sections-gateway'
 import type {
   LeadDeleteResult,
-  LeadPeriod,
   LeadsExportResult,
+  LeadsFilter,
   LeadsGateway,
   LeadsPage,
   LeadsPageResult,
@@ -282,7 +282,7 @@ export class AdminApiClient
   async listLeads(accessToken: string, query: LeadsQuery): Promise<LeadsPageResult> {
     const outcome = await this.request(
       accessToken,
-      `${LEADS_PATH}${queryString({ from: query.from, to: query.to, page: String(query.page) })}`,
+      `${LEADS_PATH}${queryString({ ...filterParams(query), page: String(query.page) })}`,
     )
     return outcome.kind === 'ok'
       ? { status: 'ok', value: toLeadsPage(outcome.body, query.page) }
@@ -295,8 +295,8 @@ export class AdminApiClient
    * o BOM UTF-8 e o separador que a API escreveu cheguem intactos ao Excel
    * (regra de negócio RN-01).
    */
-  async exportLeads(accessToken: string, period: LeadPeriod): Promise<LeadsExportResult> {
-    const path = `${LEADS_EXPORT_PATH}${queryString({ from: period.from, to: period.to })}`
+  async exportLeads(accessToken: string, filter: LeadsFilter): Promise<LeadsExportResult> {
+    const path = `${LEADS_EXPORT_PATH}${queryString(filterParams(filter))}`
     let response: Response
     try {
       response = await this.fetchResource(`${this.baseUrl}${path}`, {
@@ -439,6 +439,11 @@ function toLoadResult<T>(outcome: ApiOutcome): LoadResult<T> {
 
 function messageOf(outcome: ApiOutcome): string {
   return outcome.kind === 'recusado' ? outcome.message : UNREACHABLE_MESSAGE
+}
+
+/** Os parâmetros do recorte de leads, iguais na listagem e na exportação. */
+function filterParams(filter: LeadsFilter): Record<string, string> {
+  return { from: filter.from, to: filter.to, email: filter.email ?? '' }
 }
 
 /**

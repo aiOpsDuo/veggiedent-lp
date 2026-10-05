@@ -194,3 +194,65 @@ describe('AdminApiClient — seções', () => {
     expect(resultado).toMatchObject({ status: 'alterada' })
   })
 })
+
+/**
+ * A busca por e-mail dos leads (pedido do cliente de 2026-10-05) viaja como
+ * parâmetro `email`, na listagem e na exportação, pelo mesmo caminho de
+ * `from`/`to`: aparada, codificada e omitida quando vazia.
+ */
+describe('AdminApiClient — leads', () => {
+  function respondeCom(body: unknown): typeof fetch {
+    return vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    ) as unknown as typeof fetch
+  }
+
+  it('manda a busca por e-mail junto do período e da página', async () => {
+    const fetchResource = respondeCom({ leads: [], total: 0, page: 1, pageSize: 50 })
+
+    await new AdminApiClient('/api', fetchResource).listLeads(TOKEN, {
+      from: '2026-09-01',
+      to: '',
+      email: ' maria_s%@ ',
+      page: 1,
+    })
+
+    expect(fetchResource).toHaveBeenCalledWith(
+      '/api/admin/leads?from=2026-09-01&email=maria_s%25%40&page=1',
+      expect.anything(),
+    )
+  })
+
+  it('não manda a busca vazia', async () => {
+    const fetchResource = respondeCom({ leads: [], total: 0, page: 1, pageSize: 50 })
+
+    await new AdminApiClient('/api', fetchResource).listLeads(TOKEN, {
+      from: '',
+      to: '',
+      email: '   ',
+      page: 2,
+    })
+
+    expect(fetchResource).toHaveBeenCalledWith('/api/admin/leads?page=2', expect.anything())
+  })
+
+  it('exporta com a mesma busca por e-mail', async () => {
+    const fetchResource = vi
+      .fn()
+      .mockResolvedValue(new Response('csv', { status: 200 })) as unknown as typeof fetch
+
+    await new AdminApiClient('/api', fetchResource).exportLeads(TOKEN, {
+      from: '',
+      to: '2026-09-30',
+      email: '@gmail.com',
+    })
+
+    expect(fetchResource).toHaveBeenCalledWith(
+      '/api/admin/leads/export?to=2026-09-30&email=%40gmail.com',
+      { headers: { authorization: `Bearer ${TOKEN}` } },
+    )
+  })
+})
