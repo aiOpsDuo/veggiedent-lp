@@ -36,8 +36,8 @@ Toda variável `VITE_*` entra no arquivo servido ao navegador. Nenhuma delas é 
 
 | Variável | Descrição |
 |---|---|
-| `VITE_EBOOK_URL` | URL de download do e-book. Vazia enquanto a Virbac não entregar |
-| `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso |
+| `VITE_EBOOK_URL` | URL de download do e-book. No build do Docker, padrão `/materiais/guia-everyday-care-virbac.pdf` (arquivo em `apps/lp/public/materiais/`) |
+| `VITE_EBOOK_DELIVERY_MODE` | `download` ou `email` — conteúdo do modal de sucesso. No build do Docker, padrão `download`; o modo `email` não envia e-mail nenhum (a API não tem envio), só troca o texto |
 | `VITE_LEAD_SUBMIT_ENDPOINT` | Endpoint que recebe o formulário. Padrão `/api/leads` — relativo, pela mesma razão de `VITE_CONTENT_ENDPOINT` |
 | `VITE_CONTENT_ENDPOINT` | De onde a LP lê o conteúdo publicado. Padrão `/api/content` — relativo porque LP e API compartilham domínio |
 

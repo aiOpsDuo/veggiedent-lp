@@ -87,6 +87,7 @@ export function SuccessModal({ content, onClose, triggerRef }: SuccessModalProps
         {showDownloadButton && (
           <a
             href={env.ebookUrl}
+            download
             onClick={handleDownloadClick}
             className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-md bg-brand-primary px-6 text-base font-semibold text-ink-900 hover:bg-brand-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-feedback-focus"
           >

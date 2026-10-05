@@ -110,8 +110,8 @@ pode entrar aqui**.
 | `VITE_API_BASE_URL` | não | Padrão `/api` — relativo, porque a origem é única |
 | `VITE_CONTENT_ENDPOINT` | não | Padrão `/api/content` |
 | `VITE_LEAD_SUBMIT_ENDPOINT` | não | Padrão `/api/leads` |
-| `VITE_EBOOK_URL` | não | Vazia enquanto a Virbac não entregar o arquivo |
-| `VITE_EBOOK_DELIVERY_MODE` | não | `download` ou `email` (padrão) |
+| `VITE_EBOOK_URL` | não | Padrão `/materiais/guia-everyday-care-virbac.pdf` — o "Guia Everyday Care", estático da própria LP (`apps/lp/public/materiais/`) |
+| `VITE_EBOOK_DELIVERY_MODE` | não | `download` (padrão) ou `email`. A API não envia e-mail: o modo `email` só troca o texto do modal |
 | `PORTA_PROXY` | não | Porta única no hospedeiro. Padrão `8080` |
 
 O painel **não tem** nenhuma variável `VITE_` própria de autenticação — login
