@@ -7,7 +7,7 @@ export type TrackingEventName =
   | 'video_start'
   | 'video_progress'
   | 'form_start'
-  | 'form_submit_success'
+  | 'veggiedent-form-submit'
   | 'form_submit_error'
   | 'ebook_download'
   | 'partner_click'

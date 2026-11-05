@@ -96,7 +96,7 @@ export function useLeadForm(
     try {
       await submitLead(values, aceiteLgpdTexto);
       setStatus("success");
-      track("form_submit_success", { form_id: "lead_capture" });
+      track("veggiedent-form-submit", { form_id: "lead_capture" });
       return "success";
     } catch (error) {
       setStatus("error");
