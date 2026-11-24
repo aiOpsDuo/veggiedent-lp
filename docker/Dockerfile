@@ -13,7 +13,7 @@
 # Node 24: é a versão do hospedeiro em que o projeto é verificado
 # (ver docs/OPERACAO.md).
 ARG NODE_VERSION=24-alpine
-ARG NGINX_VERSION=1.27-alpine
+ARG NGINX_VERSION=1.30.1-alpine
 
 # ---------------------------------------------------------------------------
 # Dependências de desenvolvimento — o que build e checagem de tipos precisam.
